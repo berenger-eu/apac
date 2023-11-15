@@ -12,10 +12,12 @@ using namespace clang;
 std::unordered_map<std::string,struct const_arg> const_arg_table;
 
 
-
-class MyFirstASTPassVisitor : public RecursiveASTVisitor<MyFirstASTPassVisitor> {
+//To initializa the hash table (and analyze dependencies, to be moved to different pass)
+class MyASTInitVisitor : public RecursiveASTVisitor<MyASTInitVisitor> {
 		public:
-				MyFirstASTPassVisitor (Rewriter &R) : TheRewriter(R) {}
+				MyASTInitVisitor (Rewriter &R) : TheRewriter(R) {}
+
+		//To avoid errors on unused Stmt
 		bool VisitStmt(Stmt *s){
 				return true;
 		}
@@ -92,43 +94,27 @@ class MyFirstASTPassVisitor : public RecursiveASTVisitor<MyFirstASTPassVisitor> 
 			}
 			return true;
 		}
-		bool VisitDeclRefExpr(DeclRefExpr* de)
+	/*	bool VisitDeclRefExpr(DeclRefExpr* de)
 		{
 			VarDecl* v=dyn_cast<VarDecl>(de->getDecl());
 			if(v)
 			{
 			}
 			return true;
-		}
+		}*/
 		private:
   Rewriter &TheRewriter;				
 };
 
-// By implementing RecursiveASTVisitor, we can specify which AST nodes
-// we're interested in by overriding relevant methods.
-class MyASTVisitor : public RecursiveASTVisitor<MyASTVisitor> {
+// Printing pass, rewrite variables and add const if they are
+class MyASTPrintVisitor : public RecursiveASTVisitor<MyASTPrintVisitor> {
 public:
-  MyASTVisitor(Rewriter &R) : TheRewriter(R) {}
-
+  MyASTPrintVisitor(Rewriter &R) : TheRewriter(R) {}
+	
+//To avoid errors on unused Stmt
   bool VisitStmt(Stmt *s) {
-    // Only care about If statements.
-    if (isa<IfStmt>(s)) {
-      IfStmt *IfStatement = cast<IfStmt>(s);
-      Stmt *Then = IfStatement->getThen();
-
-      TheRewriter.InsertText(Then->getBeginLoc(), "// the 'if' part\n", true,
-                             true);
-
-      Stmt *Else = IfStatement->getElse();
-      if (Else)
-        TheRewriter.InsertText(Else->getBeginLoc(), "// the 'else' part\n",
-                               true, true);
-    }
     return true;
   }
-
-
-
 
   bool VisitFunctionDecl(FunctionDecl *f) {
     // Only function definitions (with bodies), not declarations.
@@ -155,51 +141,22 @@ public:
 		    }
 		    else if(intype->isReferenceType())
 		    {
-		//	QualType qtNew(QualType(qt.getTypePtr(),qt.getNonReferenceType().getLocalFastQualifiers()),qt.getLocalFastQualifiers());	
-/*			QualType qtNew=(qt.getNonReferenceType().getTypePtr(),qt.getNonReferenceType());
-			    llvm::outs()<<"Nouveau QualType\n";
-			const ReferenceType* tp=cast<ReferenceType>(qtNew.getTypePtr());
-			    ReferenceType rtf=(tp->getTypeClass(),qt.getNonReferenceType().withConst(),qt.getNonReferenceType().getCanonicalType().withConst(),*tp);
-			    qtNew.dump();
-			    llvm::outs()<<"QualType Bis\n";
-			llvm::outs()<<"\nAncien QualType\n";
-			
-			qt.dump();
-			llvm::outs()<<"\n";
-			    qt.getTypePtr()->dump();
-			llvm::outs()<<"\n";
-			//cast<QualType>(qtNew.getTypePtr())->addConst();
-		*/
-//			    llvm::outs()<<std::to_string(&qt)<<" \n"<<std::to_string(qt.getTypePtr())<<"\n";
-			//	llvm::outs()<<"Au dessous\n"<<qtNew.getNonReferenceType().isConstQualified()<<"\nAu dessus\n";
 		    QualType qtIn=qt.getNonReferenceType();
 		    qtIn.addConst();
 		    ASTContext& acons=pv->getASTContext();
 		    pv->setType(acons.getLValueReferenceType(qtIn));
 		    }
 	    }	    
-	    //TheRewriter.RemoveText(SourceRange(pv->getTypeSpecStartLoc(),pv->getTypeSpecEndLoc()));
-    
+   
     }
     return true;
   }
   bool VisitVarDecl(VarDecl* v)
-  {
-		/*const_arg tempArg=const_arg_table[v->getQualifiedNameAsString()];
-		if(tempArg.is_const)
-		{	
-			Type* tpv;
-			if((v->getType().getTypePtrOrNull())!=NULL)
-			{
-				TheRewriter.InsertText(tpv
-			}
-				std::stringstream SSprint;
-			SSprint<<"const "<<v->getType().getAsString();
-		*/	//TheRewriter.ReplaceText(SourceRange(v->getTypeSpecStartLoc(),v->getTypeSpecEndLoc()),SSprint.str());	
-		
-			TheRewriter.ReplaceText(SourceRange(v->getTypeSpecStartLoc(),v->getTypeSpecEndLoc()),v->getType().getAsString());	
+  {	
+	TheRewriter.ReplaceText(SourceRange(v->getTypeSpecStartLoc(),v->getTypeSpecEndLoc())
+			,v->getType().getAsString());	
 
-		  return true;
+	return true;
   }
 private:
   Rewriter &TheRewriter;
@@ -209,23 +166,24 @@ private:
 // by the Clang parser.
 class MyASTConsumer : public ASTConsumer {
 public:
-  MyASTConsumer(Rewriter &R) : Visitor(R),VisitorFirstPass(R)  {}
+  MyASTConsumer(Rewriter &R) : VisitorInit(R),VisitorPrint(R)  {}
 
   // Override the method that gets called for each parsed top-level
   // declaration.
   virtual bool HandleTopLevelDecl(DeclGroupRef DR) {
-    
+    //First pass, to initialize
     for (DeclGroupRef::iterator b=DR.begin(),e=DR.end();b!=e;++b)
-		VisitorFirstPass.TraverseDecl(*b);
+		VisitorInit.TraverseDecl(*b);
+    //Last pass, to add const where needed
     for (DeclGroupRef::iterator b = DR.begin(), e = DR.end(); b != e; ++b) 
 	    // Traverse the declaration using our AST visitor.
-      Visitor.TraverseDecl(*b);
+      VisitorPrint.TraverseDecl(*b);
     return true;
   }
 
 private:
-  MyASTVisitor Visitor;
-  MyFirstASTPassVisitor VisitorFirstPass;
+  MyASTInitVisitor VisitorInit;
+  MyASTPrintVisitor VisitorPrint;
 };
 
 int main(int argc, char *argv[]) {
