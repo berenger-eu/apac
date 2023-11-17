@@ -7,7 +7,7 @@ using namespace clang;
     {
         return true;
     }
-
+/*
     bool ASTPrintVisitor::VisitFunctionDecl(FunctionDecl *f)
     {
         // Only function definitions (with bodies), not declarations.
@@ -18,11 +18,12 @@ using namespace clang;
             QualType qt = pv->getType();
             const Type *intype = qt.getTypePtrOrNull();
 
-            if (intype != NULL)
+            if (intype != NULL&&const_arg_table[pv->getQualifiedNameAsString()].is_const)
 
             {
                 if (intype->isBuiltinType())
                 {
+                    addConstToVar(pv);
                     TheRewriter.ReplaceText(SourceRange(pv->getTypeSpecStartLoc(),
                                                         pv->getTypeSpecEndLoc()),
                                             pv->getType().getAsString());
@@ -35,18 +36,60 @@ using namespace clang;
                 }
                 else if (intype->isReferenceType())
                 {
-                    QualType qtIn = qt.getNonReferenceType();
-                    qtIn.addConst();
-                    ASTContext &acons = pv->getASTContext();
-                    pv->setType(acons.getLValueReferenceType(qtIn));
+                    addConstToVar(pv);
+                    
                 }
             }
         }
         return true;
     }
+    */
+   
     bool ASTPrintVisitor::VisitVarDecl(VarDecl *v)
     {
-        TheRewriter.ReplaceText(SourceRange(v->getTypeSpecStartLoc(), v->getTypeSpecEndLoc()), v->getType().getAsString());
+        QualType qt = v->getType();
+        const Type *intype = qt.getTypePtrOrNull();
+        if (intype != NULL&&const_arg_table[v->getQualifiedNameAsString()].is_const)
 
+            {
+                
+                if (intype->isBuiltinType())
+                {
+                    addConstToVar(v);
+                }
+
+                else if (intype->isPointerType())
+                {
+                    QualType inpv = intype->getPointeeType();
+                    inpv.addConst();
+                }
+                else if (intype->isReferenceType())
+                {
+                    addConstToVar(v);
+                    
+                }
+            }
+        TheRewriter.ReplaceText(SourceRange(v->getTypeSpecStartLoc(), v->getTypeSpecEndLoc()), v->getType().getAsString());
+        
         return true;
     }
+//On modifie l'AST pour faciliter l'affichage des variables modifiés
+void addConstToVar(ValueDecl* valD)
+{
+    QualType tfirst=valD->getType();
+    const Type* innerType= tfirst.getTypePtrOrNull();
+    if(innerType==NULL)
+        return;
+    if (innerType->isBuiltinType())
+    {
+        valD->setType(tfirst.withConst());
+    }
+    else if (innerType->isReferenceType())
+    {
+        QualType refInnerType=tfirst.getNonReferenceType();
+        refInnerType.addConst();
+        ASTContext& aContext=valD->getASTContext();
+        valD->setType(aContext.getLValueReferenceType(refInnerType));
+    }
+
+}

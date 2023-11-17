@@ -7,9 +7,10 @@ public:
     ASTPrintVisitor(Rewriter &R) : TheRewriter(R) {}
     // To avoid errors on unused Stmt
     bool VisitStmt(Stmt *);
-    bool VisitFunctionDecl(FunctionDecl *);
+    //bool VisitFunctionDecl(FunctionDecl *);
     bool VisitVarDecl(VarDecl *);
 
 private:
     Rewriter &TheRewriter;
 };
+void addConstToVar(ValueDecl*);
