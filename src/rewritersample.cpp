@@ -16,7 +16,7 @@ using namespace clang;
 class MyASTConsumer : public ASTConsumer
 {
 public:
-	MyASTConsumer(Rewriter &R) : VisitorInit(R), VisitorPrint(R) {}
+	MyASTConsumer(Rewriter &R) : VisitorInit(R),VisitorConst(R) ,VisitorPrint(R) {}
 
 	// Override the method that gets called for each parsed top-level
 	// declaration.
@@ -25,15 +25,18 @@ public:
 		// First pass, to initialize
 		for (DeclGroupRef::iterator b = DR.begin(), e = DR.end(); b != e; ++b)
 			VisitorInit.TraverseDecl(*b);
-		// Last pass, to add const where needed
+		// Constify pass, to calculate dependencies and add const qualifier or not
 		for (DeclGroupRef::iterator b = DR.begin(), e = DR.end(); b != e; ++b)
-			// Traverse the declaration using our AST visitor.
+			VisitorConst.TraverseDecl(*b);
+		// Last pass, to add const where needed in the source file
+		for (DeclGroupRef::iterator b = DR.begin(), e = DR.end(); b != e; ++b)
 			VisitorPrint.TraverseDecl(*b);
 		return true;
 	}
 
 private:
 	ASTInitVisitor VisitorInit;
+	ASTConstifyVisitor VisitorConst;
 	ASTPrintVisitor VisitorPrint;
 };
 
