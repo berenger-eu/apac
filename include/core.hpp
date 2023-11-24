@@ -1,3 +1,4 @@
+#pragma once
 #include <cstdio>
 #include <memory>
 #include <sstream>
@@ -17,12 +18,16 @@
 #include "clang/Parse/ParseAST.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 #include "clang/Rewrite/Frontend/Rewriters.h"
+
 #include "llvm/Support/Host.h"
 #include "llvm/Support/raw_ostream.h"
 
-struct const_arg{
+struct const_arg
+{
 	bool is_const;
 	bool is_ptr_or_ref;
-	clang::VarDecl* declaration;
-	const_arg* dependencies;
+	clang::VarDecl *declaration;
+	std::vector<const_arg *>dependencies;
 };
+
+std::string getHashKey(clang::NamedDecl*);
