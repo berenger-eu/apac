@@ -20,18 +20,14 @@ public:
 
 	// Override the method that gets called for each parsed top-level
 	// declaration.
-	virtual bool HandleTopLevelDecl(DeclGroupRef DR)
+	virtual void HandleTranslationUnit(ASTContext &Ctx)
 	{
 		// First pass, to initialize
-		for (DeclGroupRef::iterator b = DR.begin(), e = DR.end(); b != e; ++b)
-			VisitorInit.TraverseDecl(*b);
+			VisitorInit.TraverseAST(Ctx);
 		// Constify pass, to calculate dependencies and add const qualifier or not
-		for (DeclGroupRef::iterator b = DR.begin(), e = DR.end(); b != e; ++b)
-			VisitorConst.TraverseDecl(*b);
+			VisitorConst.TraverseAST(Ctx);			
 		// Last pass, to add const where needed in the source file
-		for (DeclGroupRef::iterator b = DR.begin(), e = DR.end(); b != e; ++b)
-			VisitorPrint.TraverseDecl(*b);
-		return true;
+			VisitorPrint.TraverseAST(Ctx);
 	}
 
 private:
