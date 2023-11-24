@@ -11,3 +11,4 @@ public:
 private:
     Rewriter &TheRewriter;
 };
+void unconstifyByPropagation(const_arg*);

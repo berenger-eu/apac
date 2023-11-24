@@ -1,4 +1,4 @@
-#include "../include/ASTConstifyVisitor.hpp"
+#include "../include/ASTConstifyVisitor.hpp"  
 using namespace clang;
 bool ASTConstifyVisitor::VisitStmt(Stmt *s)
     {
@@ -12,23 +12,30 @@ bool ASTConstifyVisitor::VisitBinaryOperator(BinaryOperator *bop)
             DeclRefExpr *leftSide; //,rightSide;
             leftSide = cast<DeclRefExpr>(bop->getLHS());
             // rightSide=cast<DeclRefExpr>(bop->getRHS());
-            std::string qualifiedLeftName = leftSide->getDecl()->getQualifiedNameAsString();
-            const_arg *curArg = &(const_arg_table[qualifiedLeftName]);
-            curArg->is_const = false;
-            QualType t = curArg->declaration->getType();
-            t.removeLocalConst();
-            curArg->declaration->setType(t);
-            int i = 0;
-            while (curArg->dependencies != NULL && i < 100)
-
-            {
-                i++;
-                curArg = curArg->dependencies;
-                curArg->is_const = false;
-                QualType t = curArg->declaration->getType();
-                t.removeLocalConst();
-                curArg->declaration->setType(t);
-            }
+             
+            const_arg *curArg = &(const_arg_table[getHashKey(leftSide->getDecl())]);
+            
+            unconstifyByPropagation(curArg);
         }
         return true;
     }
+
+void unconstifyByPropagation(const_arg* varArg)
+{
+    std::stack<const_arg*> stackUnconst;
+    stackUnconst.push(varArg);
+    while(!stackUnconst.empty())
+    {
+        const_arg* curArg=stackUnconst.top();
+        curArg->is_const=false;
+        stackUnconst.pop();
+        if(curArg!=NULL)
+        {
+            for (std::vector<const_arg*>::iterator it = curArg->dependencies.begin(); it != curArg->dependencies.end(); ++it)
+            {
+                stackUnconst.push(*it);
+            }
+        }
+        
+    }
+}

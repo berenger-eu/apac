@@ -7,7 +7,7 @@ public:
     ASTInitVisitor(Rewriter &R) : TheRewriter(R) {};
     bool VisitStmt(Stmt *);
     bool VisitVarDecl(VarDecl *);
-    
+    bool VisitCallExpr(CallExpr *);
 private:
     Rewriter &TheRewriter;
 };

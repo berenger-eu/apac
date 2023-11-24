@@ -27,5 +27,7 @@ struct const_arg
 	bool is_const;
 	bool is_ptr_or_ref;
 	clang::VarDecl *declaration;
-	const_arg *dependencies;
+	std::vector<const_arg *>dependencies;
 };
+
+std::string getHashKey(clang::NamedDecl*);

@@ -10,7 +10,7 @@ message(STATUS "Found LLVM libs ${LLVM_DEFINITIONS}")
 
 # Now build our tools
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
-add_executable(apac ASTInitVisitor.cpp ASTConstifyVisitor.cpp ASTPrintVisitor.cpp rewritersample.cpp)
+add_executable(apac ASTInitVisitor.cpp ASTConstifyVisitor.cpp ASTPrintVisitor.cpp core.cpp rewritersample.cpp)
 
 
 

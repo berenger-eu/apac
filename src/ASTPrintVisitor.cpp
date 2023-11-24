@@ -49,7 +49,7 @@ using namespace clang;
     {
         QualType qt = v->getType();
         const Type *intype = qt.getTypePtrOrNull();
-        if (intype != NULL&&const_arg_table[v->getQualifiedNameAsString()].is_const)
+        if (const_arg_table[getHashKey(v)].is_const&&intype != NULL)
 
             {
                 
@@ -70,7 +70,6 @@ using namespace clang;
                 }
             }
         TheRewriter.ReplaceText(SourceRange(v->getTypeSpecStartLoc(), v->getTypeSpecEndLoc()), v->getType().getAsString());
-        
         return true;
     }
 //On modifie l'AST pour faciliter l'affichage des variables modifiés
