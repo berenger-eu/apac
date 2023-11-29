@@ -19,7 +19,15 @@ bool ASTConstifyVisitor::VisitBinaryOperator(BinaryOperator *bop)
         }
         return true;
     }
-
+bool ASTConstifyVisitor::VisitUnaryOperator(UnaryOperator* uop)
+{
+    if(uop->isIncrementDecrementOp()&&isa<DeclRefExpr>(uop->getSubExpr()))
+    {   
+        DeclRefExpr* varSubExpr=cast<DeclRefExpr>(uop->getSubExpr());
+        unconstifyByPropagation(&(const_arg_table[getHashKey(varSubExpr->getDecl())]));
+    }
+    return true;
+}
 void unconstifyByPropagation(const_arg* varArg)
 {
     std::stack<const_arg*> stackUnconst;
