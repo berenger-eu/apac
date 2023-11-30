@@ -22,6 +22,10 @@
 #include "llvm/Support/Host.h"
 #include "llvm/Support/raw_ostream.h"
 
+#define CHAR_ASSIGNEMENT '='
+#define CHAR_INSTR_END ';'
+#define CHAR_NEWLINE '\n'
+
 struct const_arg
 {
 	bool is_const;

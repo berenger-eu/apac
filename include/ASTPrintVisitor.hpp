@@ -8,9 +8,11 @@ public:
     // To avoid errors on unused Stmt
     bool VisitStmt(Stmt *);
     //bool VisitFunctionDecl(FunctionDecl *);
-    bool VisitVarDecl(VarDecl *);
+    bool VisitDeclStmt(DeclStmt* );
+    void PrepareRewriteVarDecl(VarDecl *,std::stringstream&);
 
 private:
-    Rewriter &TheRewriter;
+   Rewriter &TheRewriter;
 };
+
 void addConstToVar(ValueDecl*);
