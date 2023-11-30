@@ -44,14 +44,45 @@ using namespace clang;
         return true;
     }
     */
-   
-    bool ASTPrintVisitor::VisitVarDecl(VarDecl *v)
+   bool ASTPrintVisitor::VisitDeclStmt(DeclStmt* declStatement)
+   {
+        TheRewriter.RemoveText(SourceRange(declStatement->getBeginLoc(),declStatement->getEndLoc()));
+        std::stringstream SSprint;
+        if((declStatement->isSingleDecl()))
+        {
+            Decl* d=declStatement->getSingleDecl();
+            if(isa<VarDecl>(d))
+                PrepareRewriteVarDecl(cast<VarDecl>(d),SSprint);
+
+        }
+        else
+	    {
+            DeclGroup& dgr=declStatement->getDeclGroup().getDeclGroup();
+            int dgrSize=dgr.size();
+            for(int i=0;i<dgrSize;i++)
+            {
+                
+                if(isa<VarDecl>(dgr[i]))
+                {
+                    VarDecl* vd =cast<VarDecl>(dgr[i]);
+                    vd->getInit()->dump();
+                    llvm::outs()<<vd;
+                    PrepareRewriteVarDecl(vd,SSprint);
+                    if(i<dgrSize-1)
+                        SSprint<<CHAR_NEWLINE;
+                }
+            }
+        }
+        TheRewriter.InsertTextAfter(declStatement->getBeginLoc(),SSprint.str());
+        return true;
+   }
+    void ASTPrintVisitor::PrepareRewriteVarDecl(VarDecl *v,std::stringstream& stream)
     {
         QualType qt = v->getType();
         const Type *intype = qt.getTypePtrOrNull();
+        //Here we modify the type of the variables to add const if needed
         if (const_arg_table[getHashKey(v)].is_const&&intype != NULL)
-
-            {
+        {
                 
                 if (intype->isBuiltinType())
                 {
@@ -68,9 +99,18 @@ using namespace clang;
                     addConstToVar(v);
                     
                 }
-            }
-        TheRewriter.ReplaceText(SourceRange(v->getTypeSpecStartLoc(), v->getTypeSpecEndLoc()), v->getType().getAsString());
-        return true;
+        }
+        //We prepare the change in the text ( Type Var)
+        stream<<v->getType().getAsString()<<' '<<v->getNameAsString();
+        //If the variable is initialized, we add the initializer too
+        if(v->getInit()!=NULL){
+            PrintingPolicy print_policy(v->getASTContext().getLangOpts());
+            std::string initString;
+            llvm::raw_string_ostream stringStreamInit(initString);
+            v->getInit()->printPretty(stringStreamInit,NULL,print_policy);
+            stream<<CHAR_ASSIGNEMENT<<initString;
+        }
+        stream<<CHAR_INSTR_END;
     }
 //On modifie l'AST pour faciliter l'affichage des variables modifiés
 void addConstToVar(ValueDecl* valD)

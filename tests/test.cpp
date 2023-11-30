@@ -30,14 +30,14 @@ int fonction_test2(int &b)
 	return 2;
 }
 int main() {
-  int n=1;
+  int n=1,m=3,iho;
   int* n2=&n;
   int m=3;
   int* r=&n;
   int est_const=5;
   int est_const2=6;
-	fonction_test(n2,m,n,r,est_const,est_const2);
+	//fonction_test(n2,m,n,r,est_const,est_const2);
 	
-	fonction_test2(m);
+	//fonction_test2(m);
 	return 0;
 }
