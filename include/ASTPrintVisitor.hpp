@@ -9,7 +9,9 @@ public:
     bool VisitStmt(Stmt *);
     //bool VisitFunctionDecl(FunctionDecl *);
     bool VisitDeclStmt(DeclStmt* );
+    bool VisitParmVarDecl(ParmVarDecl*);
     void PrepareRewriteVarDecl(VarDecl *,std::stringstream&);
+    void rewriteSingleDecl(VarDecl* );
 
 private:
    Rewriter &TheRewriter;

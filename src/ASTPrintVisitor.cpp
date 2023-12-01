@@ -44,19 +44,28 @@ using namespace clang;
         return true;
     }
     */
+   bool ASTPrintVisitor::VisitParmVarDecl(ParmVarDecl* pvd)
+   {
+    rewriteSingleDecl(pvd);
+    return true;
+   }
    bool ASTPrintVisitor::VisitDeclStmt(DeclStmt* declStatement)
    {
-        TheRewriter.RemoveText(SourceRange(declStatement->getBeginLoc(),declStatement->getEndLoc()));
+        
         std::stringstream SSprint;
         if((declStatement->isSingleDecl()))
         {
             Decl* d=declStatement->getSingleDecl();
             if(isa<VarDecl>(d))
-                PrepareRewriteVarDecl(cast<VarDecl>(d),SSprint);
+            {
+                rewriteSingleDecl(cast<VarDecl>(d));
+            }    
 
         }
+        //Multiple decl
         else
 	    {
+            TheRewriter.RemoveText(SourceRange(declStatement->getBeginLoc(),declStatement->getEndLoc()));
             DeclGroup& dgr=declStatement->getDeclGroup().getDeclGroup();
             int dgrSize=dgr.size();
             for(int i=0;i<dgrSize;i++)
@@ -65,15 +74,13 @@ using namespace clang;
                 if(isa<VarDecl>(dgr[i]))
                 {
                     VarDecl* vd =cast<VarDecl>(dgr[i]);
-                    vd->getInit()->dump();
-                    llvm::outs()<<vd;
                     PrepareRewriteVarDecl(vd,SSprint);
                     if(i<dgrSize-1)
                         SSprint<<CHAR_NEWLINE;
                 }
             }
+            TheRewriter.InsertTextAfter(declStatement->getBeginLoc(),SSprint.str());
         }
-        TheRewriter.InsertTextAfter(declStatement->getBeginLoc(),SSprint.str());
         return true;
    }
     void ASTPrintVisitor::PrepareRewriteVarDecl(VarDecl *v,std::stringstream& stream)
@@ -112,6 +119,11 @@ using namespace clang;
         }
         stream<<CHAR_INSTR_END;
     }
+void    ASTPrintVisitor::rewriteSingleDecl(VarDecl* vd)
+{
+    addConstToVar(vd);
+    TheRewriter.ReplaceText(SourceRange(vd->getTypeSpecStartLoc(),vd->getTypeSpecEndLoc()),vd->getType().getAsString());
+}
 //On modifie l'AST pour faciliter l'affichage des variables modifiés
 void addConstToVar(ValueDecl* valD)
 {
