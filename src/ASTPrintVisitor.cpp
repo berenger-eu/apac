@@ -121,8 +121,11 @@ using namespace clang;
     }
 void    ASTPrintVisitor::rewriteSingleDecl(VarDecl* vd)
 {
-    addConstToVar(vd);
-    TheRewriter.ReplaceText(SourceRange(vd->getTypeSpecStartLoc(),vd->getTypeSpecEndLoc()),vd->getType().getAsString());
+    if(const_arg_table[getHashKey(vd)].is_const)
+    {
+        addConstToVar(vd);
+        TheRewriter.ReplaceText(SourceRange(vd->getTypeSpecStartLoc(),vd->getTypeSpecEndLoc()),vd->getType().getAsString());
+    }
 }
 //On modifie l'AST pour faciliter l'affichage des variables modifiés
 void addConstToVar(ValueDecl* valD)

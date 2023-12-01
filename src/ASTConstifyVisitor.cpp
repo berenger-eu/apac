@@ -41,7 +41,8 @@ void unconstifyByPropagation(const_arg* varArg)
         {
             for (std::vector<const_arg*>::iterator it = curArg->dependencies.begin(); it != curArg->dependencies.end(); ++it)
             {
-                stackUnconst.push(*it);
+                if((*it)->is_const)
+                    stackUnconst.push(*it);
             }
         }
         
