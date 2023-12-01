@@ -13,7 +13,7 @@ int fonction_test(int* a,int& b,int & bis,int *& c,int d,int e)
 	d=3;
 	int& temp3=b;
 	int& temp4=temp3;
-	temp4+=4;
+	b+=4;
 	int temp=b+(*a)-5;
 	int temp2=6;
 	return 0;

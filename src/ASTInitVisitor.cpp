@@ -40,10 +40,14 @@ using namespace clang;
             {
 
                 curDeclArg.is_ptr_or_ref = true;
-                if (dr != NULL)
+                if (dr != NULL){
+                    //If we unconst curDeclArg, we have to unconst pointed value
                     curDeclArg.dependencies.push_back(
                         &(const_arg_table[getHashKey(dr->getDecl())])
                         );
+                    //The value is referenced, so if it's unconst, we have to unconst its reference
+                    const_arg_table[getHashKey(dr->getDecl())].dependencies.push_back(&curDeclArg);
+                }
                 // std::stringstream SSprint;
                 // SSprint<<"\n"<<temp->getQualifiedNameAsString()<<"\n";
                 // TheRewriter.InsertText(v->getEndLoc(),SSprint.str(),true,true);
