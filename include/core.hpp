@@ -35,3 +35,4 @@ struct const_arg
 };
 
 std::string getHashKey(clang::NamedDecl*);
+clang::ValueDecl* getInnerDecl(clang::Expr*);

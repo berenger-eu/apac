@@ -98,8 +98,7 @@ using namespace clang;
 
                 else if (intype->isPointerType())
                 {
-                    QualType inpv = intype->getPointeeType();
-                    inpv.addConst();
+                    addConstToVar(v);
                 }
                 else if (intype->isReferenceType())
                 {
@@ -124,7 +123,9 @@ void    ASTPrintVisitor::rewriteSingleDecl(VarDecl* vd)
     if(const_arg_table[getHashKey(vd)].is_const)
     {
         addConstToVar(vd);
-        TheRewriter.ReplaceText(SourceRange(vd->getTypeSpecStartLoc(),vd->getTypeSpecEndLoc()),vd->getType().getAsString());
+        //Add a space char, otherwise int*a (valid) can become int*consta instead of int*const a 
+        std::string result=vd->getType().getAsString()+" ";
+        TheRewriter.ReplaceText(SourceRange(vd->getTypeSpecStartLoc(),vd->getTypeSpecEndLoc()),result);
     }
 }
 //On modifie l'AST pour faciliter l'affichage des variables modifiés
@@ -144,6 +145,34 @@ void addConstToVar(ValueDecl* valD)
         refInnerType.addConst();
         ASTContext& aContext=valD->getASTContext();
         valD->setType(aContext.getLValueReferenceType(refInnerType));
+    }
+    else if (innerType->isPointerType())
+    {
+        int degree=0;
+        
+        QualType innerQualType=valD->getType();
+        
+        ASTContext& acons= valD->getASTContext();
+        const Type* tempType=innerQualType.getTypePtrOrNull();
+        //We look for the pointed type and the degree of the pointer
+        while(tempType!=NULL&&tempType->isPointerType())
+        {
+            degree++;
+            innerQualType=tempType->getPointeeType();
+            tempType=innerQualType.getTypePtrOrNull();
+        }
+        QualType finalType=innerQualType;
+        for (int i=0;i<degree;i++)
+        {
+            finalType.addConst();
+            finalType=acons.getPointerType(finalType);    
+        }
+        finalType.addConst();
+        valD->setType(finalType);
+
+
+
+
     }
 
 }

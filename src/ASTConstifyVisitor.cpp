@@ -9,22 +9,19 @@ bool ASTConstifyVisitor::VisitBinaryOperator(BinaryOperator *bop)
     {
         if (bop->isAssignmentOp())
         {
-            DeclRefExpr *leftSide; //,rightSide;
-            leftSide = cast<DeclRefExpr>(bop->getLHS());
+            ValueDecl* leftSideDecl=getInnerDecl(bop->getLHS());
             // rightSide=cast<DeclRefExpr>(bop->getRHS());
-             
-            const_arg *curArg = &(const_arg_table[getHashKey(leftSide->getDecl())]);
-            
+            const_arg *curArg = &(const_arg_table[getHashKey(leftSideDecl)]);
             unconstifyByPropagation(curArg);
         }
         return true;
     }
 bool ASTConstifyVisitor::VisitUnaryOperator(UnaryOperator* uop)
 {
-    if(uop->isIncrementDecrementOp()&&isa<DeclRefExpr>(uop->getSubExpr()))
+    if(uop->isIncrementDecrementOp())
     {   
-        DeclRefExpr* varSubExpr=cast<DeclRefExpr>(uop->getSubExpr());
-        unconstifyByPropagation(&(const_arg_table[getHashKey(varSubExpr->getDecl())]));
+        ValueDecl* innerDecl=getInnerDecl(uop->getSubExpr());
+        unconstifyByPropagation(&(const_arg_table[getHashKey(innerDecl)]));
     }
     return true;
 }

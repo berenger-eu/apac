@@ -19,34 +19,39 @@ using namespace clang;
     */
     bool ASTInitVisitor::VisitVarDecl(VarDecl *v)
     {
-
-        Expr *expr = v->getInit();
-        DeclRefExpr *dr = NULL;
-        if (expr != NULL && isa<DeclRefExpr>(expr->IgnoreCasts()))
-            dr = cast<DeclRefExpr>(expr->IgnoreCasts());
         const_arg &curDeclArg = const_arg_table[getHashKey(v)];
         curDeclArg.is_const = true;
         curDeclArg.declaration = v;
-        QualType qt = v->getType();
-        const Type *intype = qt.getTypePtrOrNull();
+        const Type *intype = v->getType().getTypePtrOrNull();
         if (intype != NULL)
         {
-
+            
             if (intype->isPointerType())
             {
+                ValueDecl *initDecl=getInnerDecl(v->getInit()) ;
                 curDeclArg.is_ptr_or_ref = true;
+                if (initDecl != NULL){
+                    //If the pointer is unconst, then the values referenced by it have to be unconst too
+                    curDeclArg.dependencies.push_back(
+                        &(const_arg_table[getHashKey(initDecl)])
+                        );
+                    //The value is referenced, so if it's unconst, we have to unconst what refers to it
+                    const_arg_table[getHashKey(initDecl)].dependencies.push_back(&curDeclArg);
+                     llvm::outs()<<curDeclArg.declaration->getNameAsString()<<'\t'<<curDeclArg.dependencies[0]->declaration->getNameAsString()<<'\n';
+              
+                }
             }
             else if (intype->isReferenceType())
             {
-
+                ValueDecl *initDecl=getInnerDecl(v->getInit()) ;
                 curDeclArg.is_ptr_or_ref = true;
-                if (dr != NULL){
+                if (initDecl != NULL){
                     //If we unconst curDeclArg, we have to unconst pointed value
                     curDeclArg.dependencies.push_back(
-                        &(const_arg_table[getHashKey(dr->getDecl())])
+                        &(const_arg_table[getHashKey(initDecl)])
                         );
-                    //The value is referenced, so if it's unconst, we have to unconst its reference
-                    const_arg_table[getHashKey(dr->getDecl())].dependencies.push_back(&curDeclArg);
+                    //The value is referenced, so if it's unconst, we have to unconst what refers to it
+                    const_arg_table[getHashKey(initDecl)].dependencies.push_back(&curDeclArg);
                 }
                 // std::stringstream SSprint;
                 // SSprint<<"\n"<<temp->getQualifiedNameAsString()<<"\n";
