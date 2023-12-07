@@ -1,5 +1,6 @@
 #include "../include/core.hpp"
 using namespace clang;
+//HashKey is FunctionName++VarName or VarName
 std::string getHashKey(NamedDecl* nd)
 {
     std::stringstream SSConcatStrings;
@@ -9,6 +10,7 @@ std::string getHashKey(NamedDecl* nd)
     SSConcatStrings<<varName;
     return SSConcatStrings.str();
 }
+//Retrieves, if it exists, the variable inside of an expression
 ValueDecl* getInnerDecl(Expr* expression)
 {
     ValueDecl* innerDecl=NULL;

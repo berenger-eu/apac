@@ -18,3 +18,6 @@ private:
 };
 
 void addConstToVar(ValueDecl*);
+void addConstToBuiltInType(ValueDecl*);
+void addConstToReference(ValueDecl*);
+void addConstToPointer(ValueDecl*);
