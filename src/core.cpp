@@ -10,6 +10,20 @@ std::string getHashKey(NamedDecl* nd)
     SSConcatStrings<<varName;
     return SSConcatStrings.str();
 }
+
+//To verify more clearly if a QualType is a Pointer
+bool isPointerQualType(QualType qType)
+{
+    const Type* typeTemp;
+    bool returnValue=false;
+    if((typeTemp=qType.getTypePtrOrNull()))
+    {
+        returnValue=typeTemp->isPointerType();
+    }
+    return returnValue;
+}
+
+
 //Retrieves, if it exists, the variable inside of an expression
 ValueDecl* getInnerDecl(Expr* expression)
 {
