@@ -36,4 +36,5 @@ struct const_arg
 
 std::string getHashKey(clang::NamedDecl*);
 bool isPointerQualType(clang::QualType );
+clang::ValueDecl* getInnerPtr(clang::Expr*);
 clang::ValueDecl* getInnerDecl(clang::Expr*);

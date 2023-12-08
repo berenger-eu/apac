@@ -61,10 +61,10 @@ int main() {
 	int rec1=0;
 	int rec2=0;
 	int rec3=0;
-	int* r=&rec3;
+	int* r=&est_const2;
 	int rec4=5;
 	int pointedValue=2;
-	int * pointerTo=&pointedValue;
+	int * pointerTo=est_const+&pointedValue+5+(*r);
 	int t=0;
 	pointersModif(pointerTo);
 	recurs(rec1,rec2,rec3,rec4);

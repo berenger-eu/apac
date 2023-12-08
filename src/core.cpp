@@ -24,13 +24,37 @@ bool isPointerQualType(QualType qType)
 }
 
 
+
+ValueDecl* getInnerPtr(Expr* expression)
+{
+    ValueDecl* returnValueDecl=NULL;
+    while(expression!=NULL&&!isa<DeclRefExpr>(expression))
+    { 
+        if(isa<BinaryOperator>(expression))
+        {
+            BinaryOperator* bopExpr =cast<BinaryOperator>(expression);
+            if(isPointerQualType(bopExpr->getLHS()->getType()))
+                expression=bopExpr->getLHS();
+            else if (isPointerQualType(bopExpr->getRHS()->getType()))
+                expression=bopExpr->getRHS();
+        }
+        else if(isa<UnaryOperator>(expression))
+            expression=cast<UnaryOperator>(expression)->getSubExpr();
+        else
+            expression=expression->IgnoreCasts();            
+    }
+    returnValueDecl=getInnerDecl(expression);
+    return returnValueDecl;
+}
+
 //Retrieves, if it exists, the variable inside of an expression
 ValueDecl* getInnerDecl(Expr* expression)
 {
     ValueDecl* innerDecl=NULL;
+    
     if(expression!=NULL)
     {
-        while(!isa<DeclRefExpr>(expression)&&expression!=NULL)
+        while(expression!=NULL&&!isa<DeclRefExpr>(expression))
         {
             expression=expression->IgnoreCasts();
             if(isa<UnaryOperator>(expression))

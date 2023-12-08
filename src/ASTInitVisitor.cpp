@@ -21,7 +21,11 @@ bool ASTInitVisitor::VisitVarDecl(VarDecl *v)
 
         if (intype->isPointerType()||intype->isReferenceType())
         {
-            ValueDecl *initDecl=getInnerDecl(v->getInit()) ;
+            ValueDecl* initDecl;
+            if (intype->isPointerType())
+                initDecl=getInnerPtr(v->getInit());
+            else
+                initDecl=getInnerDecl(v->getInit()) ;
             curDeclArg.is_ptr_or_ref = true;
             if (initDecl != NULL){
                 //If the pointer is unconst, then the values referenced by it have to be unconst too
