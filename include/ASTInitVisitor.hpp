@@ -8,6 +8,7 @@ public:
     bool VisitStmt(Stmt *);
     bool VisitVarDecl(VarDecl *);
     bool VisitCallExpr(CallExpr *);
+    bool VisitBinaryOperator(BinaryOperator*);
 private:
     Rewriter &TheRewriter;
 };

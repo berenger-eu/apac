@@ -60,3 +60,19 @@ bool ASTInitVisitor::VisitCallExpr(CallExpr *ce)
     }
     return true;
 }
+
+bool ASTInitVisitor::VisitBinaryOperator(BinaryOperator* bop)
+{
+    if(bop->isAssignmentOp())
+    {
+        ValueDecl* leftSideDecl=getInnerDecl(bop->getLHS());
+        if(isPointerQualType(leftSideDecl->getType()))
+        {
+            const_arg *curArg = &(const_arg_table[getHashKey(leftSideDecl)]);
+            const_arg *pointedArg = &(const_arg_table[getHashKey(getInnerPtr(bop->getRHS()))]);
+            curArg->dependencies.push_back(pointedArg);
+            pointedArg->dependencies.push_back(curArg);
+        }
+    }   
+    return true;
+}
