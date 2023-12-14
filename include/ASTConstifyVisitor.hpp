@@ -1,5 +1,4 @@
 #include "core.hpp"
-extern std::unordered_map<std::string, struct const_arg> const_arg_table;
 using namespace clang;
 class ASTConstifyVisitor : public RecursiveASTVisitor<ASTConstifyVisitor>
 {

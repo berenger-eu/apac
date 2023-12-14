@@ -11,7 +11,7 @@ bool ASTConstifyVisitor::VisitBinaryOperator(BinaryOperator *bop)
         {
             ValueDecl* leftSideDecl=getInnerDecl(bop->getLHS());
             // rightSide=cast<DeclRefExpr>(bop->getRHS());
-            const_arg *curArg = &(const_arg_table[getHashKey(leftSideDecl)]);
+            const_arg *curArg = getHashTableValue(leftSideDecl);
             unconstifyByPropagation(curArg);
         }
         return true;
@@ -21,7 +21,7 @@ bool ASTConstifyVisitor::VisitUnaryOperator(UnaryOperator* uop)
     if(uop->isIncrementDecrementOp())
     {   
         ValueDecl* innerDecl=getInnerDecl(uop->getSubExpr());
-        unconstifyByPropagation(&(const_arg_table[getHashKey(innerDecl)]));
+        unconstifyByPropagation(getHashTableValue(innerDecl));
     }
     return true;
 }

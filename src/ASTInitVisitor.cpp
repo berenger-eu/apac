@@ -1,5 +1,8 @@
 #include "../include/ASTInitVisitor.hpp"
 
+std::unordered_map<std::string, struct const_arg> const_arg_table;
+
+
 using namespace clang;
 
 //To avoid crashes
@@ -30,7 +33,7 @@ bool ASTInitVisitor::VisitVarDecl(VarDecl *v)
             if (initDecl != NULL){
                 //If the pointer is unconst, then the values referenced by it have to be unconst too
                 curDeclArg.dependencies.push_back(
-                    &(const_arg_table[getHashKey(initDecl)])
+                    getHashTableValue(initDecl)
                     );
                 //The value is referenced, so if it's unconst, we have to unconst what refers to it
                 const_arg_table[getHashKey(initDecl)].dependencies.push_back(&curDeclArg);              
@@ -69,8 +72,8 @@ bool ASTInitVisitor::VisitBinaryOperator(BinaryOperator* bop)
         if(isPointerQualType(bop->getLHS()->getType()))
         {
             ValueDecl* leftSideDecl=getInnerPtr(bop->getLHS());
-            const_arg *curArg = &(const_arg_table[getHashKey(leftSideDecl)]);
-            const_arg *pointedArg = &(const_arg_table[getHashKey(getInnerPtr(bop->getRHS()))]);
+            const_arg *curArg = getHashTableValue(leftSideDecl);
+            const_arg *pointedArg = getHashTableValue(getInnerPtr(bop->getRHS()));
             curArg->dependencies.push_back(pointedArg);
             pointedArg->dependencies.push_back(curArg);
         }

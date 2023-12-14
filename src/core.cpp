@@ -1,5 +1,15 @@
 #include "../include/core.hpp"
 using namespace clang;
+const_arg* getHashTableValue (NamedDecl* nd)
+{
+    const_arg* tableValue=NULL;
+    if(nd!=NULL)
+    {
+        std::string key=getHashKey(nd);
+        tableValue=&(const_arg_table[key]);
+    }
+    return tableValue;
+}
 //HashKey is Namespaces::FunctionName::VarName or VarName
 std::string getHashKey(NamedDecl* nd)
 {

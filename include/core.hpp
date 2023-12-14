@@ -33,7 +33,9 @@ struct const_arg
 	clang::VarDecl *declaration;
 	std::vector<const_arg *>dependencies;
 };
+extern std::unordered_map<std::string, struct const_arg> const_arg_table;
 
+const_arg* getHashTableValue (clang::NamedDecl* );
 std::string getHashKey(clang::NamedDecl*);
 bool isPointerQualType(clang::QualType );
 clang::ValueDecl* getInnerPtr(clang::Expr*);

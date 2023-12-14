@@ -49,7 +49,7 @@ bool ASTPrintVisitor::VisitDeclStmt(DeclStmt* declStatement)
 void ASTPrintVisitor::PrepareRewriteVarDecl(VarDecl *v,std::stringstream& stream)
 {
     //Here we modify the type of the variables to add const if needed
-    if (const_arg_table[getHashKey(v)].is_const)
+    if (getHashTableValue(v)->is_const)
             addConstToVar(v);
     //We prepare the change in the text ( Type VarName)
     stream<<v->getType().getAsString()<<' '<<v->getNameAsString();
@@ -67,7 +67,7 @@ void ASTPrintVisitor::PrepareRewriteVarDecl(VarDecl *v,std::stringstream& stream
 
 void    ASTPrintVisitor::rewriteSingleDecl(VarDecl* vd)
 {
-    if(const_arg_table[getHashKey(vd)].is_const)
+    if(getHashTableValue(vd)->is_const)
     {
         addConstToVar(vd);
         //Add a space char, otherwise int*a (valid) can become int*consta instead of int*const a 
