@@ -72,7 +72,7 @@ void    ASTPrintVisitor::rewriteSingleDecl(VarDecl* vd)
         addConstToVar(vd);
         //Add a space char, otherwise int*a (valid) can become int*consta instead of int*const a 
         std::string result=vd->getType().getAsString()+" ";
-        TheRewriter.ReplaceText(SourceRange(vd->getTypeSpecStartLoc(),vd->getTypeSpecEndLoc()),result);
+        TheRewriter.ReplaceText(SourceRange(vd->getBeginLoc(),vd->getTypeSpecEndLoc()),result);
     }
 }
 
@@ -80,56 +80,55 @@ void    ASTPrintVisitor::rewriteSingleDecl(VarDecl* vd)
 //We directly modify the AST, this makes printing the new type easier
 void addConstToVar(ValueDecl* valD)
 {
-    QualType tfirst=valD->getType();
-    const Type* innerType= tfirst.getTypePtrOrNull();
+    QualType newQualType=addConstToQualType(valD->getType(),valD->getASTContext());
+    valD->setType(newQualType);
+}
+
+QualType addConstToQualType(QualType qt,ASTContext& aContext)
+{
+    const Type* innerType= qt.getTypePtrOrNull();
     if(innerType==NULL)
-        return;
-    if (innerType->isBuiltinType())
+        ;
+    else if (innerType->isBuiltinType())
     {
-        addConstToBuiltInType(valD);
+        qt=addConstToBuiltInType(qt,aContext);
     }
     else if (innerType->isReferenceType())
     {
-        addConstToReference(valD);    
+        qt=addConstToReferenceType(qt,aContext);    
     }
     else if (innerType->isPointerType())
     {
-        addConstToPointer(valD);
+        qt=addConstToPointerType(qt,aContext);
     }
-}
+    return qt;
+}   
 
-
-void addConstToBuiltInType(ValueDecl* valD){
-    valD->setType(valD->getType().withConst());
+QualType addConstToBuiltInType(QualType qt,ASTContext& aContext){
+    return qt.withConst();
 }
-void addConstToReference(ValueDecl* valD)
+QualType addConstToReferenceType(QualType qt,ASTContext& aContext)
 {
-    QualType refInnerType=valD->getType().getNonReferenceType();
-    refInnerType.addConst();
-    ASTContext& aContext=valD->getASTContext();
-    valD->setType(aContext.getLValueReferenceType(refInnerType));
+    QualType refInnerType=addConstToQualType(qt.getNonReferenceType(),aContext);
+    return aContext.getLValueReferenceType(refInnerType);
 }
-void addConstToPointer(ValueDecl* valD)
+QualType addConstToPointerType(QualType qt,ASTContext& aContext)
 {
     int degree=0;
-        
-    QualType innerQualType=valD->getType();
-    
-    ASTContext& acons= valD->getASTContext();
-    const Type* tempType=innerQualType.getTypePtrOrNull();
+    const Type* tempType=qt.getTypePtrOrNull();
     //We look for the pointed type and the degree of the pointer
     while(tempType!=NULL&&tempType->isPointerType())
     {
         degree++;
-        innerQualType=tempType->getPointeeType();
-        tempType=innerQualType.getTypePtrOrNull();
+        qt=tempType->getPointeeType();
+        tempType=qt.getTypePtrOrNull();
     }
-    QualType finalType=innerQualType;
+    QualType finalType=qt;
     for (int i=0;i<degree;i++)
     {
         finalType.addConst();
-        finalType=acons.getPointerType(finalType);    
+        finalType=aContext.getPointerType(finalType);    
     }
     finalType.addConst();
-    valD->setType(finalType);
+    return finalType;
 }
