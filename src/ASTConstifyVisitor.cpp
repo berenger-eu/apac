@@ -25,6 +25,27 @@ bool ASTConstifyVisitor::VisitUnaryOperator(UnaryOperator* uop)
     }
     return true;
 }
+bool ASTConstifyVisitor::VisitReturnStmt(ReturnStmt* retStmt)
+{
+    Expr* retValue=retStmt->getRetValue();
+    if(isPointerQualType(retValue->getType()))
+    {
+        ValueDecl* retValDecl=getInnerPtr(retValue);
+        unconstifyByPropagation(getHashTableValue(retValDecl));
+    }
+    //We cast it to its decl because the QualType of retValue for a reference will be int
+    else if(isa<DeclRefExpr>(retValue))
+    {
+        ValueDecl* retDecl=cast<DeclRefExpr>(retValue)->getDecl();
+        if(isReferenceQualType(retDecl->getType()))
+        {
+            ValueDecl* retValDecl=getInnerDecl(retValue);
+            unconstifyByPropagation(getHashTableValue(retValDecl));
+        }
+    }
+    return true;
+}
+
 void unconstifyByPropagation(const_arg* varArg)
 {
     std::stack<const_arg*> stackUnconst;
@@ -32,10 +53,10 @@ void unconstifyByPropagation(const_arg* varArg)
     while(!stackUnconst.empty())
     {
         const_arg* curArg=stackUnconst.top();
-        curArg->is_const=false;
         stackUnconst.pop();
         if(curArg!=NULL)
         {
+            curArg->is_const=false;
             for (std::vector<const_arg*>::iterator it = curArg->dependencies.begin(); it != curArg->dependencies.end(); ++it)
             {
                 if((*it)->is_const)

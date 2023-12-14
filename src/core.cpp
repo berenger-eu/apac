@@ -48,7 +48,16 @@ bool isPointerQualType(QualType qType)
     }
     return returnValue;
 }
-
+bool isReferenceQualType(QualType qType)
+{
+    const Type* typeTemp;
+    bool returnValue=false;
+    if((typeTemp=qType.getTypePtrOrNull()))
+    {
+        returnValue=typeTemp->isReferenceType();
+    }
+    return returnValue;
+}
 
 
 ValueDecl* getInnerPtr(Expr* expression)

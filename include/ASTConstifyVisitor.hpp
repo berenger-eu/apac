@@ -7,6 +7,7 @@ public:
     bool VisitStmt(Stmt *);
     bool VisitBinaryOperator(BinaryOperator*);
     bool VisitUnaryOperator(UnaryOperator*);
+    bool VisitReturnStmt(ReturnStmt*);
 private:
     Rewriter &TheRewriter;
 };
