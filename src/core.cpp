@@ -66,6 +66,9 @@ ValueDecl* getInnerPtr(Expr* expression)
         }
         else if(isa<UnaryOperator>(expression))
             expression=cast<UnaryOperator>(expression)->getSubExpr();
+        //Calls to functions break the function, and can't be linked to a variable
+        else if(isa<CallExpr>(expression))
+            expression=NULL;
         else
             expression=expression->IgnoreCasts();            
     }
@@ -85,6 +88,9 @@ ValueDecl* getInnerDecl(Expr* expression)
             expression=expression->IgnoreCasts();
             if(isa<UnaryOperator>(expression))
                 expression=cast<UnaryOperator>(expression)->getSubExpr();
+            //We can't get the variable from a call to a function
+            else if(isa<CallExpr>(expression))
+                expression=NULL;
         }
         innerDecl=cast<DeclRefExpr>(expression)->getDecl();
     }
