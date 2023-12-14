@@ -1,14 +1,31 @@
 #include "../include/core.hpp"
 using namespace clang;
-//HashKey is FunctionName++VarName or VarName
+//HashKey is Namespaces::FunctionName::VarName or VarName
 std::string getHashKey(NamedDecl* nd)
 {
-    std::stringstream SSConcatStrings;
-    if(nd->getDeclContext()->isFunctionOrMethod())
-        SSConcatStrings<<cast<FunctionDecl>(nd->getDeclContext())->getNameAsString();
-    std::string varName=nd->getQualifiedNameAsString();
-    SSConcatStrings<<varName;
-    return SSConcatStrings.str();
+    std::stringstream SSresult;
+    std::stringstream SSnamespaces;
+    std::string funcStr="";
+    std::string varName=nd->getQualifiedNameAsString();;
+    std::string namespaceNameStr="";
+    DeclContext* varDeclContext=nd->getDeclContext();
+    if(varDeclContext->isFunctionOrMethod())
+    {
+        funcStr=cast<FunctionDecl>(nd->getDeclContext())->getNameAsString()+"::";
+        varDeclContext=varDeclContext->getParent();
+    }
+    while (varDeclContext!=NULL&&varDeclContext->isNamespace())
+    {
+        std::string namespaceNameTemp=cast<NamespaceDecl>(varDeclContext)->getNameAsString();
+        SSnamespaces<<"::"<<namespaceNameTemp;
+        varDeclContext=varDeclContext->getParent();
+    }
+    namespaceNameStr=SSnamespaces.str();
+
+    std::reverse(namespaceNameStr.begin(),namespaceNameStr.end());
+    SSresult<<namespaceNameStr<<funcStr <<varName;
+    llvm::outs()<<SSresult.str()<<"\n";
+    return SSresult.str();
 }
 
 //To verify more clearly if a QualType is a Pointer
