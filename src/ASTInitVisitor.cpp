@@ -65,9 +65,10 @@ bool ASTInitVisitor::VisitBinaryOperator(BinaryOperator* bop)
 {
     if(bop->isAssignmentOp())
     {
-        ValueDecl* leftSideDecl=getInnerDecl(bop->getLHS());
-        if(isPointerQualType(leftSideDecl->getType()))
+        
+        if(isPointerQualType(bop->getLHS()->getType()))
         {
+            ValueDecl* leftSideDecl=getInnerPtr(bop->getLHS());
             const_arg *curArg = &(const_arg_table[getHashKey(leftSideDecl)]);
             const_arg *pointedArg = &(const_arg_table[getHashKey(getInnerPtr(bop->getRHS()))]);
             curArg->dependencies.push_back(pointedArg);
