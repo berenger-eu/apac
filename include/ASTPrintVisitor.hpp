@@ -18,6 +18,7 @@ private:
 };
 
 void addConstToVar(ValueDecl*);
-void addConstToBuiltInType(ValueDecl*);
-void addConstToReference(ValueDecl*);
-void addConstToPointer(ValueDecl*);
+QualType addConstToQualType(QualType,ASTContext& ); 
+QualType addConstToBuiltInType(QualType,ASTContext& );
+QualType addConstToReferenceType(QualType,ASTContext& );
+QualType addConstToPointerType(QualType,ASTContext& );
