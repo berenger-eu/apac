@@ -24,7 +24,6 @@ std::string getHashKey(NamedDecl* nd)
 
     std::reverse(namespaceNameStr.begin(),namespaceNameStr.end());
     SSresult<<namespaceNameStr<<funcStr <<varName;
-    llvm::outs()<<SSresult.str()<<"\n";
     return SSresult.str();
 }
 
