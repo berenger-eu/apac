@@ -25,9 +25,9 @@ public:
 		// First pass, to initialize
 			VisitorInit.TraverseAST(Ctx);
 		// Constify pass, to calculate dependencies and add const qualifier or not
-			VisitorConst.TraverseAST(Ctx);			
+		//	VisitorConst.TraverseAST(Ctx);			
 		// Last pass, to add const where needed in the source file
-			VisitorPrint.TraverseAST(Ctx);
+		//	VisitorPrint.TraverseAST(Ctx);
 	}
 
 private:

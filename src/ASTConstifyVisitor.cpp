@@ -28,13 +28,13 @@ bool ASTConstifyVisitor::VisitUnaryOperator(UnaryOperator* uop)
 bool ASTConstifyVisitor::VisitReturnStmt(ReturnStmt* retStmt)
 {
     Expr* retValue=retStmt->getRetValue();
-    if(isPointerQualType(retValue->getType()))
+    if(retValue!=NULL&&isPointerQualType(retValue->getType()))
     {
         ValueDecl* retValDecl=getInnerPtr(retValue);
         unconstifyByPropagation(getHashTableValue(retValDecl));
     }
     //We cast it to its decl because the QualType of retValue for a reference will be int
-    else if(isa<DeclRefExpr>(retValue))
+    else if(retValue!=NULL&&isa<DeclRefExpr>(retValue))
     {
         ValueDecl* retDecl=cast<DeclRefExpr>(retValue)->getDecl();
         if(isReferenceQualType(retDecl->getType()))

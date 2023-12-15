@@ -70,8 +70,11 @@ bool isReferenceQualType(QualType qType)
 ValueDecl* getInnerPtr(Expr* expression)
 {
     ValueDecl* returnValueDecl=NULL;
-    while(expression!=NULL&&!isa<DeclRefExpr>(expression))
+    int i=0;
+    while(expression!=NULL&&!isa<DeclRefExpr>(expression)&&i<10)
     { 
+        i++;
+        expression->dump();
         if(isa<BinaryOperator>(expression))
         {
             BinaryOperator* bopExpr =cast<BinaryOperator>(expression);
@@ -85,6 +88,8 @@ ValueDecl* getInnerPtr(Expr* expression)
         //Calls to functions break the function, and can't be linked to a variable
         else if(isa<CallExpr>(expression))
             expression=NULL;
+        else if(isa<ArraySubscriptExpr>(expression))
+            expression=cast<ArraySubscriptExpr>(expression)->getBase();
         else
             expression=expression->IgnoreCasts();            
     }
@@ -107,6 +112,9 @@ ValueDecl* getInnerDecl(Expr* expression)
             //We can't get the variable from a call to a function
             else if(isa<CallExpr>(expression))
                 expression=NULL;
+            else if(isa<ArraySubscriptExpr>(expression))
+                expression=cast<ArraySubscriptExpr>(expression)->getBase();
+
         }
         if(expression!=NULL)
             innerDecl=cast<DeclRefExpr>(expression)->getDecl();
