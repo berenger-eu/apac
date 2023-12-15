@@ -19,7 +19,7 @@ std::string getHashKey(NamedDecl* nd)
     std::string varName=nd->getQualifiedNameAsString();;
     std::string namespaceNameStr="";
     DeclContext* varDeclContext=nd->getDeclContext();
-    if(varDeclContext->isFunctionOrMethod())
+    if(varDeclContext!=NULL&&varDeclContext->isFunctionOrMethod())
     {
         funcStr=cast<FunctionDecl>(nd->getDeclContext())->getNameAsString()+"::";
         varDeclContext=varDeclContext->getParent();
@@ -36,7 +36,14 @@ std::string getHashKey(NamedDecl* nd)
     SSresult<<namespaceNameStr<<funcStr <<varName;
     return SSresult.str();
 }
-
+//Adds a dependency to a value in the hash table, does nothing if either is NULL
+void addDependencyHashTable(const_arg* curArg,const_arg* dependency)
+{
+    if(curArg!=NULL&&dependency!=NULL)
+    {
+        curArg->dependencies.push_back(dependency);
+    }
+}
 //To verify more clearly if a QualType is a Pointer
 bool isPointerQualType(QualType qType)
 {
@@ -101,7 +108,8 @@ ValueDecl* getInnerDecl(Expr* expression)
             else if(isa<CallExpr>(expression))
                 expression=NULL;
         }
-        innerDecl=cast<DeclRefExpr>(expression)->getDecl();
+        if(expression!=NULL)
+            innerDecl=cast<DeclRefExpr>(expression)->getDecl();
     }
     return innerDecl;
 }

@@ -13,9 +13,9 @@ bool ASTInitVisitor::VisitStmt(Stmt *s)
 bool ASTInitVisitor::VisitVarDecl(VarDecl *v)
 {
     //Initialize the const_arg for any variable
-    const_arg &curDeclArg = const_arg_table[getHashKey(v)];
-    curDeclArg.is_const = true;
-    curDeclArg.declaration = v;
+    const_arg *curDeclArg = getHashTableValue(v);
+    curDeclArg->is_const = true;
+    curDeclArg->declaration = v;
     
     //Further the initialization, for pointers and references (for now)
     const Type *intype = v->getType().getTypePtrOrNull();
@@ -29,14 +29,13 @@ bool ASTInitVisitor::VisitVarDecl(VarDecl *v)
                 initDecl=getInnerPtr(v->getInit());
             else
                 initDecl=getInnerDecl(v->getInit()) ;
-            curDeclArg.is_ptr_or_ref = true;
+            curDeclArg->is_ptr_or_ref = true;
+            const_arg* initDeclArg=getHashTableValue(initDecl);
             if (initDecl != NULL){
                 //If the pointer is unconst, then the values referenced by it have to be unconst too
-                curDeclArg.dependencies.push_back(
-                    getHashTableValue(initDecl)
-                    );
+                addDependencyHashTable(curDeclArg,initDeclArg);
                 //The value is referenced, so if it's unconst, we have to unconst what refers to it
-                const_arg_table[getHashKey(initDecl)].dependencies.push_back(&curDeclArg);              
+                addDependencyHashTable(initDeclArg,curDeclArg);
             }
         }
     }
@@ -50,14 +49,12 @@ bool ASTInitVisitor::VisitCallExpr(CallExpr *ce)
         for (auto it = fdec->param_begin(); it != fdec->param_end(); ++it)
         {    
             ParmVarDecl* parVar=*it;
-            const_arg& curArg=const_arg_table[getHashKey(parVar)]; 
-            if (curArg.is_ptr_or_ref)
+            const_arg* curArg=getHashTableValue(parVar); 
+            if (curArg->is_ptr_or_ref)
             {
                 int index=std::distance(fdec->param_begin(),it);
                 ValueDecl* curDecl=getInnerDecl(ce->getArg(index));                   
-                curArg.dependencies.push_back(&(
-                    const_arg_table[getHashKey(curDecl)])
-                    );
+                addDependencyHashTable(curArg,getHashTableValue(curDecl));
             }
         }
     }
