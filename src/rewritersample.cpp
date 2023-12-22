@@ -25,9 +25,9 @@ public:
 		// First pass, to initialize
 			VisitorInit.TraverseAST(Ctx);
 		// Constify pass, to calculate dependencies and add const qualifier or not
-		//	VisitorConst.TraverseAST(Ctx);			
+			VisitorConst.TraverseAST(Ctx);			
 		// Last pass, to add const where needed in the source file
-		//	VisitorPrint.TraverseAST(Ctx);
+			VisitorPrint.TraverseAST(Ctx);
 	}
 
 private:
@@ -48,9 +48,23 @@ int main(int argc, char *argv[])
 	// managing the various objects needed to run the compiler.
 	CompilerInstance TheCompInst;
 	TheCompInst.createDiagnostics();
-
 	LangOptions &lo = TheCompInst.getLangOpts();
-	lo.CPlusPlus = 1;
+	lo.CPlusPlus = true;
+	lo.CPlusPlus14=true;
+	//Header
+	/*
+	HeaderSearchOptions& headSearchOpt=TheCompInst.getHeaderSearchOpts();
+	headSearchOpt.AddPath("/usr/include/c++/12",frontend::Angled, false, false);
+	headSearchOpt.AddPath("/usr/include/x86_64-linux-gnu/c++/12",frontend::Angled, false, false);
+	//headSearchOpt.AddPath("/usr/include/c++/12/backward",frontend::Angled, false, false);
+	headSearchOpt.AddPath("/usr/lib/llvm-14/lib/clang/14.0.6/include",frontend::Angled, false, false);
+	//headSearchOpt.AddPath("/usr/local/include",frontend::Angled, false, false);
+	//headSearchOpt.AddPath("/usr/include/x86_64-linux-gnu",frontend::Angled, false, false);
+	headSearchOpt.AddPath("/usr/include",frontend::Angled, false, false);
+	*/
+ 
+ 
+	
 
 	// Initialize target info with the default triple for our platform.
 	auto TO = std::make_shared<TargetOptions>();
@@ -77,11 +91,11 @@ int main(int argc, char *argv[])
 		SourceMgr.createFileID(FileIn, SourceLocation(), SrcMgr::C_User));
 	TheCompInst.getDiagnosticClient().BeginSourceFile(
 		TheCompInst.getLangOpts(), &TheCompInst.getPreprocessor());
-
+	Preprocessor& prepo=TheCompInst.getPreprocessor();
 	// Create an AST consumer instance which is going to get called by
 	// ParseAST.
 	MyASTConsumer TheConsumer(TheRewriter);
-
+	
 	// Parse the file to AST, registering our consumer as the AST consumer.
 	ParseAST(TheCompInst.getPreprocessor(), &TheConsumer,
 			 TheCompInst.getASTContext());

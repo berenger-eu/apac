@@ -74,7 +74,6 @@ ValueDecl* getInnerPtr(Expr* expression)
     while(expression!=NULL&&!isa<DeclRefExpr>(expression)&&i<10)
     { 
         i++;
-        expression->dump();
         if(isa<BinaryOperator>(expression))
         {
             BinaryOperator* bopExpr =cast<BinaryOperator>(expression);

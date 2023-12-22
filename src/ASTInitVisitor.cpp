@@ -46,7 +46,7 @@ bool ASTInitVisitor::VisitCallExpr(CallExpr *ce)
     FunctionDecl* fdec;
     if( (fdec =ce->getDirectCallee()) !=NULL)
     {
-        ce->dump();
+
         for (auto it = fdec->param_begin(); it != fdec->param_end(); ++it)
         {    
             ParmVarDecl* parVar=*it;
