@@ -9,7 +9,12 @@
 //------------------------------------------------------------------------------
 #include "../include/rewritersample.hpp"
 
+
+static llvm::cl::OptionCategory ToolingSampleCategory("Tooling Sample");
+
 using namespace clang;
+using namespace clang::driver;
+using namespace clang::tooling;
 
 // Implementation of the ASTConsumer interface for reading an AST produced
 // by the Clang parser.
@@ -23,11 +28,11 @@ public:
 	virtual void HandleTranslationUnit(ASTContext &Ctx)
 	{
 		// First pass, to initialize
-			VisitorInit.TraverseAST(Ctx);
+		//	VisitorInit.TraverseAST(Ctx);
 		// Constify pass, to calculate dependencies and add const qualifier or not
-			VisitorConst.TraverseAST(Ctx);			
+	//		VisitorConst.TraverseAST(Ctx);			
 		// Last pass, to add const where needed in the source file
-			VisitorPrint.TraverseAST(Ctx);
+	//		VisitorPrint.TraverseAST(Ctx);
 	}
 
 private:
@@ -36,6 +41,50 @@ private:
 	ASTPrintVisitor VisitorPrint;
 };
 
+
+class MyFrontendAction : public ASTFrontendAction {
+public:
+  MyFrontendAction() {}
+  void EndSourceFileAction() override {
+    SourceManager &SM = TheRewriter.getSourceMgr();
+    llvm::errs() << "** EndSourceFileAction for: "
+                 << SM.getFileEntryForID(SM.getMainFileID())->getName() << "\n";
+
+    // Now emit the rewritten buffer.
+    TheRewriter.getEditBuffer(SM.getMainFileID()).write(llvm::outs());
+  }
+
+  std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
+                                                 StringRef file) override {
+    llvm::errs() << "** Creating AST consumer for: " << file << "\n";
+    TheRewriter.setSourceMgr(CI.getSourceManager(), CI.getLangOpts());
+    return std::make_unique<MyASTConsumer>(TheRewriter);
+  }
+
+private:
+  Rewriter TheRewriter;
+};
+
+int main(int argc, const char **argv) {
+  
+  llvm::Expected<clang::tooling::CommonOptionsParser> option = CommonOptionsParser::create
+  (argc, argv, ToolingSampleCategory, llvm::cl::OneOrMore);
+
+auto files = option->getSourcePathList();
+
+clang::tooling::ClangTool tool(option->getCompilations(), files);
+  // ClangTool::run accepts a FrontendActionFactory, which is then used to
+  // create new objects implementing the FrontendAction interface. Here we use
+  // the helper newFrontendActionFactory to create a default factory that will
+  // return a new MyFrontendAction object every time.
+  // To further customize this, we could create our own factory class.
+  return tool.run(newFrontendActionFactory<MyFrontendAction>().get());
+}
+
+
+
+
+/*
 int main(int argc, char *argv[])
 {
 	if (argc != 2)
@@ -52,7 +101,7 @@ int main(int argc, char *argv[])
 	lo.CPlusPlus = true;
 	lo.CPlusPlus14=true;
 	//Header
-	/*
+	
 	HeaderSearchOptions& headSearchOpt=TheCompInst.getHeaderSearchOpts();
 	headSearchOpt.AddPath("/usr/include/c++/12",frontend::Angled, false, false);
 	headSearchOpt.AddPath("/usr/include/x86_64-linux-gnu/c++/12",frontend::Angled, false, false);
@@ -61,7 +110,7 @@ int main(int argc, char *argv[])
 	//headSearchOpt.AddPath("/usr/local/include",frontend::Angled, false, false);
 	//headSearchOpt.AddPath("/usr/include/x86_64-linux-gnu",frontend::Angled, false, false);
 	headSearchOpt.AddPath("/usr/include",frontend::Angled, false, false);
-	*/
+	
  
  
 	
@@ -110,3 +159,4 @@ int main(int argc, char *argv[])
 		llvm::outs() << "Pas de changements\n";
 	return 0;
 }
+*/
