@@ -25,14 +25,40 @@ public:
 
 	// Override the method that gets called for each parsed top-level
 	// declaration.
-	virtual void HandleTranslationUnit(ASTContext &Ctx)
+	virtual bool HandleTopLevelDecl(DeclGroupRef DR)
 	{
+		DeclGroupRef::iterator b,e;
 		// First pass, to initialize
-		//	VisitorInit.TraverseAST(Ctx);
+		for ( b = DR.begin(), e = DR.end(); b != e; ++b)
+		{	
+			Decl* dec=(*b);
+			if(dec->getASTContext().getSourceManager().isInMainFile(dec->getBeginLoc()))
+      			VisitorInit.TraverseDecl(dec);
+		}
 		// Constify pass, to calculate dependencies and add const qualifier or not
-	//		VisitorConst.TraverseAST(Ctx);			
+		for ( b = DR.begin(), e = DR.end(); b != e; ++b)
+		{
+			Decl* dec=(*b);
+			if(dec->getASTContext().getSourceManager().isInMainFile(dec->getBeginLoc()))
+				VisitorConst.TraverseDecl(dec);
+				;
+		}
 		// Last pass, to add const where needed in the source file
-	//		VisitorPrint.TraverseAST(Ctx);
+		for ( b = DR.begin(), e = DR.end(); b != e; ++b)
+      	{
+			Decl* dec=(*b);
+			if(dec->getASTContext().getSourceManager().isInMainFile(dec->getBeginLoc()))
+				VisitorPrint.TraverseDecl(dec);
+		}
+		/*
+			VisitorInit.TraverseAST(Ctx);
+		// Constify pass, to calculate dependencies and add const qualifier or not
+			VisitorConst.TraverseAST(Ctx);		
+			llvm::outs()<<"test\n";	
+		// Last pass, to add const where needed in the source file
+			//VisitorPrint.TraverseAST(Ctx);
+		*/
+	return true;
 	}
 
 private:

@@ -41,16 +41,20 @@ bool ASTInitVisitor::VisitVarDecl(VarDecl *v)
     }
     return true;
 }
+
 bool ASTInitVisitor::VisitCallExpr(CallExpr *ce)
 {
-    FunctionDecl* fdec;
-    if( (fdec =ce->getDirectCallee()) !=NULL)
-    {
 
+    FunctionDecl* fdec;
+    
+    if( (fdec =ce->getDirectCallee()) !=NULL&&!fdec->isInExternCContext())
+    
+    {  
         for (auto it = fdec->param_begin(); it != fdec->param_end(); ++it)
         {    
             ParmVarDecl* parVar=*it;
             const_arg* curArg=getHashTableValue(parVar); 
+            
             if (curArg->is_ptr_or_ref)
             {
                 int index=std::distance(fdec->param_begin(),it);
@@ -59,6 +63,7 @@ bool ASTInitVisitor::VisitCallExpr(CallExpr *ce)
             }
         }
     }
+ 
     return true;
 }
 

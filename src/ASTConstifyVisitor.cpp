@@ -7,6 +7,8 @@ bool ASTConstifyVisitor::VisitStmt(Stmt *s)
 
 bool ASTConstifyVisitor::VisitBinaryOperator(BinaryOperator *bop)
     {
+
+
         if (bop->isAssignmentOp())
         {
             ValueDecl* leftSideDecl=getInnerDecl(bop->getLHS());
@@ -14,15 +16,18 @@ bool ASTConstifyVisitor::VisitBinaryOperator(BinaryOperator *bop)
             const_arg *curArg = getHashTableValue(leftSideDecl);
             unconstifyByPropagation(curArg);
         }
+
         return true;
     }
 bool ASTConstifyVisitor::VisitUnaryOperator(UnaryOperator* uop)
 {
+    
     if(uop->isIncrementDecrementOp())
     {   
         ValueDecl* innerDecl=getInnerDecl(uop->getSubExpr());
         unconstifyByPropagation(getHashTableValue(innerDecl));
     }
+
     return true;
 }
 bool ASTConstifyVisitor::VisitReturnStmt(ReturnStmt* retStmt)
@@ -45,6 +50,25 @@ bool ASTConstifyVisitor::VisitReturnStmt(ReturnStmt* retStmt)
     }
     return true;
 }
+bool ASTConstifyVisitor::VisitCallExpr(CallExpr* ce)
+{
+    FunctionDecl* fdec;
+    if((fdec=ce->getDirectCallee())!=NULL&&(!fdec->isInExternCContext()||fdec->isInExternCXXContext()))
+    {   
+        for (auto it = fdec->param_begin(); it != fdec->param_end(); ++it)
+        {    
+            ParmVarDecl* parVar=*it;
+            if (parVar->getType().isConstQualified()&&!parVar->getType().isConstQualified())
+            {
+                int index=std::distance(fdec->param_begin(),it);
+                ValueDecl* curDecl=getInnerDecl(ce->getArg(index));
+                unconstifyByPropagation(getHashTableValue(curDecl));               
+            } 
+        }
+    }
+    return true;
+}
+
 
 void unconstifyByPropagation(const_arg* varArg)
 {
