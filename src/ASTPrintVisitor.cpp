@@ -101,6 +101,16 @@ QualType addConstToQualType(QualType qt,ASTContext& aContext)
     {
         qt=addConstToPointerType(qt,aContext);
     }
+    else if (innerType->isConstantArrayType())
+    {
+        qt=addConstToBuiltInType(qt,aContext);
+    }
+    else
+    {
+        llvm::outs()<<"Adding const to the following type is not handled\n";
+        innerType->dump();
+        ;
+    }
     return qt;
 }   
 
