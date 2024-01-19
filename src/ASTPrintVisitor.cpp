@@ -9,12 +9,15 @@ bool ASTPrintVisitor::VisitStmt(Stmt *s)
 }
 bool ASTPrintVisitor::VisitParmVarDecl(ParmVarDecl* pvd)
 {
+    if(TheRewriter.getSourceMgr().isInSystemHeader(pvd->getBeginLoc()))
+        return true;
     rewriteSingleDecl(pvd);
     return true;
 }
 bool ASTPrintVisitor::VisitDeclStmt(DeclStmt* declStatement)
 {
-    
+    if(TheRewriter.getSourceMgr().isInSystemHeader(declStatement->getBeginLoc()))
+        return true;  
     std::stringstream SSprint;
     if((declStatement->isSingleDecl()))
     {
