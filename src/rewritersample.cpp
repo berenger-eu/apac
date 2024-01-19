@@ -25,40 +25,16 @@ public:
 
 	// Override the method that gets called for each parsed top-level
 	// declaration.
-	virtual bool HandleTopLevelDecl(DeclGroupRef DR)
+	virtual void HandleTranslationUnit(ASTContext &Ctx)
 	{
-		DeclGroupRef::iterator b,e;
+		//TODO:It would be better to stop Traversing here when doing it in a System Header File
+		
 		// First pass, to initialize
-		for ( b = DR.begin(), e = DR.end(); b != e; ++b)
-		{	
-			Decl* dec=(*b);
-			if(dec->getASTContext().getSourceManager().isInMainFile(dec->getBeginLoc()))
-      			VisitorInit.TraverseDecl(dec);
-		}
-		// Constify pass, to calculate dependencies and add const qualifier or not
-		for ( b = DR.begin(), e = DR.end(); b != e; ++b)
-		{
-			Decl* dec=(*b);
-			if(dec->getASTContext().getSourceManager().isInMainFile(dec->getBeginLoc()))
-				VisitorConst.TraverseDecl(dec);
-				;
-		}
-		// Last pass, to add const where needed in the source file
-		for ( b = DR.begin(), e = DR.end(); b != e; ++b)
-      	{
-			Decl* dec=(*b);
-			if(dec->getASTContext().getSourceManager().isInMainFile(dec->getBeginLoc()))
-				VisitorPrint.TraverseDecl(dec);
-		}
-		/*
 			VisitorInit.TraverseAST(Ctx);
 		// Constify pass, to calculate dependencies and add const qualifier or not
-			VisitorConst.TraverseAST(Ctx);		
-			llvm::outs()<<"test\n";	
+			VisitorConst.TraverseAST(Ctx);			
 		// Last pass, to add const where needed in the source file
-			//VisitorPrint.TraverseAST(Ctx);
-		*/
-	return true;
+			VisitorPrint.TraverseAST(Ctx);
 	}
 
 private:
@@ -66,7 +42,6 @@ private:
 	ASTConstifyVisitor VisitorConst;
 	ASTPrintVisitor VisitorPrint;
 };
-
 
 class MyFrontendAction : public ASTFrontendAction {
 public:
