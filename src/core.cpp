@@ -36,7 +36,7 @@ std::string getHashKey(NamedDecl* nd)
     SSresult<<namespaceNameStr<<funcStr <<varName;
     return SSresult.str();
 }
-//Adds a dependency to a value in the hash table, does nothing if either is NULL
+//Adds a dependency (right) to a value (left) in the hash table, does nothing if either is NULL
 void addDependencyHashTable(const_arg* curArg,const_arg* dependency)
 {
     if(curArg!=NULL&&dependency!=NULL)
@@ -89,8 +89,13 @@ ValueDecl* getInnerPtr(Expr* expression)
             expression=NULL;
         else if(isa<ArraySubscriptExpr>(expression))
             expression=cast<ArraySubscriptExpr>(expression)->getBase();
+        else if(isa<StringLiteral>(expression))
+            expression=NULL;
+        else if(isa<GNUNullExpr>(expression))
+            expression=NULL;    
         else
-            expression=expression->IgnoreCasts();            
+            expression=expression->IgnoreParenCasts();
+
     }
     returnValueDecl=getInnerDecl(expression);
     return returnValueDecl;

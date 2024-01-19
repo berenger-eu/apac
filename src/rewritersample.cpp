@@ -27,12 +27,14 @@ public:
 	// declaration.
 	virtual void HandleTranslationUnit(ASTContext &Ctx)
 	{
+		//TODO:It would be better to stop Traversing here when doing it in a System Header File
+		
 		// First pass, to initialize
-		//	VisitorInit.TraverseAST(Ctx);
+			VisitorInit.TraverseAST(Ctx);
 		// Constify pass, to calculate dependencies and add const qualifier or not
-	//		VisitorConst.TraverseAST(Ctx);			
+			VisitorConst.TraverseAST(Ctx);			
 		// Last pass, to add const where needed in the source file
-	//		VisitorPrint.TraverseAST(Ctx);
+			VisitorPrint.TraverseAST(Ctx);
 	}
 
 private:
@@ -40,7 +42,6 @@ private:
 	ASTConstifyVisitor VisitorConst;
 	ASTPrintVisitor VisitorPrint;
 };
-
 
 class MyFrontendAction : public ASTFrontendAction {
 public:

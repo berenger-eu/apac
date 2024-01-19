@@ -7,6 +7,9 @@ bool ASTConstifyVisitor::VisitStmt(Stmt *s)
 
 bool ASTConstifyVisitor::VisitBinaryOperator(BinaryOperator *bop)
     {
+        if(TheRewriter.getSourceMgr().isInSystemHeader(bop->getBeginLoc()))
+        return true;
+
         if (bop->isAssignmentOp())
         {
             ValueDecl* leftSideDecl=getInnerDecl(bop->getLHS());
@@ -14,19 +17,25 @@ bool ASTConstifyVisitor::VisitBinaryOperator(BinaryOperator *bop)
             const_arg *curArg = getHashTableValue(leftSideDecl);
             unconstifyByPropagation(curArg);
         }
+
         return true;
     }
 bool ASTConstifyVisitor::VisitUnaryOperator(UnaryOperator* uop)
 {
+    if(TheRewriter.getSourceMgr().isInSystemHeader(uop->getBeginLoc()))
+        return true;
     if(uop->isIncrementDecrementOp())
     {   
         ValueDecl* innerDecl=getInnerDecl(uop->getSubExpr());
         unconstifyByPropagation(getHashTableValue(innerDecl));
     }
+
     return true;
 }
 bool ASTConstifyVisitor::VisitReturnStmt(ReturnStmt* retStmt)
 {
+    if(TheRewriter.getSourceMgr().isInSystemHeader(retStmt->getBeginLoc()))
+        return true;
     Expr* retValue=retStmt->getRetValue();
     if(retValue!=NULL&&isPointerQualType(retValue->getType()))
     {
@@ -45,11 +54,34 @@ bool ASTConstifyVisitor::VisitReturnStmt(ReturnStmt* retStmt)
     }
     return true;
 }
+bool ASTConstifyVisitor::VisitCallExpr(CallExpr* ce)
+{
+    if(TheRewriter.getSourceMgr().isInSystemHeader(ce->getBeginLoc()))
+        return true;
+    FunctionDecl* fdec;
+    if((fdec=ce->getDirectCallee())!=NULL&&TheRewriter.getSourceMgr().isInSystemHeader(fdec->getBeginLoc()))
+    {   
+        for (auto it = fdec->param_begin(); it != fdec->param_end(); ++it)
+        {    
+            ParmVarDecl* parVar=*it;
+            QualType qtPar=parVar->getType();
+            if (!parVar->getType().isConstQualified()&&(isPointerQualType(qtPar)||isReferenceQualType(qtPar)))
+            {
+                int index=std::distance(fdec->param_begin(),it);
+                ValueDecl* curDecl=getInnerPtr(ce->getArg(index));
+                unconstifyByPropagation(getHashTableValue(curDecl));               
+            } 
+        }
+    }
+    return true;
+}
+
 
 void unconstifyByPropagation(const_arg* varArg)
 {
     std::stack<const_arg*> stackUnconst;
     stackUnconst.push(varArg);
+    
     while(!stackUnconst.empty())
     {
         const_arg* curArg=stackUnconst.top();

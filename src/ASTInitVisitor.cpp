@@ -12,11 +12,12 @@ bool ASTInitVisitor::VisitStmt(Stmt *s)
 }
 bool ASTInitVisitor::VisitVarDecl(VarDecl *v)
 {
+    if(TheRewriter.getSourceMgr().isInSystemHeader(v->getBeginLoc()))
+        return true;
     //Initialize the const_arg for any variable
     const_arg *curDeclArg = getHashTableValue(v);
     curDeclArg->is_const = true;
     curDeclArg->declaration = v;
-    
     //Further the initialization, for pointers and references (for now)
     const Type *intype = v->getType().getTypePtrOrNull();
     if (intype != NULL)
@@ -41,29 +42,38 @@ bool ASTInitVisitor::VisitVarDecl(VarDecl *v)
     }
     return true;
 }
+
 bool ASTInitVisitor::VisitCallExpr(CallExpr *ce)
 {
+    if(TheRewriter.getSourceMgr().isInSystemHeader(ce->getBeginLoc()))
+        return true;
     FunctionDecl* fdec;
-    if( (fdec =ce->getDirectCallee()) !=NULL)
-    {
-
+    
+    if( (fdec =ce->getDirectCallee()) !=NULL&&!TheRewriter.getSourceMgr().isInSystemHeader(fdec->getBeginLoc()))
+    {  
         for (auto it = fdec->param_begin(); it != fdec->param_end(); ++it)
         {    
             ParmVarDecl* parVar=*it;
             const_arg* curArg=getHashTableValue(parVar); 
+            
             if (curArg->is_ptr_or_ref)
             {
                 int index=std::distance(fdec->param_begin(),it);
-                ValueDecl* curDecl=getInnerDecl(ce->getArg(index));                   
-                addDependencyHashTable(curArg,getHashTableValue(curDecl));
+                ValueDecl* curDecl;
+                curDecl=getInnerPtr(ce->getArg(index));
+                if(curDecl!=NULL)
+                    addDependencyHashTable(curArg,getHashTableValue(curDecl));
             }
         }
     }
+ 
     return true;
 }
 
 bool ASTInitVisitor::VisitBinaryOperator(BinaryOperator* bop)
 {
+    if(TheRewriter.getSourceMgr().isInSystemHeader(bop->getBeginLoc()))
+        return true;
     if(bop->isAssignmentOp())
     {
         
@@ -74,6 +84,7 @@ bool ASTInitVisitor::VisitBinaryOperator(BinaryOperator* bop)
             const_arg *pointedArg = getHashTableValue(getInnerPtr(bop->getRHS()));
             curArg->dependencies.push_back(pointedArg);
             pointedArg->dependencies.push_back(curArg);
+
         }
     }   
     return true;

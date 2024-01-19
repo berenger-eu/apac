@@ -9,12 +9,15 @@ bool ASTPrintVisitor::VisitStmt(Stmt *s)
 }
 bool ASTPrintVisitor::VisitParmVarDecl(ParmVarDecl* pvd)
 {
+    if(TheRewriter.getSourceMgr().isInSystemHeader(pvd->getBeginLoc()))
+        return true;
     rewriteSingleDecl(pvd);
     return true;
 }
 bool ASTPrintVisitor::VisitDeclStmt(DeclStmt* declStatement)
 {
-    
+    if(TheRewriter.getSourceMgr().isInSystemHeader(declStatement->getBeginLoc()))
+        return true;  
     std::stringstream SSprint;
     if((declStatement->isSingleDecl()))
     {
@@ -100,6 +103,16 @@ QualType addConstToQualType(QualType qt,ASTContext& aContext)
     else if (innerType->isPointerType())
     {
         qt=addConstToPointerType(qt,aContext);
+    }
+    else if (innerType->isConstantArrayType())
+    {
+        qt=addConstToBuiltInType(qt,aContext);
+    }
+    else
+    {
+        llvm::outs()<<"Adding const to the following type is not handled\n";
+        innerType->dump();
+        ;
     }
     return qt;
 }   
