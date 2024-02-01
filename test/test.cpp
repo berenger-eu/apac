@@ -42,6 +42,14 @@ int fun4()
     int a,b;
     return 1;
 }
+void fun5()
+{
+    int a;
+}
+void fun6()
+{
+    std::vector<int> a;
+}
 int main()
 {
     ;
