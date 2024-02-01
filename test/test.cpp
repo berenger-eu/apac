@@ -37,6 +37,11 @@ int fun3()
         return 1;
     return 1;
 }
+int fun4()
+{
+    int a,b;
+    return 1;
+}
 int main()
 {
     ;
