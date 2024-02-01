@@ -1,5 +1,5 @@
 #include <vector>
-int funtest()
+int fun1()
 {
     int tab[10];
     if(1)
@@ -22,10 +22,22 @@ int funtest()
             }
     return 5;
 }
-
-
+//Two returns
+int fun2()
+{
+    int a=3;
+    return 1;
+    return a;
+}
+//Singular IfStmt 
+int fun3()
+{
+    int a;
+    if(1)
+        return 1;
+    return 1;
+}
 int main()
 {
-    int varname;
-    int a=2;
+    ;
 }

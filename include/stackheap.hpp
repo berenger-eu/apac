@@ -38,22 +38,26 @@
  struct item_found functionHeap;
 using namespace clang;
 
- bool isArrayVariable(VarDecl* );
- std::string getInitString(VarDecl* v);
- std::string getDeleteString();
- std::string getCreationString(VarDecl* v);
+bool isArrayVariable(VarDecl* );
+//Creates a string to store the initialisation of a variable 
+std::string createInitString(VarDecl* v);
+//Creates a string for the deletion of a variable (delete ...)
+std::string createDeleteString();
+//Creates a string for the creation of a variable (type* = new type)
+std::string createCreationString(VarDecl* v);
 
 
 class ASTHeapifyVisitor : public RecursiveASTVisitor<ASTHeapifyVisitor>
 {
 public:
     ASTHeapifyVisitor(Rewriter &R) : TheRewriter(R) {};
-    bool VisitStmt(Stmt *);
-    bool VisitFunctionDecl(FunctionDecl *);
+    bool VisitStmt(Stmt *); 
+    bool VisitFunctionDecl(FunctionDecl *); 
     bool VisitCompoundStmt(CompoundStmt *);
+private:
+    //Like Visit functions, but called by VisitCompoundStmt and not by default when encountering specific nodes
     bool subVisitVarDecl(VarDecl* );
     bool subVisitReturnStmt(ReturnStmt* );
-private:
     Rewriter &TheRewriter;
 };
 

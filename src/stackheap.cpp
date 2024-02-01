@@ -13,7 +13,7 @@ bool isArrayVariable(VarDecl* v)
 }
 
 //returns the string containing the Init part of a variable (Variable is supposed to be init here)
-std::string getInitString(VarDecl* v)
+std::string createInitString(VarDecl* v)
 {
   assert(v->getInit()!=NULL);
   PrintingPolicy print_policy(v->getASTContext().getLangOpts());
@@ -23,7 +23,7 @@ std::string getInitString(VarDecl* v)
   return initString;
 }
 //Builds the string to delete a variable
-std::string getDeleteString()
+std::string createDeleteString()
 {
   std::stringstream SSprint;
   SSprint<<"delete";
@@ -34,7 +34,7 @@ std::string getDeleteString()
   return SSprint.str();
 }
 //Build the string to create the new variable 
-std::string getCreationString(VarDecl* v)
+std::string createCreationString(VarDecl* v)
 {
   std::stringstream SSprint;
   std::string vType=v->getType().getAsString();
@@ -44,7 +44,7 @@ std::string getCreationString(VarDecl* v)
     SSprint<<v->getType().getTypePtrOrNull()->getAsArrayTypeUnsafe()->getElementType().getAsString()<<"* "
     <<v->getNameAsString()<<" = new "<<vType;
     if(v->getInit()!=NULL)
-      SSprint<<getInitString(v);
+      SSprint<<createInitString(v);
   }
   else
   {
@@ -52,7 +52,7 @@ std::string getCreationString(VarDecl* v)
     <<vType;
     if(v->getInit()!=NULL)
     {
-      SSprint<<'('<<getInitString(v)<<')';
+      SSprint<<'('<<createInitString(v)<<')';
     }
     else
       SSprint<<"()";
@@ -66,6 +66,7 @@ bool ASTHeapifyVisitor::VisitStmt(Stmt *s)
 {
     return true;
 }
+//To see if the function was found (mostly for debugging)
 bool ASTHeapifyVisitor::VisitFunctionDecl(FunctionDecl* fDecl)
 {
     if(fDecl->getNameAsString().compare(functionHeap.name)==0)
@@ -74,10 +75,11 @@ bool ASTHeapifyVisitor::VisitFunctionDecl(FunctionDecl* fDecl)
     }
     return true;
 }
+//Visits each scope
 bool ASTHeapifyVisitor::VisitCompoundStmt(CompoundStmt* coSt)
 {
-  bool deleteEnd=0;
-  bool curState=variableHeap.found;
+  bool deleteEnd=false; //If we have to delete at the end of the scope (so if there is no return)
+  bool curState=variableHeap.found; //If variable is found, we're in a subLoop, so no delete (unless there is a return) 
   for (CompoundStmt::body_iterator b = coSt->body_begin(), e = coSt->body_end(); b != e; ++b)
   {
     Stmt* st=*b;
@@ -86,9 +88,7 @@ bool ASTHeapifyVisitor::VisitCompoundStmt(CompoundStmt* coSt)
     {
       ReturnStmt* retStmt=cast<ReturnStmt>(st);
       subVisitReturnStmt(retStmt);
-      if(deleteEnd)
-        deleteEnd=false;
-
+      deleteEnd=false;  //No need to delete at the end of the scope if there is a return (and so a delete)
     }
     else if (isa<DeclStmt>(st))
     {
@@ -98,29 +98,35 @@ bool ASTHeapifyVisitor::VisitCompoundStmt(CompoundStmt* coSt)
         dec=decStmt->getSingleDecl();
       if(dec!=NULL && isa<VarDecl>(dec))
         subVisitVarDecl(cast<VarDecl>(dec));
+      //True when variable was found in the current scope, so we have to add a delete at the end of it
       if(curState!=variableHeap.found)
+      {
+        curState=!curState;
         deleteEnd=true;
+      }
     }
   }
   if(deleteEnd)
-      TheRewriter.InsertTextAfter(coSt->getEndLoc(),getDeleteString()); 
+      TheRewriter.InsertTextAfter(coSt->getEndLoc(),createDeleteString()); 
   return true;
 }
 bool ASTHeapifyVisitor::subVisitVarDecl(VarDecl* v)
 {     
+  //True when VarDecl corresponds to the searched variable
   if(v->getNameAsString().compare(variableHeap.name)==0)
   {
     variableHeap.found=true;
     variableHeap.array=isArrayVariable(v);
-    TheRewriter.ReplaceText(SourceRange(v->getBeginLoc(),v->getEndLoc()),getCreationString(v));
+    TheRewriter.ReplaceText(SourceRange(v->getBeginLoc(),v->getEndLoc()),createCreationString(v));
   }
   return true;
 }
 bool ASTHeapifyVisitor::subVisitReturnStmt(ReturnStmt* retStmt)
 {
+    //We have to delete the variable when it has been found (and thus created)
     if(variableHeap.found)
     {
-        TheRewriter.InsertText(retStmt->getBeginLoc(),getDeleteString());
+        TheRewriter.InsertText(retStmt->getBeginLoc(),createDeleteString());
     }
     return true;
 }
