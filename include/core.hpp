@@ -40,7 +40,7 @@ struct const_arg
 	std::vector<const_arg *>dependencies;
 };
 extern std::unordered_map<clang::Decl*, struct const_arg> const_arg_table;
-
+extern std::unordered_map<unsigned , clang::FileID> fileID_table;
 const_arg* getHashTableValue (clang::NamedDecl* );
 clang::Decl* getHashKey(clang::NamedDecl*);
 void addDependencyHashTable(const_arg* ,const_arg*);

@@ -50,15 +50,33 @@ public:
     SourceManager &SM = TheRewriter.getSourceMgr();
     llvm::errs() << "** EndSourceFileAction for: "
                  << SM.getFileEntryForID(SM.getMainFileID())->getName() << "\n";
-
     // Now emit the rewritten buffer.
     //TheRewriter.getEditBuffer(SM.getMainFileID()).write(llvm::outs());
 	//From https://stackoverflow.com/questions/43157172/clang-using-libtooling-rewriter-to-generate-new-file
 	std::error_code error_code;
-    llvm::raw_fd_ostream outFile(SM.getFileEntryForID(SM.getMainFileID())->getName().str()+".constified.cpp", error_code, llvm::sys::fs::OF_None);
-    TheRewriter.getEditBuffer(SM.getMainFileID()).write(outFile);
-    outFile.close();
-
+	
+	//To print contents of headers files
+	for (std::unordered_map<unsigned, FileID>::iterator it = fileID_table.begin(); it != fileID_table.end(); ++it) {
+        std::string fullPath=SM.getFileEntryForID(it->second)->getName().str();
+		std::stringstream fullPathStream(fullPath);
+		std::vector<std::string> separatedString;
+		while (getline(fullPathStream, fullPath, '/')) 
+        	separatedString.push_back(fullPath);
+		std::string fileName=separatedString.back();
+		std::string pathToResult;
+		std::stringstream pathToDir;
+		separatedString.pop_back();
+		for(std::vector<std::string>::iterator it2=separatedString.begin();it2!=separatedString.end();it2++)
+			pathToDir<<*it2<<"/";
+		pathToDir<<"results/";
+		pathToResult=pathToDir.str();
+		llvm::outs()<<pathToResult<<" "<<fileName;
+		llvm::raw_fd_ostream outFile(pathToResult+fileName, error_code, llvm::sys::fs::OF_None);
+    	TheRewriter.getEditBuffer(it->second).write(outFile);
+    	outFile.close();
+		llvm::outs()<< it->first << ": " << it->second.getHashValue() << "\n";
+    }
+	llvm::outs()<<fileID_table.size();
   }
 
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,

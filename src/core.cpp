@@ -1,5 +1,8 @@
 #include "../include/core.hpp"
 using namespace clang;
+
+std::unordered_map<unsigned, FileID> fileID_table;
+
 const_arg* getHashTableValue (NamedDecl* nd)
 {
     const_arg* tableValue=NULL;
