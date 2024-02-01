@@ -39,10 +39,10 @@ struct const_arg
 	clang::VarDecl *declaration;
 	std::vector<const_arg *>dependencies;
 };
-extern std::unordered_map<std::string, struct const_arg> const_arg_table;
+extern std::unordered_map<clang::Decl*, struct const_arg> const_arg_table;
 
 const_arg* getHashTableValue (clang::NamedDecl* );
-std::string getHashKey(clang::NamedDecl*);
+clang::Decl* getHashKey(clang::NamedDecl*);
 void addDependencyHashTable(const_arg* ,const_arg*);
 bool isPointerQualType(clang::QualType );
 bool isReferenceQualType(clang::QualType );

@@ -51,6 +51,18 @@ void pointersModif(int *  a)
 	int b=1+*a++;
 }
 
+void test()
+{
+	int a=5;
+	{
+		int a=2;
+		{
+			a++;
+			int a=1;
+		}
+	}
+}
+
 int main() {
   int n=1,m=3,iho;
 	int* n2=&n;

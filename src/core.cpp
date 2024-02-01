@@ -3,38 +3,17 @@ using namespace clang;
 const_arg* getHashTableValue (NamedDecl* nd)
 {
     const_arg* tableValue=NULL;
-    if(nd!=NULL)
+    Decl* canonicalDeclAdr=NULL;
+    if(nd!=NULL && (canonicalDeclAdr= getHashKey(nd))!=NULL)
     {
-        std::string key=getHashKey(nd);
-        tableValue=&(const_arg_table[key]);
+        tableValue=&(const_arg_table[canonicalDeclAdr]);
     }
     return tableValue;
 }
-//HashKey is Namespaces::FunctionName::VarName or VarName
-std::string getHashKey(NamedDecl* nd)
+//HashKey is the adress of the canonical Decl of the Declaration, as it is unique (according to https://releases.llvm.org/10.0.0/tools/clang/docs/LibASTMatchersTutorial.html)
+Decl* getHashKey(NamedDecl* nd)
 {
-    std::stringstream SSresult;
-    std::stringstream SSnamespaces;
-    std::string funcStr="";
-    std::string varName=nd->getQualifiedNameAsString();;
-    std::string namespaceNameStr="";
-    DeclContext* varDeclContext=nd->getDeclContext();
-    if(varDeclContext!=NULL&&varDeclContext->isFunctionOrMethod())
-    {
-        funcStr=cast<FunctionDecl>(nd->getDeclContext())->getNameAsString()+"::";
-        varDeclContext=varDeclContext->getParent();
-    }
-    while (varDeclContext!=NULL&&varDeclContext->isNamespace())
-    {
-        std::string namespaceNameTemp=cast<NamespaceDecl>(varDeclContext)->getNameAsString();
-        SSnamespaces<<"::"<<namespaceNameTemp;
-        varDeclContext=varDeclContext->getParent();
-    }
-    namespaceNameStr=SSnamespaces.str();
-
-    std::reverse(namespaceNameStr.begin(),namespaceNameStr.end());
-    SSresult<<namespaceNameStr<<funcStr <<varName;
-    return SSresult.str();
+    return nd->getCanonicalDecl();
 }
 //Adds a dependency (right) to a value (left) in the hash table, does nothing if either is NULL
 void addDependencyHashTable(const_arg* curArg,const_arg* dependency)
