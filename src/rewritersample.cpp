@@ -52,7 +52,13 @@ public:
                  << SM.getFileEntryForID(SM.getMainFileID())->getName() << "\n";
 
     // Now emit the rewritten buffer.
-    TheRewriter.getEditBuffer(SM.getMainFileID()).write(llvm::outs());
+    //TheRewriter.getEditBuffer(SM.getMainFileID()).write(llvm::outs());
+	//From https://stackoverflow.com/questions/43157172/clang-using-libtooling-rewriter-to-generate-new-file
+	std::error_code error_code;
+    llvm::raw_fd_ostream outFile(SM.getFileEntryForID(SM.getMainFileID())->getName().str()+".constified.cpp", error_code, llvm::sys::fs::OF_None);
+    TheRewriter.getEditBuffer(SM.getMainFileID()).write(outFile);
+    outFile.close();
+
   }
 
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
