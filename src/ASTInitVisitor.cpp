@@ -3,6 +3,7 @@
 std::unordered_map<clang::Decl*, struct const_arg> const_arg_table;
 
 
+
 using namespace clang;
 
 //To avoid crashes
@@ -14,6 +15,8 @@ bool ASTInitVisitor::VisitVarDecl(VarDecl *v)
 {
     if(TheRewriter.getSourceMgr().isInSystemHeader(v->getBeginLoc()))
         return true;
+    FileID fid=TheRewriter.getSourceMgr().getFileID(v->getLocation());
+    fileID_table[fid.getHashValue()]=fid;
     //Initialize the const_arg for any variable
     const_arg *curDeclArg = getHashTableValue(v);
     curDeclArg->is_const = true;

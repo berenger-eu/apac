@@ -10,7 +10,9 @@ bool ASTPrintVisitor::VisitStmt(Stmt *s)
 bool ASTPrintVisitor::VisitParmVarDecl(ParmVarDecl* pvd)
 {
     if(TheRewriter.getSourceMgr().isInSystemHeader(pvd->getBeginLoc()))
+    {
         return true;
+    }
     rewriteSingleDecl(pvd);
     return true;
 }

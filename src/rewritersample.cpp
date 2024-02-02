@@ -16,6 +16,7 @@ using namespace clang;
 using namespace clang::driver;
 using namespace clang::tooling;
 
+
 // Implementation of the ASTConsumer interface for reading an AST produced
 // by the Clang parser.
 class MyASTConsumer : public ASTConsumer
@@ -50,9 +51,8 @@ public:
     SourceManager &SM = TheRewriter.getSourceMgr();
     llvm::errs() << "** EndSourceFileAction for: "
                  << SM.getFileEntryForID(SM.getMainFileID())->getName() << "\n";
+	printTextToFiles(); 
 
-    // Now emit the rewritten buffer.
-    TheRewriter.getEditBuffer(SM.getMainFileID()).write(llvm::outs());
   }
 
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
@@ -63,6 +63,62 @@ public:
   }
 
 private:
+	void createResultDirectory(std::string folderName)
+	{
+		std::string command="mkdir "+folderName;
+		int result = system(command.c_str());
+		if (!result) 
+		{
+			llvm::errs()<<"Failed to create folder : "<<folderName<<"\n";
+			exit(1);      
+		}	
+	}
+	//print modified code to all files (source file and included file(s) )
+	void printTextToFiles()
+	{
+
+	//From https://stackoverflow.com/questions/43157172/clang-using-libtooling-rewriter-to-generate-new-file
+	std::error_code error_code;
+	SourceManager& SM=TheRewriter.getSourceMgr();
+	std::string pathToResultsFolder;
+	std::string fileName;
+	//To print contents of headers files
+	for (std::unordered_map<unsigned, FileID>::iterator it = fileID_table.begin(); it != fileID_table.end(); ++it) {
+        //Parsing the path to the file
+		std::string fullPath=SM.getFileEntryForID(it->second)->getName().str();
+		std::stringstream fullPathStream(fullPath);
+		if(it==fileID_table.begin())
+		{
+			std::vector<std::string> separatedString;
+			std::string folderName;
+			while (getline(fullPathStream, fullPath, '/')) 
+				separatedString.push_back(fullPath);
+			std::stringstream pathToDir;
+			fileName=separatedString.back();
+			getline(std::stringstream(fileName),folderName,'.');
+			separatedString.pop_back();
+			for(std::vector<std::string>::iterator it2=separatedString.begin();it2!=separatedString.end();it2++)
+				pathToDir<<*it2<<"/";
+			pathToDir<<folderName;
+			createResultDirectory(pathToDir.str());
+			pathToDir<<"/";
+			pathToResultsFolder=pathToDir.str();
+			llvm::raw_fd_ostream outFile(pathToResultsFolder+fileName, error_code, llvm::sys::fs::OF_None);
+			TheRewriter.getEditBuffer(it->second).write(outFile);
+			outFile.close();
+		}
+		else {
+			while (getline(fullPathStream, fileName, '/')); 
+			llvm::raw_fd_ostream outFile(pathToResultsFolder+fileName, error_code, llvm::sys::fs::OF_None);
+			TheRewriter.getEditBuffer(it->second).write(outFile);
+			outFile.close();
+		}
+    	
+		llvm::outs()<<pathToResultsFolder<<" "<<fileName;
+		llvm::outs()<< it->first << ": " << it->second.getHashValue() << "\n";
+    }
+	llvm::outs()<<fileID_table.size();
+	}
   Rewriter TheRewriter;
 };
 
