@@ -2,7 +2,7 @@
 using namespace clang;
 
 std::unordered_map<unsigned, FileID> fileID_table;
-
+std::unordered_map<Decl*, struct const_arg> const_arg_table;
 const_arg* getHashTableValue (NamedDecl* nd)
 {
     const_arg* tableValue=NULL;

@@ -1,6 +1,6 @@
 #include "../include/ASTInitVisitor.hpp"
 
-std::unordered_map<clang::Decl*, struct const_arg> const_arg_table;
+
 
 
 
