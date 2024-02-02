@@ -52,7 +52,8 @@ public:
     llvm::errs() << "** EndSourceFileAction for: "
                  << SM.getFileEntryForID(SM.getMainFileID())->getName() << "\n";
 	printTextToFiles(); 
-
+	if(PRINT_TABLE)
+		dumpTableArgs();
   }
 
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
@@ -117,13 +118,32 @@ private:
 		llvm::outs()<<pathToResultsFolder<<" "<<fileName;
 		llvm::outs()<< it->first << ": " << it->second.getHashValue() << "\n";
     }
-	llvm::outs()<<fileID_table.size();
 	}
+	void dumpTableArgs()
+	{
+		llvm::outs()<<"\n\nPrinting table used to store variables\n\n";
+		for (std::unordered_map<Decl*, struct const_arg>::iterator it = const_arg_table.begin(); it != const_arg_table.end(); ++it) {
+			std::stringstream SSprint;
+			const_arg& curArg=it->second;
+			SSprint<< it->first << ": "<<curArg.declaration->getNameAsString();
+			if(curArg.is_const)
+				SSprint<<" is const,";
+			else 
+				SSprint<<" is not const,";
+			if(curArg.is_ptr_or_ref)
+				SSprint<<" is a pointer or a reference,";
+			else
+				SSprint<<" is not a pointer or a reference,";
+			SSprint<<" type is : "<<curArg.declaration->getType().getAsString();
+			SSprint<<"\n";
+			llvm::outs()<<SSprint.str();
+	}
+	llvm::outs()<<"\n\n";
+	}			
   Rewriter TheRewriter;
 };
 
 int main(int argc, const char **argv) {
-  
   llvm::Expected<clang::tooling::CommonOptionsParser> option = CommonOptionsParser::create
   (argc, argv, ToolingSampleCategory, llvm::cl::OneOrMore);
 

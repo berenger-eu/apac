@@ -7,12 +7,11 @@ bool ASTPrintVisitor::VisitStmt(Stmt *s)
 {
     return true;
 }
+
 bool ASTPrintVisitor::VisitParmVarDecl(ParmVarDecl* pvd)
 {
     if(TheRewriter.getSourceMgr().isInSystemHeader(pvd->getBeginLoc()))
-    {
         return true;
-    }
     rewriteSingleDecl(pvd);
     return true;
 }
@@ -20,14 +19,13 @@ bool ASTPrintVisitor::VisitDeclStmt(DeclStmt* declStatement)
 {
     if(TheRewriter.getSourceMgr().isInSystemHeader(declStatement->getBeginLoc()))
         return true;  
+    
     std::stringstream SSprint;
     if((declStatement->isSingleDecl()))
     {
         Decl* d=declStatement->getSingleDecl();
         if(isa<VarDecl>(d))
-        {
-            rewriteSingleDecl(cast<VarDecl>(d));
-        }    
+            rewriteSingleDecl(cast<VarDecl>(d));    
     }
     //Multiple decl
     else
@@ -72,7 +70,8 @@ void ASTPrintVisitor::PrepareRewriteVarDecl(VarDecl *v,std::stringstream& stream
 
 void    ASTPrintVisitor::rewriteSingleDecl(VarDecl* vd)
 {
-    if(getHashTableValue(vd)->is_const)
+    //We rewrite the declaration if the variable is const and there is an initilisation ( "const int a;" is not valid)
+    if(getHashTableValue(vd)->is_const&&vd->getInit()!=NULL)
     {
         addConstToVar(vd);
         //Add a space char, otherwise int*a (valid) can become int*consta instead of int*const a 
@@ -112,7 +111,7 @@ QualType addConstToQualType(QualType qt,ASTContext& aContext)
     }
     else
     {
-        llvm::outs()<<"Adding const to the following type is not handled\n";
+        llvm::outs()<<"Adding const to the following type : "<<qt.getAsString()<<" is not handled\n";
         innerType->dump();
         ;
     }
