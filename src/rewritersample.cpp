@@ -123,7 +123,6 @@ private:
 };
 
 int main(int argc, const char **argv) {
-  
   llvm::Expected<clang::tooling::CommonOptionsParser> option = CommonOptionsParser::create
   (argc, argv, ToolingSampleCategory, llvm::cl::OneOrMore);
 

@@ -8,14 +8,14 @@ const_arg* getHashTableValue (NamedDecl* nd)
     const_arg* tableValue=NULL;
     Decl* canonicalDeclAdr=NULL;
     if(nd!=NULL && (canonicalDeclAdr= getHashKey(nd))!=NULL)
-    {
         tableValue=&(const_arg_table[canonicalDeclAdr]);
-    }
+    assert(tableValue!=NULL);
     return tableValue;
 }
 //HashKey is the adress of the canonical Decl of the Declaration, as it is unique (according to https://releases.llvm.org/10.0.0/tools/clang/docs/LibASTMatchersTutorial.html)
 Decl* getHashKey(NamedDecl* nd)
 {
+    assert(nd->getCanonicalDecl()!=NULL);
     return nd->getCanonicalDecl();
 }
 //Adds a dependency (right) to a value (left) in the hash table, does nothing if either is NULL
@@ -52,7 +52,7 @@ bool isReferenceQualType(QualType qType)
 ValueDecl* getInnerPtr(Expr* expression)
 {
     ValueDecl* returnValueDecl=NULL;
-    int i=0;
+    int i=0;    //To avoid loops and still constify the file 
     while(expression!=NULL&&!isa<DeclRefExpr>(expression)&&i<10)
     { 
         i++;
@@ -79,6 +79,7 @@ ValueDecl* getInnerPtr(Expr* expression)
             expression=expression->IgnoreParenCasts();
 
     }
+    assert(i<10);
     returnValueDecl=getInnerDecl(expression);
     return returnValueDecl;
 }
