@@ -122,9 +122,10 @@ QualType addConstToQualType(QualType qt,ASTContext& aContext)
     }
     else
     {
-        llvm::outs()<<"Adding const to the following type : "<<qt.getAsString()<<" is not handled\n";
+        qt.addConst();
+        llvm::outs()<<"Adding const to the following type : "<<qt.getAsString()<<" might not work\n";
+        qt->dump();
         innerType->dump();
-        ;
     }
     return qt;
 }   
