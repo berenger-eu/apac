@@ -91,8 +91,10 @@ ValueDecl* getInnerDecl(Expr* expression)
     
     if(expression!=NULL)
     {
-        while(expression!=NULL&&!isa<DeclRefExpr>(expression))
+        int i=0;    //To avoid loops and still constify the file 
+        while(expression!=NULL&&!isa<DeclRefExpr>(expression)&&i<10)
         {
+            i++;
             expression=expression->IgnoreCasts();
             if(isa<UnaryOperator>(expression))
                 expression=cast<UnaryOperator>(expression)->getSubExpr();
@@ -103,6 +105,8 @@ ValueDecl* getInnerDecl(Expr* expression)
                 expression=cast<ArraySubscriptExpr>(expression)->getBase();
 
         }
+        expression->dump();
+        assert(i<10);
         if(expression!=NULL)
             innerDecl=cast<DeclRefExpr>(expression)->getDecl();
     }
