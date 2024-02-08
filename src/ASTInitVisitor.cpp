@@ -31,7 +31,7 @@ bool ASTInitVisitor::VisitVarDecl(VarDecl *v)
     if (intype != NULL)
     {           
 
-        if (intype->isPointerType()||intype->isReferenceType())
+        if ( (intype->isPointerType()||intype->isReferenceType()) && v->getInit()!=NULL)
         {
             curDeclArg->is_ptr_or_ref = true;
             ValueDecl* initDecl=NULL;
