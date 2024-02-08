@@ -11,6 +11,7 @@ public:
     bool VisitParmVarDecl(ParmVarDecl*);
     void PrepareRewriteVarDecl(VarDecl *,std::stringstream&);
     void rewriteSingleDecl(VarDecl* );
+    void rewriteSingleDecl(ParmVarDecl* );
 
 private:
    Rewriter &TheRewriter;

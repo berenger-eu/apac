@@ -81,6 +81,17 @@ void    ASTPrintVisitor::rewriteSingleDecl(VarDecl* vd)
 }
 
 
+void    ASTPrintVisitor::rewriteSingleDecl(ParmVarDecl* vd)
+{
+    //We rewrite the declaration if the parameter is const
+    if(getHashTableValue(vd)->is_const)
+    {
+        addConstToVar(vd);
+        //Add a space char, otherwise int*a (valid) can become int*consta instead of int*const a 
+        std::string result=vd->getType().getAsString()+" ";
+        TheRewriter.ReplaceText(SourceRange(vd->getBeginLoc(),vd->getTypeSpecEndLoc()),result);
+    }
+}
 //We directly modify the AST, this makes printing the new type easier
 void addConstToVar(ValueDecl* valD)
 {
