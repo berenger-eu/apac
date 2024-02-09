@@ -119,13 +119,30 @@ private:
 		llvm::outs()<< it->first << ": " << it->second.getHashValue() << "\n";
     }
 	}
+	std::string getVarName(const_arg& curArg)
+	{
+		std::stringstream SSprint;
+		if(curArg.declaration)
+			SSprint<<curArg.declaration->getNameAsString();		
+		return SSprint.str();
+	}
+	std::string getTypeName(const_arg& curArg)
+	{
+		std::stringstream SSprint;
+		if(curArg.declaration)
+			SSprint<<curArg.declaration->getType().getAsString();
+		return SSprint.str();
+	}
 	void dumpTableArgs()
 	{
 		llvm::outs()<<"\n\nPrinting table used to store variables\n\n";
 		for (std::unordered_map<Decl*, struct const_arg>::iterator it = const_arg_table.begin(); it != const_arg_table.end(); ++it) {
 			std::stringstream SSprint;
 			const_arg& curArg=it->second;
-			SSprint<< it->first << ": "<<curArg.declaration->getNameAsString();
+			assert(curArg.declaration);
+
+			SSprint<<it->first<<" : "<<getVarName(curArg);
+
 			if(curArg.is_const)
 				SSprint<<" is const,";
 			else 
@@ -134,7 +151,11 @@ private:
 				SSprint<<" is a pointer or a reference,";
 			else
 				SSprint<<" is not a pointer or a reference,";
-			SSprint<<" type is : "<<curArg.declaration->getType().getAsString();
+
+			SSprint<<" type is : "<<getTypeName(curArg);
+			SSprint<<"\nDependencies are :\n";
+			for (std::vector<const_arg*>::iterator it = curArg.dependencies.begin(); it != curArg.dependencies.end(); ++it)
+				SSprint<<"\t"<<getVarName(**it)<<"\n";				
 			SSprint<<"\n";
 			llvm::outs()<<SSprint.str();
 	}
