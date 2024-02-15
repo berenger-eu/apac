@@ -3,4 +3,3 @@ build/
 .devcontainer/
 Dockerfile:Zone.Identifier
 bin/
-tests/*/
