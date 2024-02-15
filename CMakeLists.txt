@@ -22,3 +22,9 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 add_compile_options(-std=c++17)
 add_subdirectory(src)
 
+
+add_custom_target(test 
+COMMENT "Building apac"
+DEPENDS apac
+COMMENT "Starting tests"
+)
