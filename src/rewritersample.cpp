@@ -65,14 +65,17 @@ public:
 
 private:
 	void createResultDirectory(std::string folderName)
-	{
-		std::string command="mkdir "+folderName;
-		int result = system(command.c_str());
-		if (!result) 
+	{ 
+		namespace fs=std::filesystem;
+		std::error_code err;
+		int result = fs::create_directory(folderName,err);
+		if (!result&&err) 
 		{
 			llvm::errs()<<"Failed to create folder : "<<folderName<<"\n";
 			exit(1);      
-		}	
+		}
+		else if(!result)
+			llvm::errs()<<"Folder already exists : "<<folderName<<"\n\n";
 	}
 	//print modified code to all files (source file and included file(s) )
 	void printTextToFiles()
