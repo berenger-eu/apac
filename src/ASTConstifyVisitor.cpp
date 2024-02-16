@@ -59,10 +59,42 @@ bool ASTConstifyVisitor::VisitReturnStmt(ReturnStmt* retStmt)
     }
     return true;
 }
+
+/*
+bool ASTConstifyVisitor::VisitCXXMemberCallExpr(CXXMemberCallExpr* memExpr)
+{
+    if(TheRewriter.getSourceMgr().isInSystemHeader(memExpr->getBeginLoc()))
+        return true;
+    llvm::outs()<<"ICI3";
+    if(isa<CXXMethodDecl>(memExpr->getMethodDecl()))
+    {
+        CXXMethodDecl* methDecl=cast<CXXMethodDecl>(memExpr->getMethodDecl());
+        if(!methDecl->isConst())
+        {
+            memExpr->getCallee()->dump();
+            //unconstifyByPropagation(getHashTableValue(getInnerPtr(memExpr->getBase())));
+        }
+    }
+    return true;
+}
+*/
 bool ASTConstifyVisitor::VisitCallExpr(CallExpr* ce)
 {
+    
     if(TheRewriter.getSourceMgr().isInSystemHeader(ce->getBeginLoc()))
         return true;
+        if(isa<CXXMemberCallExpr>(ce))
+        {
+            CXXMemberCallExpr* memCallExpr=cast<CXXMemberCallExpr>(ce);
+            CXXMethodDecl* methDecl=memCallExpr->getMethodDecl();
+            if(!methDecl->isConst())
+            {
+                ValueDecl* innerDecl=getInnerDecl(cast<MemberExpr>(memCallExpr->getCallee())->getBase());
+                unconstifyByPropagation(getHashTableValue(innerDecl));
+                //unconstifyByPropagation(getHashTableValue(getInnerPtr(memExpr->getBase())));
+            }
+            return true;
+        }
     FunctionDecl* fdec;
     assert(ce->getDirectCallee()!=NULL);
     if((fdec=ce->getDirectCallee())!=NULL&&TheRewriter.getSourceMgr().isInSystemHeader(fdec->getBeginLoc()))
