@@ -43,7 +43,10 @@ for file in *.cpp; do
         else 
             echo -e "${GREEN}Test succeeded, TEXT : $foldername${NC}"
         fi
-        
+        if [ $differenceInAST == false ] && [ $differenceInText == false ]; then
+            rm -rf "$foldername"/
+        fi
+
     fi
     rm ast_expected
     rm ast_result
