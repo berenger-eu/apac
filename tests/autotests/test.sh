@@ -12,23 +12,39 @@ for file in *.cpp; do
         echo "Processing file: $file"
         ../../build/apac $file
         foldername=$(basename "$file" .cpp)
-        difference=false
+        differenceInText=false
+        differenceInAST=false
         for file2 in "$foldername"/*; do
             if [ -f "$file2" ]; then
                 #echo "Created file : $file2"
                 filename=$(basename "$file2" /)
                 diff "$file2" "$foldername"_expected/"$filename" > /dev/null
                 if [ $? -ne 0 ]; then
-                    difference=true
-                    echo -e "${RED}Different : $filename${NC}"
+                    differenceInText=true
+                    echo -e "${RED}Different Text : $filename${NC}"
                 fi
+                clang-check -ast-print "$foldername"_expected/"$filename" > ./ast_result 2> /dev/null
+                clang-check -ast-print $file2 > ./ast_expected 2> /dev/null
+                diff ast_expected ast_result > /dev/null
+                if [ $? -ne 0 ]; then
+                    differenceInAST=true
+                    echo -e "${RED}Different AST : $filename${NC}"
+                fi
+                
             fi
         done 
-        if $difference; then
-                echo -e "${RED}${BOLD}Test failed : $foldername${NC}"
-            else 
-                echo -e "${GREEN}${BOLD}Test succeeded : $foldername${NC}"
+        if $differenceInAST; then
+            echo -e "${RED}${BOLD}Test failed, AST : $foldername${NC}"
+        else 
+            echo -e "${GREEN}${BOLD}Test succeeded : $foldername${NC}"
         fi
-        rm -rf "$foldername"/
+        if $differenceInText; then
+            echo -e "${RED}Test failed, TEXT : $foldername${NC}"
+        else 
+            echo -e "${GREEN}Test succeeded, TEXT : $foldername${NC}"
+        fi
+        
     fi
+    rm ast_expected
+    rm ast_result
 done
