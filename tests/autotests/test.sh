@@ -10,7 +10,7 @@ for file in *.cpp; do
     # Check if the file exists and is a regular file
     if [ -f "$file" ]; then
         echo "Processing file: $file"
-        ../../build/apac $file
+        ../../build/apac $file > /dev/null 2> /dev/null
         foldername=$(basename "$file" .cpp)
         differenceInText=false
         differenceInAST=false
