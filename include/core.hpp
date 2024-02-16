@@ -48,3 +48,4 @@ bool isPointerQualType(clang::QualType );
 bool isReferenceQualType(clang::QualType );
 clang::ValueDecl* getInnerPtr(clang::Expr*);
 clang::ValueDecl* getInnerDecl(clang::Expr*);
+bool valueInit(clang::VarDecl*);

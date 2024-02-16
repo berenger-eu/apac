@@ -112,3 +112,10 @@ ValueDecl* getInnerDecl(Expr* expression)
     }
     return innerDecl;
 }
+//Checks if the init part of a Variable Declaration contains a value
+//Returns false if init is NULL or declaration is : type* a=new ...
+//Returns true otherwise
+bool valueInit(VarDecl* varDec)
+{
+    return (varDec->getInit()!=NULL&&!isa<CXXNewExpr>(varDec->getInit()));
+}
