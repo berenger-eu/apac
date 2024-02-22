@@ -5,6 +5,7 @@ class ASTConstifyVisitor : public RecursiveASTVisitor<ASTConstifyVisitor>
 public:
     ASTConstifyVisitor(Rewriter &R) : TheRewriter(R) {};
     bool VisitStmt(Stmt *);
+    bool VisitCXXMethodDecl(CXXMethodDecl*);
     bool VisitBinaryOperator(BinaryOperator*);
     bool VisitUnaryOperator(UnaryOperator*);
     bool VisitReturnStmt(ReturnStmt*);

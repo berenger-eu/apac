@@ -58,7 +58,7 @@ public:
 
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
                                                  StringRef file) override {
-    llvm::errs() << "** Creating AST consumer for: " << file << "\n";
+    llvm::errs() << "** Creating AST consumer for: " << file << "\n\n\n";
     TheRewriter.setSourceMgr(CI.getSourceManager(), CI.getLangOpts());
     return std::make_unique<MyASTConsumer>(TheRewriter);
   }
@@ -126,14 +126,24 @@ private:
 	{
 		std::stringstream SSprint;
 		if(curArg.declaration)
-			SSprint<<curArg.declaration->getNameAsString();		
+			SSprint<<curArg.declaration->getNameAsString();	
+		else if (curArg.field)
+			SSprint<<curArg.field->getNameAsString();
+		else if (curArg.method)
+			SSprint<<curArg.method->getNameAsString();	
+		else 
+			SSprint<<"other ";
 		return SSprint.str();
 	}
 	std::string getTypeName(const_arg& curArg)
 	{
 		std::stringstream SSprint;
 		if(curArg.declaration)
-			SSprint<<curArg.declaration->getType().getAsString();
+			SSprint<<"Variable : "<<curArg.declaration->getType().getAsString();
+		else if (curArg.field)
+			SSprint<<"Field : "<<curArg.field->getType().getAsString();
+		else if (curArg.method)
+			SSprint<<"Method : "<<curArg.method->getType().getAsString();
 		return SSprint.str();
 	}
 	void dumpTableArgs()
@@ -142,7 +152,7 @@ private:
 		for (std::unordered_map<Decl*, struct const_arg>::iterator it = const_arg_table.begin(); it != const_arg_table.end(); ++it) {
 			std::stringstream SSprint;
 			const_arg& curArg=it->second;
-			assert(curArg.declaration);
+			assert(curArg.declaration||curArg.field||curArg.method);
 
 			SSprint<<it->first<<" : "<<getVarName(curArg);
 
@@ -163,6 +173,29 @@ private:
 			llvm::outs()<<SSprint.str();
 	}
 	llvm::outs()<<"\n\n";
+	for (std::unordered_map<Expr*, struct const_arg>::iterator it = const_arg_expr_table.begin(); it != const_arg_expr_table.end(); ++it) {
+			std::stringstream SSprint;
+			const_arg& curArg=it->second;
+			//assert(curArg.declaration||curArg.field||curArg.method);
+
+			SSprint<<it->first<<" : "<<getVarName(curArg);
+
+			if(curArg.is_const)
+				SSprint<<" is const,";
+			else 
+				SSprint<<" is not const,";
+			if(curArg.is_ptr_or_ref)
+				SSprint<<" is a pointer or a reference,";
+			else
+				SSprint<<" is not a pointer or a reference,";
+
+			//SSprint<<" type is : "<<getTypeName(curArg);
+			SSprint<<"\nDependencies are :\n";
+			for (std::vector<const_arg*>::iterator it = curArg.dependencies.begin(); it != curArg.dependencies.end(); ++it)
+				SSprint<<"dep:\t"<<getVarName(**it)<<"\n";				
+			SSprint<<"\n";
+			llvm::outs()<<SSprint.str();
+	}
 	}			
   Rewriter TheRewriter;
 };

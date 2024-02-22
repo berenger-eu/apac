@@ -36,16 +36,24 @@ struct const_arg
 {
 	bool is_const;
 	bool is_ptr_or_ref;
+	clang::CXXMethodDecl* method;
 	clang::VarDecl *declaration;
+	clang::FieldDecl *field;
 	std::vector<const_arg *>dependencies;
 };
 extern std::unordered_map<clang::Decl*, struct const_arg> const_arg_table;
 extern std::unordered_map<unsigned , clang::FileID> fileID_table;
+extern std::unordered_map<clang::Expr*,struct const_arg> const_arg_expr_table;
+extern clang::CXXMethodDecl* lastMethDecl;
 const_arg* getHashTableValue (clang::NamedDecl* );
+const_arg* getHashTableValue(clang::CXXThisExpr* );
 clang::Decl* getHashKey(clang::NamedDecl*);
 void addDependencyHashTable(const_arg* ,const_arg*);
 bool isPointerQualType(clang::QualType );
 bool isReferenceQualType(clang::QualType );
 clang::ValueDecl* getInnerPtr(clang::Expr*);
 clang::ValueDecl* getInnerDecl(clang::Expr*);
+
+const_arg* getInnerConstArg(clang::ValueDecl* );
+const_arg* getInnerConstArg(clang::Expr* );
 bool valueInit(clang::VarDecl*);

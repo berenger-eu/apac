@@ -5,6 +5,27 @@ bool ASTConstifyVisitor::VisitStmt(Stmt *s)
         return true;
     }
 
+bool ASTConstifyVisitor::VisitCXXMethodDecl(CXXMethodDecl* methDecl)
+{
+    const_arg& methArg=(*getInnerConstArg(methDecl));
+    for (std::unordered_map<Decl*, struct const_arg>::iterator it = const_arg_table.begin(); it != const_arg_table.end(); ++it)
+	{
+        const_arg& curArg=it->second;
+        //Method with same name
+        if(curArg.method&&curArg.method!=methArg.method&&curArg.method->getNameAsString()==methDecl->getNameAsString())
+        {
+            //In same context
+            if(curArg.method->getDeclContext()->Equals(methDecl->getDeclContext()))
+                //If it is not const in source file, then we unconst it as a safety measure
+                if(!methDecl->isConst()){
+                    llvm::errs()<<"\nMethod "<<methDecl->getNameAsString()<<" shares its name with another method in the same context so it was unconstified\n";
+                    unconstifyByPropagation(getInnerConstArg(methDecl));    
+                }
+        }
+    }
+    return true;
+}
+
 bool ASTConstifyVisitor::VisitBinaryOperator(BinaryOperator *bop)
     {
         if(TheRewriter.getSourceMgr().isInSystemHeader(bop->getBeginLoc()))
@@ -12,11 +33,10 @@ bool ASTConstifyVisitor::VisitBinaryOperator(BinaryOperator *bop)
 
         if (bop->isAssignmentOp())
         {
-            ValueDecl* leftSideDecl=getInnerDecl(bop->getLHS());
+            const_arg* leftSideArg=getInnerConstArg(bop->getLHS());
             // rightSide=cast<DeclRefExpr>(bop->getRHS());
-            const_arg *curArg = getHashTableValue(leftSideDecl);
             //Variable on the left side is modified, so we unconst it
-            unconstifyByPropagation(curArg);
+            unconstifyByPropagation(leftSideArg);
         }
 
         return true;
@@ -28,8 +48,8 @@ bool ASTConstifyVisitor::VisitUnaryOperator(UnaryOperator* uop)
     //Unary operators which modify the variable    
     if(uop->isIncrementDecrementOp())
     {   
-        ValueDecl* innerDecl=getInnerDecl(uop->getSubExpr());
-        unconstifyByPropagation(getHashTableValue(innerDecl));
+        const_arg* innerDeclArg=getInnerConstArg(uop->getSubExpr());
+        unconstifyByPropagation(innerDeclArg);
     }
 
     return true;
@@ -43,8 +63,8 @@ bool ASTConstifyVisitor::VisitReturnStmt(ReturnStmt* retStmt)
     //Returning a pointer might lead to modifications, so we have to unconst
     if(retValue!=NULL&&isPointerQualType(retValue->getType()))
     {
-        ValueDecl* retValDecl=getInnerPtr(retValue);
-        unconstifyByPropagation(getHashTableValue(retValDecl));
+        const_arg* retValDeclArg=getInnerConstArg(retValue);
+        unconstifyByPropagation(retValDeclArg);
     }
     //Returning a reference might lead to modifications, so we have to unconst
     else if(retValue!=NULL&&isa<DeclRefExpr>(retValue))
@@ -53,8 +73,8 @@ bool ASTConstifyVisitor::VisitReturnStmt(ReturnStmt* retStmt)
         ValueDecl* retDecl=cast<DeclRefExpr>(retValue)->getDecl();
         if(isReferenceQualType(retDecl->getType()))
         {
-            ValueDecl* retValDecl=getInnerDecl(retValue);
-            unconstifyByPropagation(getHashTableValue(retValDecl));
+            const_arg* retValDeclArg=getInnerConstArg(retValue);
+            unconstifyByPropagation(retValDeclArg);
         }
     }
     return true;
@@ -107,14 +127,13 @@ bool ASTConstifyVisitor::VisitCallExpr(CallExpr* ce)
             if (!parVar->getType().isConstQualified()&&(isPointerQualType(qtPar)||isReferenceQualType(qtPar)))
             {
                 int index=std::distance(fdec->param_begin(),it);
-                ValueDecl* curDecl=getInnerPtr(ce->getArg(index));
-                unconstifyByPropagation(getHashTableValue(curDecl));               
+                const_arg* curDeclArg=getInnerConstArg(ce->getArg(index));
+                unconstifyByPropagation(curDeclArg);               
             } 
         }
     }
     return true;
 }
-
 
 void unconstifyByPropagation(const_arg* varArg)
 {
