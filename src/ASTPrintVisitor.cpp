@@ -15,6 +15,14 @@ bool ASTPrintVisitor::VisitParmVarDecl(ParmVarDecl* pvd)
     rewriteSingleDecl(pvd);
     return true;
 }
+bool ASTPrintVisitor::VisitCXXMethodDecl(CXXMethodDecl* metDecl)
+{
+    metDecl->setType(metDecl->getType().withConst());
+    const_arg* metArg=getInnerConstArg(metDecl);
+    if(metArg->is_const&&!metDecl->isConst())
+        TheRewriter.InsertTextBefore(metDecl->getBody()->getBeginLoc()," const ");
+    return true;
+}
 bool ASTPrintVisitor::VisitDeclStmt(DeclStmt* declStatement)
 {
     if(TheRewriter.getSourceMgr().isInSystemHeader(declStatement->getBeginLoc()))

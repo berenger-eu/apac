@@ -3,12 +3,22 @@ using namespace clang;
 
 std::unordered_map<unsigned, FileID> fileID_table;
 std::unordered_map<Decl*, struct const_arg> const_arg_table;
+std::unordered_map<Expr*, struct const_arg> const_arg_expr_table;
+CXXMethodDecl* lastMethDecl=NULL;
 const_arg* getHashTableValue (NamedDecl* nd)
 {
     const_arg* tableValue=NULL;
     Decl* canonicalDeclAdr=NULL;
     if(nd!=NULL && (canonicalDeclAdr= getHashKey(nd))!=NULL)
         tableValue=&(const_arg_table[canonicalDeclAdr]);
+    assert(tableValue!=NULL);
+    return tableValue;
+}
+const_arg* getHashTableValue(CXXThisExpr* thisExpr)
+{
+    const_arg* tableValue=NULL;
+    if(thisExpr!=NULL)
+        tableValue=&(const_arg_expr_table[thisExpr]);
     assert(tableValue!=NULL);
     return tableValue;
 }
@@ -53,10 +63,20 @@ ValueDecl* getInnerPtr(Expr* expression)
 {
     ValueDecl* returnValueDecl=NULL;
     int i=0;    //To avoid loops and still constify the file 
-    while(expression!=NULL&&!isa<DeclRefExpr>(expression)&&i<10)
+    while(expression!=NULL&&returnValueDecl==NULL&&i<10)
     { 
         i++;
-        if(isa<BinaryOperator>(expression))
+        if(isa<DeclRefExpr>(expression))
+        {
+            returnValueDecl=getInnerDecl(expression);
+            expression=NULL;
+        }
+        else if(isa<MemberExpr>(expression))
+        {
+            returnValueDecl=cast<MemberExpr>(expression)->getMemberDecl();
+            expression=NULL;
+        }
+        else if(isa<BinaryOperator>(expression))
         {
             BinaryOperator* bopExpr =cast<BinaryOperator>(expression);
             if(isPointerQualType(bopExpr->getLHS()->getType()))
@@ -80,9 +100,11 @@ ValueDecl* getInnerPtr(Expr* expression)
 
     }
     assert(i<10);
-    returnValueDecl=getInnerDecl(expression);
+    
     return returnValueDecl;
 }
+
+
 
 //Retrieves, if it exists, the variable inside of an expression
 ValueDecl* getInnerDecl(Expr* expression)
@@ -92,26 +114,50 @@ ValueDecl* getInnerDecl(Expr* expression)
     if(expression!=NULL)
     {
         int i=0;    //To avoid loops and still constify the file 
-        while(expression!=NULL&&!isa<DeclRefExpr>(expression)&&i<10)
+        while(expression!=NULL&&innerDecl==NULL&&i<10)
         {
             i++;
             expression=expression->IgnoreCasts();
-            if(isa<UnaryOperator>(expression))
+            if(isa<DeclRefExpr>(expression))
+                innerDecl=cast<DeclRefExpr>(expression)->getDecl();
+            else if(isa<MemberExpr>(expression))
+                innerDecl=cast<MemberExpr>(expression)->getMemberDecl();
+            else if(isa<UnaryOperator>(expression))
                 expression=cast<UnaryOperator>(expression)->getSubExpr();
             //We can't get the variable from a call to a function
             else if(isa<CallExpr>(expression))
                 expression=NULL;
             else if(isa<ArraySubscriptExpr>(expression))
                 expression=cast<ArraySubscriptExpr>(expression)->getBase();
-
         }
-        expression->dump();
         assert(i<10);
-        if(expression!=NULL)
-            innerDecl=cast<DeclRefExpr>(expression)->getDecl();
     }
     return innerDecl;
 }
+
+const_arg* getInnerConstArg(Expr* expression )
+{
+    const_arg* resultConstArg=NULL;
+    if(expression!=NULL)
+    {
+        if (isa<MemberExpr>(expression))
+        {
+            MemberExpr* tempExpr=cast<MemberExpr>(expression);
+            expression=tempExpr->getBase();
+        }
+        if(isa<CXXThisExpr>(expression))
+            resultConstArg=getHashTableValue(cast<CXXThisExpr>(expression));
+        else if(isPointerQualType(expression->getType()))
+            resultConstArg=getHashTableValue(getInnerPtr(expression));
+        else 
+            resultConstArg=getHashTableValue(getInnerDecl(expression));
+    }
+    return resultConstArg;
+}
+const_arg* getInnerConstArg(ValueDecl* valDecl)
+{
+    return getHashTableValue(valDecl);   
+} 
 //Checks if the init part of a Variable Declaration contains a value
 //Returns false if init is NULL or declaration is : type* a=new ...
 //Returns true otherwise

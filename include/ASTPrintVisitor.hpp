@@ -9,9 +9,11 @@ public:
     //bool VisitFunctionDecl(FunctionDecl *);
     bool VisitDeclStmt(DeclStmt* );
     bool VisitParmVarDecl(ParmVarDecl*);
+    bool VisitCXXMethodDecl(CXXMethodDecl*);
     void PrepareRewriteVarDecl(VarDecl *,std::stringstream&);
     void rewriteSingleDecl(VarDecl* );
     void rewriteSingleDecl(ParmVarDecl* );
+
 
 private:
    Rewriter &TheRewriter;
