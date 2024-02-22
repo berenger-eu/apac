@@ -14,7 +14,6 @@ for file in *.cpp; do
     if [ -f "$file" ]; then
         echo "Processing file: $file"
         ((countTotal++))
-        ((countTotal++))
         differenceInText=false
         differenceInAST=false
         foldername=$(basename "$file" .cpp)
@@ -49,7 +48,6 @@ for file in *.cpp; do
         if $differenceInAST; then
             echo -e "${RED}${BOLD}Test failed, AST : $foldername${NC}"
         else 
-            ((countPassed++))
             ((countPassed++))
             echo -e "${GREEN}${BOLD}Test succeeded : $foldername${NC}"
         fi
