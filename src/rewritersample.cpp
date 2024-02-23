@@ -22,7 +22,8 @@ using namespace clang::tooling;
 class MyASTConsumer : public ASTConsumer
 {
 public:
-	MyASTConsumer(Rewriter &R) : VisitorInit(R),VisitorConst(R) ,VisitorPrint(R) {}
+	MyASTConsumer(Rewriter& R,SymTab& symTableIn) : VisitorInit(R,symTableIn),VisitorConst(R,symTableIn) ,
+	VisitorPrint(R,symTableIn),SymT(symTableIn) {}
 
 	// Override the method that gets called for each parsed top-level
 	// declaration.
@@ -42,11 +43,12 @@ private:
 	ASTInitVisitor VisitorInit;
 	ASTConstifyVisitor VisitorConst;
 	ASTPrintVisitor VisitorPrint;
+	SymTab& SymT;
 };
 
 class MyFrontendAction : public ASTFrontendAction {
 public:
-  MyFrontendAction() {}
+  MyFrontendAction() :SymT(TheRewriter){}
   void EndSourceFileAction() override {
     SourceManager &SM = TheRewriter.getSourceMgr();
     llvm::errs() << "** EndSourceFileAction for: "
@@ -60,7 +62,7 @@ public:
                                                  StringRef file) override {
     llvm::errs() << "** Creating AST consumer for: " << file << "\n\n\n";
     TheRewriter.setSourceMgr(CI.getSourceManager(), CI.getLangOpts());
-    return std::make_unique<MyASTConsumer>(TheRewriter);
+    return std::make_unique<MyASTConsumer>(TheRewriter,SymT);
   }
 
 private:
@@ -87,11 +89,11 @@ private:
 	std::string pathToResultsFolder;
 	std::string fileName;
 	//To print contents of headers files
-	for (std::unordered_map<unsigned, FileID>::iterator it = fileID_table.begin(); it != fileID_table.end(); ++it) {
+	for (std::unordered_map<unsigned, FileID>::iterator it = SymT.fileID_table.begin(); it != SymT.fileID_table.end(); ++it) {
         //Parsing the path to the file
 		std::string fullPath=SM.getFileEntryForID(it->second)->getName().str();
 		std::stringstream fullPathStream(fullPath);
-		if(it==fileID_table.begin())
+		if(it==SymT.fileID_table.begin())
 		{
 			std::vector<std::string> separatedString;
 			std::string folderName;
@@ -149,7 +151,7 @@ private:
 	void dumpTableArgs()
 	{
 		llvm::outs()<<"\n\nPrinting table used to store variables\n\n";
-		for (std::unordered_map<Decl*, struct const_arg>::iterator it = const_arg_table.begin(); it != const_arg_table.end(); ++it) {
+		for (std::unordered_map<Decl*, struct const_arg>::iterator it = SymT.const_arg_table.begin(); it != SymT.const_arg_table.end(); ++it) {
 			std::stringstream SSprint;
 			const_arg& curArg=it->second;
 			assert(curArg.declaration||curArg.field||curArg.method);
@@ -173,7 +175,7 @@ private:
 			llvm::outs()<<SSprint.str();
 	}
 	llvm::outs()<<"\n\n";
-	for (std::unordered_map<Expr*, struct const_arg>::iterator it = const_arg_expr_table.begin(); it != const_arg_expr_table.end(); ++it) {
+	for (std::unordered_map<Expr*, struct const_arg>::iterator it = SymT.const_arg_expr_table.begin(); it != SymT.const_arg_expr_table.end(); ++it) {
 			std::stringstream SSprint;
 			const_arg& curArg=it->second;
 			//assert(curArg.declaration||curArg.field||curArg.method);
@@ -198,6 +200,7 @@ private:
 	}
 	}			
   Rewriter TheRewriter;
+  SymTab SymT;
 };
 
 int main(int argc, const char **argv) {

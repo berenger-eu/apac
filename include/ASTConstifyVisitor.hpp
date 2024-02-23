@@ -1,9 +1,10 @@
 #include "core.hpp"
+#include "SymTab.hpp"
 using namespace clang;
 class ASTConstifyVisitor : public RecursiveASTVisitor<ASTConstifyVisitor>
 {
 public:
-    ASTConstifyVisitor(Rewriter &R) : TheRewriter(R) {};
+    ASTConstifyVisitor(Rewriter &R,SymTab& SymTableIn) : TheRewriter(R),SymT(SymTableIn) {};
     bool VisitStmt(Stmt *);
     bool VisitCXXMethodDecl(CXXMethodDecl*);
     bool VisitBinaryOperator(BinaryOperator*);
@@ -13,5 +14,6 @@ public:
     bool VisitCallExpr(CallExpr* );
 private:
     Rewriter &TheRewriter;
+    SymTab& SymT;
 };
 void unconstifyByPropagation(const_arg*);

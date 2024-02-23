@@ -41,19 +41,13 @@ struct const_arg
 	clang::FieldDecl *field;
 	std::vector<const_arg *>dependencies;
 };
-extern std::unordered_map<clang::Decl*, struct const_arg> const_arg_table;
-extern std::unordered_map<unsigned , clang::FileID> fileID_table;
-extern std::unordered_map<clang::Expr*,struct const_arg> const_arg_expr_table;
-extern clang::CXXMethodDecl* lastMethDecl;
-const_arg* getHashTableValue (clang::NamedDecl* );
-const_arg* getHashTableValue(clang::CXXThisExpr* );
-clang::Decl* getHashKey(clang::NamedDecl*);
-void addDependencyHashTable(const_arg* ,const_arg*);
+typedef std::unordered_map<clang::Decl*, struct const_arg> TableConstArg;
+typedef std::unordered_map<unsigned , clang::FileID> TableFileID;
+typedef std::unordered_map<clang::Expr*,struct const_arg> TableConstArgExpr;
+
 bool isPointerQualType(clang::QualType );
 bool isReferenceQualType(clang::QualType );
 clang::ValueDecl* getInnerPtr(clang::Expr*);
 clang::ValueDecl* getInnerDecl(clang::Expr*);
 
-const_arg* getInnerConstArg(clang::ValueDecl* );
-const_arg* getInnerConstArg(clang::Expr* );
 bool valueInit(clang::VarDecl*);

@@ -1,9 +1,10 @@
 #include "core.hpp"
+#include "SymTab.hpp"
 using namespace clang;
 class ASTPrintVisitor : public RecursiveASTVisitor<ASTPrintVisitor>
 {
 public:
-    ASTPrintVisitor(Rewriter &R) : TheRewriter(R) {}
+    ASTPrintVisitor(Rewriter &R,SymTab& SymTableIn) : TheRewriter(R),SymT(SymTableIn) {}
     // To avoid errors on unused Stmt
     bool VisitStmt(Stmt *);
     //bool VisitFunctionDecl(FunctionDecl *);
@@ -17,6 +18,7 @@ public:
 
 private:
    Rewriter &TheRewriter;
+   SymTab& SymT;
 };
 
 void addConstToVar(ValueDecl*);
