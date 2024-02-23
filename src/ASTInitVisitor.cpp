@@ -116,7 +116,7 @@ bool ASTInitVisitor::VisitCallExpr(CallExpr *ce)
         {    
             ParmVarDecl* parVar=*it;
             const_arg* curPar=SymT.getHashTableValue(parVar); 
-            assert(curPar->declaration);
+            assert(curPar!=NULL);
             //Adds the dependency if the parameter is a Pointer or a reference
             if (curPar->is_ptr_or_ref)
             {

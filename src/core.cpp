@@ -24,21 +24,21 @@ bool isReferenceQualType(QualType qType)
 }
 
 
-ValueDecl* getInnerPtr(Expr* expression)
+Expr* getInnerPtr(Expr* expression)
 {
-    ValueDecl* returnValueDecl=NULL;
+    Expr* returnValueExpr=NULL;
     int i=0;    //To avoid loops and still constify the file 
-    while(expression!=NULL&&returnValueDecl==NULL&&i<10)
+    while(expression!=NULL&&returnValueExpr==NULL&&i<10)
     { 
         i++;
         if(isa<DeclRefExpr>(expression))
         {
-            returnValueDecl=getInnerDecl(expression);
+            returnValueExpr=getInnerExpr(expression);
             expression=NULL;
         }
         else if(isa<MemberExpr>(expression))
         {
-            returnValueDecl=cast<MemberExpr>(expression)->getMemberDecl();
+            returnValueExpr=cast<MemberExpr>(expression);
             expression=NULL;
         }
         else if(isa<BinaryOperator>(expression))
@@ -71,27 +71,27 @@ ValueDecl* getInnerPtr(Expr* expression)
     }
     assert(i<10);
     
-    return returnValueDecl;
+    return returnValueExpr;
 }
 
 
 
 //Retrieves, if it exists, the variable inside of an expression
-ValueDecl* getInnerDecl(Expr* expression)
+Expr* getInnerExpr(Expr* expression)
 {
-    ValueDecl* innerDecl=NULL;
+    Expr* innerExpr=NULL;
     
     if(expression!=NULL)
     {
         int i=0;    //To avoid loops and still constify the file 
-        while(expression!=NULL&&innerDecl==NULL&&i<10)
+        while(expression!=NULL&&innerExpr==NULL&&i<10)
         {
             i++;
             expression=expression->IgnoreCasts();
             if(isa<DeclRefExpr>(expression))
-                innerDecl=cast<DeclRefExpr>(expression)->getDecl();
+                innerExpr=cast<DeclRefExpr>(expression);
             else if(isa<MemberExpr>(expression))
-                innerDecl=cast<MemberExpr>(expression)->getMemberDecl();
+                innerExpr=cast<MemberExpr>(expression);
             else if(isa<UnaryOperator>(expression))
                 expression=cast<UnaryOperator>(expression)->getSubExpr();
             //We can't get the variable from a call to a function
@@ -108,7 +108,7 @@ ValueDecl* getInnerDecl(Expr* expression)
         
         assert(i<10);
     }
-    return innerDecl;
+    return innerExpr;
 }
 
 

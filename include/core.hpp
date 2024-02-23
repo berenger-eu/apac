@@ -47,7 +47,7 @@ typedef std::unordered_map<clang::Expr*,struct const_arg> TableConstArgExpr;
 
 bool isPointerQualType(clang::QualType );
 bool isReferenceQualType(clang::QualType );
-clang::ValueDecl* getInnerPtr(clang::Expr*);
-clang::ValueDecl* getInnerDecl(clang::Expr*);
+clang::Expr* getInnerPtr(clang::Expr*);
+clang::Expr* getInnerExpr(clang::Expr*);
 
 bool valueInit(clang::VarDecl*);

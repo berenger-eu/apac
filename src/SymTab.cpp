@@ -7,23 +7,31 @@ const_arg* SymTab::getInnerConstArg(Expr* expression )
     const_arg* resultConstArg=NULL;
     if(expression!=NULL)
     {
-        if (isa<MemberExpr>(expression))
-        {
-            MemberExpr* tempExpr=cast<MemberExpr>(expression);
-            expression=tempExpr->getBase();
-        }
         if(isa<CXXThisExpr>(expression))
             resultConstArg=getHashTableValue(cast<CXXThisExpr>(expression));
         else{
-            ValueDecl* valDecl=NULL;    
+            Expr* valExpr=NULL;    
             if(isPointerQualType(expression->getType()))
-                valDecl=(getInnerPtr(expression));
+                valExpr=getInnerPtr(expression);
             else 
-                valDecl=(getInnerDecl(expression));
+                valExpr=getInnerExpr(expression);
             //If there is a variable (!=NULL) AND it's not a included variable (not parsed so not in the table)
-            if(valDecl!=NULL&&!TheRewriter.getSourceMgr().isInSystemHeader(valDecl->getLocation()))
-                resultConstArg=getHashTableValue(valDecl);
-            }    
+            if(valExpr==NULL)
+                ;
+            else if(isa<CXXThisExpr>(valExpr))
+                resultConstArg=getHashTableValue(cast<CXXThisExpr>(valExpr));
+            else if(isa<MemberExpr>(valExpr)){
+                ValueDecl* valDecl = cast<MemberExpr>(valExpr)->getMemberDecl();
+                if(valDecl!=NULL&&!TheRewriter.getSourceMgr().isInSystemHeader(valDecl->getLocation()))
+                    resultConstArg=getHashTableValue(valDecl);
+            }
+
+            else if(isa<DeclRefExpr>(valExpr)){
+                ValueDecl* valDecl = cast<DeclRefExpr>(valExpr)->getDecl();
+                if(valDecl!=NULL&&!TheRewriter.getSourceMgr().isInSystemHeader(valDecl->getLocation()))
+                    resultConstArg=getHashTableValue(valDecl);
+            }
+        }       
     }
     return resultConstArg;
 }
