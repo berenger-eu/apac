@@ -20,9 +20,10 @@ const_arg* SymTab::getInnerConstArg(Expr* expression )
                 valDecl=(getInnerPtr(expression));
             else 
                 valDecl=(getInnerDecl(expression));
-            if(valDecl!=NULL)
+            //If there is a variable (!=NULL) AND it's not a included variable (not parsed so not in the table)
+            if(valDecl!=NULL&&!TheRewriter.getSourceMgr().isInSystemHeader(valDecl->getLocation()))
                 resultConstArg=getHashTableValue(valDecl);
-        }    
+            }    
     }
     return resultConstArg;
 }
