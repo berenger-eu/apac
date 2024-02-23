@@ -59,10 +59,15 @@ ValueDecl* getInnerPtr(Expr* expression)
         else if(isa<StringLiteral>(expression))
             expression=NULL;
         else if(isa<GNUNullExpr>(expression))
-            expression=NULL;    
+            expression=NULL;
+        else if(isa<CXXNewExpr>(expression))
+            expression=NULL;     
         else
             expression=expression->IgnoreParenCasts();
 
+    }
+    if(i>=10){
+        expression->dump();
     }
     assert(i<10);
     
@@ -94,7 +99,13 @@ ValueDecl* getInnerDecl(Expr* expression)
                 expression=NULL;
             else if(isa<ArraySubscriptExpr>(expression))
                 expression=cast<ArraySubscriptExpr>(expression)->getBase();
+            else if(isa<CXXNewExpr>(expression))
+                expression=NULL;    
         }
+        if(i>=10){
+            expression->dump();
+        }
+        
         assert(i<10);
     }
     return innerDecl;

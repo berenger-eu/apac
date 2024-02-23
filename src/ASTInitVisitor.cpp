@@ -13,6 +13,8 @@ bool ASTInitVisitor::VisitStmt(Stmt *s)
 }
 bool ASTInitVisitor::VisitCXXThisExpr(CXXThisExpr* thisExpr)
 {
+    if(TheRewriter.getSourceMgr().isInSystemHeader(thisExpr->getBeginLoc()))
+        return true;
     const_arg* curThisArg=SymT.getHashTableValue(thisExpr);
     const_arg* curMethArg=SymT.getInnerConstArg(SymT.lastMethDecl);
     curThisArg->is_const=true;

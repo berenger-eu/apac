@@ -17,6 +17,8 @@ bool ASTPrintVisitor::VisitParmVarDecl(ParmVarDecl* pvd)
 }
 bool ASTPrintVisitor::VisitCXXMethodDecl(CXXMethodDecl* metDecl)
 {
+    if(TheRewriter.getSourceMgr().isInSystemHeader(metDecl->getBeginLoc()))
+        return true;
     metDecl->setType(metDecl->getType().withConst());
     const_arg* metArg=SymT.getInnerConstArg(metDecl);
     if(metArg->is_const&&!metDecl->isConst())

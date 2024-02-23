@@ -7,6 +7,8 @@ bool ASTConstifyVisitor::VisitStmt(Stmt *s)
 
 bool ASTConstifyVisitor::VisitCXXMethodDecl(CXXMethodDecl* methDecl)
 {
+    if(TheRewriter.getSourceMgr().isInSystemHeader(methDecl->getBeginLoc()))
+        return true;
     const_arg& methArg=(*SymT.getInnerConstArg(methDecl));
     for (std::unordered_map<Decl*, struct const_arg>::iterator it = SymT.const_arg_table.begin(); it != SymT.const_arg_table.end(); ++it)
 	{
@@ -103,18 +105,18 @@ bool ASTConstifyVisitor::VisitCallExpr(CallExpr* ce)
     
     if(TheRewriter.getSourceMgr().isInSystemHeader(ce->getBeginLoc()))
         return true;
-        if(isa<CXXMemberCallExpr>(ce))
+    if(isa<CXXMemberCallExpr>(ce))
+    {
+        CXXMemberCallExpr* memCallExpr=cast<CXXMemberCallExpr>(ce);
+        CXXMethodDecl* methDecl=memCallExpr->getMethodDecl();
+        if(!methDecl->isConst())
         {
-            CXXMemberCallExpr* memCallExpr=cast<CXXMemberCallExpr>(ce);
-            CXXMethodDecl* methDecl=memCallExpr->getMethodDecl();
-            if(!methDecl->isConst())
-            {
-                ValueDecl* innerDecl=getInnerDecl(cast<MemberExpr>(memCallExpr->getCallee())->getBase());
-                unconstifyByPropagation(SymT.getHashTableValue(innerDecl));
-                //unconstifyByPropagation(getHashTableValue(getInnerPtr(memExpr->getBase())));
-            }
-            return true;
+            ValueDecl* innerDecl=getInnerDecl(cast<MemberExpr>(memCallExpr->getCallee())->getBase());
+            unconstifyByPropagation(SymT.getHashTableValue(innerDecl));
+            //unconstifyByPropagation(getHashTableValue(getInnerPtr(memExpr->getBase())));
         }
+        return true;
+    }
     FunctionDecl* fdec;
     assert(ce->getDirectCallee()!=NULL);
     if((fdec=ce->getDirectCallee())!=NULL&&TheRewriter.getSourceMgr().isInSystemHeader(fdec->getBeginLoc()))
