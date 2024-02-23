@@ -27,12 +27,12 @@ for file in *.cpp; do
                 if [ -f "$file2" ]; then
                     #echo "Created file : $file2"
                     filename=$(basename "$file2" /)
-                    diff "$file2" "$foldername"_expected/"$filename" > /dev/null
+                    diff "$file2" "expected/$foldername"_expected/"$filename" > /dev/null
                     if [ $? -ne 0 ]; then
                         differenceInText=true
                         echo -e "${RED}Different Text : $filename${NC}"
                     fi
-                    clang-check -ast-print "$foldername"_expected/"$filename" > ./ast_result 2> /dev/null
+                    clang-check -ast-print "expected/$foldername"_expected/"$filename" > ./ast_result 2> /dev/null
                     clang-check -ast-print $file2 > ./ast_expected 2> /dev/null
                     diff ast_expected ast_result > /dev/null
                     if [ $? -ne 0 ]; then
