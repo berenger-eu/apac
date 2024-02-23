@@ -1,13 +1,19 @@
+#include <stdlib.h>
+/*
+// 'a' should be unconstified because we do not know the prototype of 'free'.
+void e(int * a) {
+    free(a);
+}
+
 int f(int a) {
     int b = a;
     b = 1;
     return b;
 }
-/*
+
 void g(int a[2]) {
     a[f(1)]--;
 }
-*/
 
 void h(int & a) {
     a = 1;
@@ -38,9 +44,9 @@ void l3(int & a) {
 
 void m(int &a, int * b, int *& c) {
     int * d = a + b;
-    //d[0] = 1;
+    d[0] = 1;
 }
-/*
+
 int * n1(int * a, int & b) {
     int * c = a;
     return c;
@@ -111,7 +117,7 @@ namespace AA {
 void p(int a, int b) {
     AA::f(a);
 }
-
+*/
 class CC {
 public:
     int * i;
@@ -124,8 +130,9 @@ public:
     }
     
     int q(int a);
-
+    
     void p(int * a, int * b) { *a = *b + 1; }
+    
 };
 
 int CC::q(int a) {
@@ -135,5 +142,3 @@ int CC::q(int a) {
 void q(CC a, int b, int c) {
     a.f(&b, 1);
 }
-
-*/
