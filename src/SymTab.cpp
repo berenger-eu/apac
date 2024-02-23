@@ -14,10 +14,15 @@ const_arg* SymTab::getInnerConstArg(Expr* expression )
         }
         if(isa<CXXThisExpr>(expression))
             resultConstArg=getHashTableValue(cast<CXXThisExpr>(expression));
-        else if(isPointerQualType(expression->getType()))
-            resultConstArg=getHashTableValue(getInnerPtr(expression));
-        else 
-            resultConstArg=getHashTableValue(getInnerDecl(expression));
+        else{
+            ValueDecl* valDecl=NULL;    
+            if(isPointerQualType(expression->getType()))
+                valDecl=(getInnerPtr(expression));
+            else 
+                valDecl=(getInnerDecl(expression));
+            if(valDecl!=NULL)
+                resultConstArg=getHashTableValue(valDecl);
+        }    
     }
     return resultConstArg;
 }

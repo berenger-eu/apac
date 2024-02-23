@@ -71,11 +71,10 @@ bool ASTInitVisitor::VisitVarDecl(VarDecl *v)
     const Type *intype = v->getType().getTypePtrOrNull();
     if (intype != NULL)
     {           
-
-        if ( (intype->isPointerType()||intype->isReferenceType()) && valueInit(v))
+        if ( (intype->isPointerType()||intype->isReferenceType()) )
         {
             curDeclArg->is_ptr_or_ref = true;
-            if(v->getInit()!=NULL)
+            if(valueInit(v))
             {
                 const_arg* initDeclArg=SymT.getInnerConstArg(v->getInit());
                 if (initDeclArg != NULL){
@@ -116,7 +115,6 @@ bool ASTInitVisitor::VisitCallExpr(CallExpr *ce)
             ParmVarDecl* parVar=*it;
             const_arg* curPar=SymT.getHashTableValue(parVar); 
             assert(curPar->declaration);
-            llvm::outs()<<"\n"<<curPar->declaration->getNameAsString()<<curPar->is_ptr_or_ref<<"\n";
             //Adds the dependency if the parameter is a Pointer or a reference
             if (curPar->is_ptr_or_ref)
             {
