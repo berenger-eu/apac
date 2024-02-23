@@ -13,11 +13,11 @@ bool ASTInitVisitor::VisitStmt(Stmt *s)
 }
 bool ASTInitVisitor::VisitCXXThisExpr(CXXThisExpr* thisExpr)
 {
-    const_arg* curThisArg=getHashTableValue(thisExpr);
-    const_arg* curMethArg=getInnerConstArg(lastMethDecl);
+    const_arg* curThisArg=SymT.getHashTableValue(thisExpr);
+    const_arg* curMethArg=SymT.getInnerConstArg(SymT.lastMethDecl);
     curThisArg->is_const=true;
     curThisArg->is_ptr_or_ref=true;
-    addDependencyHashTable(curThisArg,curMethArg);
+    SymT.addDependencyHashTable(curThisArg,curMethArg);
     return true;
 }
 bool ASTInitVisitor::VisitCXXMethodDecl(CXXMethodDecl* methDecl)
@@ -27,11 +27,11 @@ bool ASTInitVisitor::VisitCXXMethodDecl(CXXMethodDecl* methDecl)
     //TODO: do it in all calls (has to be done at least once per file)
     //Adds a FileID to the table
     FileID fid=TheRewriter.getSourceMgr().getFileID(methDecl->getLocation());
-    fileID_table[fid.getHashValue()]=fid;
-    const_arg *curDeclArg = getHashTableValue(methDecl);
+    SymT.fileID_table[fid.getHashValue()]=fid;
+    const_arg *curDeclArg = SymT.getHashTableValue(methDecl);
     curDeclArg->method = methDecl;
     curDeclArg->is_const=true;
-    lastMethDecl=methDecl;
+    SymT.lastMethDecl=methDecl;
     return true;
 }
 bool ASTInitVisitor::VisitFieldDecl(FieldDecl *fieldDec)
@@ -41,10 +41,10 @@ bool ASTInitVisitor::VisitFieldDecl(FieldDecl *fieldDec)
     //TODO: do it in all calls (has to be done at least once per file)
     //Adds a FileID to the table
     FileID fid=TheRewriter.getSourceMgr().getFileID(fieldDec->getLocation());
-    fileID_table[fid.getHashValue()]=fid;
+    SymT.fileID_table[fid.getHashValue()]=fid;
 
     //Initialize the const_arg for any variable
-    const_arg *curDeclArg = getHashTableValue(fieldDec);
+    const_arg *curDeclArg = SymT.getHashTableValue(fieldDec);
     curDeclArg->field = fieldDec;
     const Type *intype = fieldDec->getType().getTypePtrOrNull();
     if ( intype->isPointerType()||intype->isReferenceType())
@@ -60,11 +60,11 @@ bool ASTInitVisitor::VisitVarDecl(VarDecl *v)
     //TODO: do it in all calls (has to be done at least once per file)
     //Adds a FileID to the table
     FileID fid=TheRewriter.getSourceMgr().getFileID(v->getLocation());
-    fileID_table[fid.getHashValue()]=fid;
+    SymT.fileID_table[fid.getHashValue()]=fid;
 
 
     //Initialize the const_arg for any variable
-    const_arg *curDeclArg = getHashTableValue(v);
+    const_arg *curDeclArg = SymT.getHashTableValue(v);
     curDeclArg->is_const = true;
     curDeclArg->declaration = v;
     //Further the initialization, for pointers and references (for now)
@@ -77,12 +77,12 @@ bool ASTInitVisitor::VisitVarDecl(VarDecl *v)
             curDeclArg->is_ptr_or_ref = true;
             if(v->getInit()!=NULL)
             {
-                const_arg* initDeclArg=getInnerConstArg(v->getInit());
+                const_arg* initDeclArg=SymT.getInnerConstArg(v->getInit());
                 if (initDeclArg != NULL){
                     //If the pointer is unconst, then the values referenced by it have to be unconst too
-                    addDependencyHashTable(curDeclArg,initDeclArg);
+                    SymT.addDependencyHashTable(curDeclArg,initDeclArg);
                     //The value is referenced, so if it's unconst, we have to unconst what refers to it
-                    addDependencyHashTable(initDeclArg,curDeclArg);
+                    SymT.addDependencyHashTable(initDeclArg,curDeclArg);
                 }
             }
         }
@@ -106,24 +106,24 @@ bool ASTInitVisitor::VisitCallExpr(CallExpr *ce)
         {
             CXXMemberCallExpr* memberCall=(cast<CXXMemberCallExpr> (ce));
             Expr* objExpr=memberCall->getImplicitObjectArgument();
-            const_arg* objDeclArg=getInnerConstArg(objExpr);
-            const_arg* methDeclArg=getInnerConstArg(memberCall->getMethodDecl());
-            addDependencyHashTable( methDeclArg,objDeclArg);
+            const_arg* objDeclArg=SymT.getInnerConstArg(objExpr);
+            const_arg* methDeclArg=SymT.getInnerConstArg(memberCall->getMethodDecl());
+            SymT.addDependencyHashTable( methDeclArg,objDeclArg);
 
         }
         for (auto it = fdec->param_begin(); it != fdec->param_end(); ++it)
         {    
             ParmVarDecl* parVar=*it;
-            const_arg* curPar=getHashTableValue(parVar); 
+            const_arg* curPar=SymT.getHashTableValue(parVar); 
             assert(curPar->declaration);
             llvm::outs()<<"\n"<<curPar->declaration->getNameAsString()<<curPar->is_ptr_or_ref<<"\n";
             //Adds the dependency if the parameter is a Pointer or a reference
             if (curPar->is_ptr_or_ref)
             {
                 int index=std::distance(fdec->param_begin(),it);            
-                const_arg* curArg=getInnerConstArg(ce->getArg(index));
+                const_arg* curArg=SymT.getInnerConstArg(ce->getArg(index));
                 if(curArg!=NULL)
-                    addDependencyHashTable(curPar,curArg);
+                    SymT.addDependencyHashTable(curPar,curArg);
             }
         }
     }
@@ -139,11 +139,11 @@ bool ASTInitVisitor::VisitBinaryOperator(BinaryOperator* bop)
     {
         if(isPointerQualType(bop->getLHS()->getType()))
         {
-            const_arg *curArg = getInnerConstArg(bop->getLHS());
-            const_arg *pointedArg = getInnerConstArg(bop->getRHS());
+            const_arg *curArg = SymT.getInnerConstArg(bop->getLHS());
+            const_arg *pointedArg = SymT.getInnerConstArg(bop->getRHS());
             //The pointer and the pointee depend on each other
-            addDependencyHashTable(curArg,pointedArg);
-            addDependencyHashTable(pointedArg,curArg);
+            SymT.addDependencyHashTable(curArg,pointedArg);
+            SymT.addDependencyHashTable(pointedArg,curArg);
         }
     }   
     return true;

@@ -1,9 +1,10 @@
 #include "core.hpp"
+#include "SymTab.hpp"
 using namespace clang;
 class ASTInitVisitor : public RecursiveASTVisitor<ASTInitVisitor>
 {
 public:
-    ASTInitVisitor(Rewriter &R) : TheRewriter(R) {};
+    ASTInitVisitor(Rewriter &R,SymTab& SymTableIn) : TheRewriter(R),SymT(SymTableIn) {};
     bool VisitStmt(Stmt *);
     bool VisitCXXThisExpr(CXXThisExpr* );
     bool VisitCXXMethodDecl(CXXMethodDecl* );
@@ -14,4 +15,5 @@ public:
     bool VisitCXXRecordDecl(CXXRecordDecl*);
 private:
     Rewriter &TheRewriter;
+    SymTab& SymT;
 };

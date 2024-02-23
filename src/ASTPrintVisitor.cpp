@@ -18,7 +18,7 @@ bool ASTPrintVisitor::VisitParmVarDecl(ParmVarDecl* pvd)
 bool ASTPrintVisitor::VisitCXXMethodDecl(CXXMethodDecl* metDecl)
 {
     metDecl->setType(metDecl->getType().withConst());
-    const_arg* metArg=getInnerConstArg(metDecl);
+    const_arg* metArg=SymT.getInnerConstArg(metDecl);
     if(metArg->is_const&&!metDecl->isConst())
         TheRewriter.InsertTextBefore(metDecl->getBody()->getBeginLoc()," const ");
     return true;
@@ -60,7 +60,7 @@ bool ASTPrintVisitor::VisitDeclStmt(DeclStmt* declStatement)
 void ASTPrintVisitor::PrepareRewriteVarDecl(VarDecl *v,std::stringstream& stream)
 {
     //Here we modify the type of the variables to add const if needed
-    if (getHashTableValue(v)->is_const)
+    if (SymT.getHashTableValue(v)->is_const)
             addConstToVar(v);
     //We prepare the change in the text ( Type VarName)
     stream<<v->getType().getAsString()<<' '<<v->getNameAsString();
@@ -79,7 +79,7 @@ void ASTPrintVisitor::PrepareRewriteVarDecl(VarDecl *v,std::stringstream& stream
 void    ASTPrintVisitor::rewriteSingleDecl(VarDecl* vd)
 {
     //We rewrite the declaration if the variable is const and there is an initilisation ( "const int a;" is not valid)
-    if(getHashTableValue(vd)->is_const&&vd->getInit()!=NULL)
+    if(SymT.getHashTableValue(vd)->is_const&&vd->getInit()!=NULL)
     {
         addConstToVar(vd);
         //Add a space char, otherwise int*a (valid) can become int*consta instead of int*const a 
@@ -92,7 +92,7 @@ void    ASTPrintVisitor::rewriteSingleDecl(VarDecl* vd)
 void    ASTPrintVisitor::rewriteSingleDecl(ParmVarDecl* vd)
 {
     //We rewrite the declaration if the parameter is const
-    if(getHashTableValue(vd)->is_const)
+    if(SymT.getHashTableValue(vd)->is_const)
     {
         addConstToVar(vd);
         //Add a space char, otherwise int*a (valid) can become int*consta instead of int*const a 
