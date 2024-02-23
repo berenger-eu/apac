@@ -111,8 +111,8 @@ bool ASTConstifyVisitor::VisitCallExpr(CallExpr* ce)
         CXXMethodDecl* methDecl=memCallExpr->getMethodDecl();
         if(!methDecl->isConst())
         {
-            ValueDecl* innerDecl=getInnerDecl(cast<MemberExpr>(memCallExpr->getCallee())->getBase());
-            unconstifyByPropagation(SymT.getHashTableValue(innerDecl));
+            const_arg* innerArg=SymT.getInnerConstArg(cast<MemberExpr>(memCallExpr->getCallee())->getBase());
+            unconstifyByPropagation(innerArg);
             //unconstifyByPropagation(getHashTableValue(getInnerPtr(memExpr->getBase())));
         }
         return true;
