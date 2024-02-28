@@ -136,7 +136,20 @@ bool ASTConstifyVisitor::VisitCallExpr(CallExpr* ce)
     }
     return true;
 }
-
+bool ASTConstifyVisitor::VisitVarDecl(VarDecl *v)
+{
+    if(TheRewriter.getSourceMgr().isInSystemHeader(v->getBeginLoc()))
+        return true;
+    //Initialize the const_arg for any variable
+    const_arg *curDeclArg = SymT.getInnerConstArg(v);
+    const Type *intype = v->getType().getTypePtrOrNull();
+    //We unconstify the variable if it's initialized by the return of a function
+    if (valueInit(v)&&intype != NULL)           
+        if ( (intype->isPointerType()||intype->isReferenceType()) )
+            if (isExprACall(v->getInit()))
+                unconstifyByPropagation(curDeclArg);
+    return true;
+}
 void unconstifyByPropagation(const_arg* varArg)
 {
     std::stack<const_arg*> stackUnconst;

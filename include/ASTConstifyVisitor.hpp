@@ -12,6 +12,7 @@ public:
     bool VisitReturnStmt(ReturnStmt*);
     //bool VisitCXXMemberCallExpr(CXXMemberCallExpr* );
     bool VisitCallExpr(CallExpr* );
+    bool VisitVarDecl(VarDecl *);
 private:
     Rewriter &TheRewriter;
     SymTab& SymT;
