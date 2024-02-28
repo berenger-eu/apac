@@ -62,3 +62,7 @@ for file in *.cpp; do
     fi
 done
 echo -e "${BLUE}${BOLD}Tests passed : $countPassed/$countTotal ${NC}"
+if [ $countPassed != $countTotal ]; then
+    exit 1
+fi
+exit 0
