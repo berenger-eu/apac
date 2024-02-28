@@ -22,7 +22,14 @@ bool ASTPrintVisitor::VisitCXXMethodDecl(CXXMethodDecl* metDecl)
     metDecl->setType(metDecl->getType().withConst());
     const_arg* metArg=SymT.getInnerConstArg(metDecl);
     if(metArg->is_const&&!metDecl->isConst())
-        TheRewriter.InsertTextBefore(metDecl->getBody()->getBeginLoc()," const ");
+    {
+        if(!metDecl->isThisDeclarationADefinition())
+            TheRewriter.InsertTextAfterToken(metDecl->getEndLoc()," const ");
+            //Prints const at the end of a method declaration (not definition)
+        else
+            TheRewriter.InsertTextAfter(metDecl->getBody()->getBeginLoc()," const ");  
+            //Prints const in the definition of a method
+    }
     return true;
 }
 bool ASTPrintVisitor::VisitDeclStmt(DeclStmt* declStatement)
