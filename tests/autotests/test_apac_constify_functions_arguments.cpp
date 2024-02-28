@@ -1,5 +1,5 @@
 #include <stdlib.h>
-/*
+
 // 'a' should be unconstified because we do not know the prototype of 'free'.
 void e(int * a) {
     free(a);
@@ -117,7 +117,7 @@ namespace AA {
 void p(int a, int b) {
     AA::f(a);
 }
-*/
+
 class CC {
 public:
     int * i;
