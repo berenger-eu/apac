@@ -51,3 +51,4 @@ clang::Expr* getInnerPtr(clang::Expr*);
 clang::Expr* getInnerExpr(clang::Expr*);
 
 bool valueInit(clang::VarDecl*);
+bool isExprACall(clang::Expr* expression);

@@ -119,3 +119,19 @@ bool valueInit(VarDecl* varDec)
 {
     return (varDec->getInit()!=NULL&&!isa<CXXNewExpr>(varDec->getInit()));
 }
+
+
+
+
+//true if the expression is the return of a function, false otherwise
+bool isExprACall(Expr* expression)
+{   
+    bool result=false;
+    if(expression!=NULL)
+    {
+        expression=expression->IgnoreCasts();
+        if(isa<CallExpr>(expression))
+            result=true;
+    }
+    return result;
+}
