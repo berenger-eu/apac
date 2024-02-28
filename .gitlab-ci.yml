@@ -7,8 +7,7 @@ stages:
 build_constify:
   tags:
     - medium
-  stage:
-    - build
+  stage: build
   script:
     - mkdir build
     - cd build
@@ -18,7 +17,6 @@ build_constify:
 test_constify:
   tags:
     - medium
-  stage:
-    - test
+  stage: test
   script:
     - make test
