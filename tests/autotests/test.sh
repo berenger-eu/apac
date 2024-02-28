@@ -24,7 +24,7 @@ for file in *.cpp; do
             differenceInText=true
         else
             for file2 in "$foldername"/*; do
-                if [ -f "$file2" ]; then
+                if [ -f "$file2" ] && [[ "$file2" != *"astdiff"* ]]; then
                     #echo "Created file : $file2"
                     filename=$(basename "$file2" /)
                     diff "$file2" "expected/$foldername"_expected/"$filename" > /dev/null
@@ -34,7 +34,7 @@ for file in *.cpp; do
                     fi
                     clang-check -ast-print "expected/$foldername"_expected/"$filename" > ./ast_result 2> /dev/null
                     clang-check -ast-print $file2 > ./ast_expected 2> /dev/null
-                    diff ast_expected ast_result > /dev/null
+                    diff ast_expected ast_result > "$foldername"/astdiff
                     if [ $? -ne 0 ]; then
                         differenceInAST=true
                         echo -e "${RED}Different AST : $filename${NC}"
@@ -61,5 +61,4 @@ for file in *.cpp; do
         fi
     fi
 done
-echo -e "${BLUE}${BOLD}Tests passed : $countPassed/$countTotal ${NC}"
 echo -e "${BLUE}${BOLD}Tests passed : $countPassed/$countTotal ${NC}"
