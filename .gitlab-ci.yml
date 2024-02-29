@@ -1,4 +1,4 @@
-image: jgaupp/constify
+image: registry.gitlab.inria.fr/jgaupp/constify
 
 stages:
   - build
