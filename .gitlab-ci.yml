@@ -21,4 +21,7 @@ test_constify:
   stage:
     - test
   script:
+    - mkdir build
+    - cd build
+    - cmake ..
     - make test
