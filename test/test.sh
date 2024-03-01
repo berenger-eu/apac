@@ -67,7 +67,7 @@ for file in $testsPath/*.cpp; do
         else 
             echo -e "${GREEN}Test succeeded, TEXT : $foldername${NC}"
         fi
-        if [ $differenceInAST == false ] && [ $differenceInText == false ]; then
+        if [ $differenceInAST == false ]; then #&& [ $differenceInText == false ]
             rm -rf "$folderResultPath"
         fi
     fi
