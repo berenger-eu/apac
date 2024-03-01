@@ -28,9 +28,8 @@ std::string createDeleteString(struct item_found& v)
   std::stringstream SSprint;
   SSprint<<"delete";
   if(v.array)
-    SSprint<<"[] "<<v.name<<v.uid<<";\n";
-  else
-    SSprint<<" apacMemeBloc__"<<v.name<<'_'<<v.uid<<";\n";
+    SSprint<<"[] ";
+  SSprint<<" apacMemeBloc__"<<v.name<<'_'<<v.uid<<";\n";
   return SSprint.str();
 }
 std::string createDeleteSegment()
@@ -54,9 +53,10 @@ std::string createCreationString(struct item_found& itFound)
   {
     //type* varname = new type[N]
     SSprint<<v.getType().getTypePtrOrNull()->getAsArrayTypeUnsafe()->getElementType().getAsString()<<"* "
-    <<v.getNameAsString()<<"_"<<itFound.uid<<" = new "<<vType;
+    <<"apacMemeBloc__"<<v.getNameAsString()<<"_"<<itFound.uid<<" = new "<<vType;
     if(v.getInit()!=NULL)
       SSprint<<createInitString(v);
+    SSprint<<";\n"<<v.getType().getTypePtrOrNull()->getAsArrayTypeUnsafe()->getElementType().getAsString()<<"*& "<<v.getNameAsString()<<"= (apacMemeBloc__"<<itFound.name<<'_'<<itFound.uid<<");\n";
   }
   else
   {
