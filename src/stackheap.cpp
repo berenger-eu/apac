@@ -56,7 +56,7 @@ std::string createCreationString(struct item_found& itFound)
     <<"apacMemeBloc__"<<v.getNameAsString()<<"_"<<itFound.uid<<" = new "<<vType;
     if(v.getInit()!=NULL)
       SSprint<<createInitString(v);
-    SSprint<<";\n"<<v.getType().getTypePtrOrNull()->getAsArrayTypeUnsafe()->getElementType().getAsString()<<"*& "<<v.getNameAsString()<<"= (apacMemeBloc__"<<itFound.name<<'_'<<itFound.uid<<");\n";
+    SSprint<<";\n"<<v.getType().getTypePtrOrNull()->getAsArrayTypeUnsafe()->getElementType().getAsString()<<"*& "<<v.getNameAsString()<<"= (apacMemeBloc__"<<itFound.name<<'_'<<itFound.uid<<")";
   }
   else
   {
@@ -68,7 +68,7 @@ std::string createCreationString(struct item_found& itFound)
     }
     else
       SSprint<<"()";
-    SSprint<<";\n"<<vType<<"& "<<v.getNameAsString()<<"= *(apacMemeBloc__"<<itFound.name<<'_'<<itFound.uid<<")\n";
+    SSprint<<";\n"<<vType<<"& "<<v.getNameAsString()<<"= *(apacMemeBloc__"<<itFound.name<<'_'<<itFound.uid<<")";
   }
   return SSprint.str();
 }
