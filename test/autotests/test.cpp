@@ -1,4 +1,4 @@
-#include <vector>
+/*#include <vector>
 int fun1()
 {
     int tab[10];
@@ -53,4 +53,4 @@ void fun6()
 int main()
 {
     ;
-}
+}*/
