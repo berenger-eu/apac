@@ -11,7 +11,16 @@ bool isArrayVariable(VarDecl& v)
 {
   return ( v.getType().getTypePtrOrNull()!=NULL && v.getType().getTypePtrOrNull()->isArrayType() );
 }
-
+bool isInitNew(VarDecl& v)
+{
+  bool result=false;
+  Expr* vInit=v.getInit();
+  if(vInit)
+  {
+    result=isa<CXXNewExpr>(vInit);
+  }
+  return result;
+}
 //returns the string containing the Init part of a variable (Variable is supposed to be init here)
 std::string createInitString(VarDecl& v)
 {
@@ -140,7 +149,7 @@ bool ASTHeapifyVisitor::VisitCompoundStmt(CompoundStmt* coSt)
 bool ASTHeapifyVisitor::subVisitVarDecl(VarDecl& v)
 {     
   //True when VarDecl corresponds to the searched variable
-  if(foundCorrectVariable(v))
+  if(foundCorrectVariable(v)&&!isInitNew(v))
   {
     struct item_found curVar;
     curVar.name=v.getNameAsString();

@@ -60,6 +60,7 @@ bool foundCorrectFunction(Decl&);
 bool foundCorrectVarType(VarDecl&);
 bool foundCorrectVariable(VarDecl&);
 bool isConstantInit(VarDecl& );
+bool isInitNew(VarDecl& );
 QualType unreferenceQType(QualType,const ASTContext& );
 QualType referenceToQType(QualType,const ASTContext&);
 
