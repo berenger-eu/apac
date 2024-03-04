@@ -34,9 +34,11 @@
     std::string name;
     //unique, increments by 1 for each variable with the same name
     unsigned int uid;   
-    clang::VarDecl* declaration;
+    clang::QualType qTypeNew;
+    clang::QualType qTypeVar;
     bool found;
     bool array;
+    clang::VarDecl* declaration;
  };
 std::unordered_map<std::string,int> varCounter;
 std::vector<struct item_found> currentVarsInScope; //TODO implement in cleaner manner
@@ -55,7 +57,11 @@ std::string createDeleteSegment();
 //Creates a string for the creation of a variable (type* = new type)
 std::string createCreationString(VarDecl& v);
 bool foundCorrectFunction(Decl&);
+bool foundCorrectVarType(VarDecl&);
 bool foundCorrectVariable(VarDecl&);
+bool isConstantInit(VarDecl& );
+QualType unreferenceQType(QualType,const ASTContext& );
+QualType referenceToQType(QualType,const ASTContext&);
 
 class ASTHeapifyVisitor : public RecursiveASTVisitor<ASTHeapifyVisitor>
 {
