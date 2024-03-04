@@ -5,18 +5,15 @@ int i = 1;
 int x = 2;
 
 int main() {
-  int *apacMemeBloc__a_0 = new int(1);
+  int *const apacMemeBloc__a_0 = new int(1);
   int &a = *(apacMemeBloc__a_0);
-
-  int *apacMemeBloc__b_0 = new int(i);
+  int *const apacMemeBloc__b_0 = new int(i);
   int &b = *(apacMemeBloc__b_0);
-
-  const int *apacMemeBloc__c_0 = new const int(1);
+  const int *const apacMemeBloc__c_0 = new const int(1);
   const int &c = *(apacMemeBloc__c_0);
-  const int *apacMemeBloc__d_0 = new const int(i);
+  const int *const apacMemeBloc__d_0 = new const int(i);
   const int &d = *(apacMemeBloc__d_0);
-
-  // int& e = i;
+  int& e = i;
   const int *const f = new const int(1);
   const int &g = i;
   const int *const h = new const int[5]{1, 2, 3, 4, 5};
