@@ -21,6 +21,20 @@ bool isInitNew(VarDecl& v)
   }
   return result;
 }
+//Returns a string containing the complete instruction for the declaration of a variable
+//Used mostly for multiple declaration (since it is broken down in multiple instructions)
+std::string getCompleteVarDeclStr(VarDecl& v)
+{
+  std::stringstream SSresult;
+  SSresult<<v.getType().getAsString()<<v.getNameAsString();
+  if(v.getInit())
+  {
+    SSresult<<" = "<<createInitString(v);
+  }
+  SSresult<<";\n";
+  return SSresult.str();
+}
+
 //returns the string containing the Init part of a variable (Variable is supposed to be init here)
 std::string createInitString(VarDecl& v)
 {
@@ -81,7 +95,8 @@ std::string createCreationString(struct item_found& itFound)
     <<"apacMemeBloc__"<<v.getNameAsString()<<"_"<<itFound.uid<<" = new "<<strNewType;
     if(v.getInit()!=NULL)
       SSprint<<createInitString(v);
-    SSprint<<";\n"<<v.getType().getTypePtrOrNull()->getAsArrayTypeUnsafe()->getElementType().getAsString()<<"*& "<<v.getNameAsString()<<"= (apacMemeBloc__"<<itFound.name<<'_'<<itFound.uid<<")";
+    SSprint<<";\n"<<v.getType().getTypePtrOrNull()->getAsArrayTypeUnsafe()->getElementType().getAsString()<<"*& "<<v.getNameAsString()
+    <<"= (apacMemeBloc__"<<itFound.name<<'_'<<itFound.uid<<");\n";
   }
   else
   {
@@ -93,7 +108,8 @@ std::string createCreationString(struct item_found& itFound)
     }
     else
       SSprint<<"()";
-    SSprint<<";\n"<<strVarType<<v.getNameAsString()<<"= *(apacMemeBloc__"<<itFound.name<<'_'<<itFound.uid<<")";
+    SSprint<<";\n"<<strVarType<<v.getNameAsString()
+    <<"= *(apacMemeBloc__"<<itFound.name<<'_'<<itFound.uid<<");\n";
   }
   return SSprint.str();
 }
@@ -129,11 +145,19 @@ bool ASTHeapifyVisitor::VisitCompoundStmt(CompoundStmt* coSt)
     else if (isa<DeclStmt>(st))
     {
       DeclStmt* decStmt=cast<DeclStmt>(st);
-      Decl* dec;
+      DeclGroupRef decGrpRef=decStmt->getDeclGroup();
+      /*
       if(decStmt->isSingleDecl())
         dec=decStmt->getSingleDecl();
-      if(dec!=NULL && isa<VarDecl>(dec))
-        subVisitVarDecl(*(cast<VarDecl>(dec)));
+      */std::stringstream SSprint;
+      for(DeclGroupRef::iterator curDeclPtr=decGrpRef.begin(),decGrpEnd=decGrpRef.end()
+      ;curDeclPtr!=decGrpEnd;curDeclPtr++)
+      {
+        Decl* curDecl=*curDeclPtr;
+        if(curDecl!=NULL && isa<VarDecl>(curDecl))
+          SSprint<<subVisitVarDecl(*(cast<VarDecl>(curDecl)));
+      }
+      TheRewriter.ReplaceText(SourceRange(decStmt->getBeginLoc(),decStmt->getEndLoc()),SSprint.str());
       //True when variable was found in the current scope, so we have to add a delete at the end of it
       if(curState!=variableHeap.found)
       {
@@ -146,9 +170,10 @@ bool ASTHeapifyVisitor::VisitCompoundStmt(CompoundStmt* coSt)
       TheRewriter.InsertTextAfter(coSt->getEndLoc(),createDeleteSegment()); 
   return true;
 }
-bool ASTHeapifyVisitor::subVisitVarDecl(VarDecl& v)
+std::string ASTHeapifyVisitor::subVisitVarDecl(VarDecl& v)
 {     
   //True when VarDecl corresponds to the searched variable
+  std::string strRes;
   if(foundCorrectVariable(v)&&!isInitNew(v))
   {
     struct item_found curVar;
@@ -166,10 +191,12 @@ bool ASTHeapifyVisitor::subVisitVarDecl(VarDecl& v)
       curVar.qTypeNew=unreferenceQType(curVar.qTypeNew,v.getASTContext());
     curVar.qTypeNew=v.getASTContext().getPointerType(curVar.qTypeNew);    
     curVar.qTypeNew.addConst();
-    TheRewriter.ReplaceText(SourceRange(v.getBeginLoc(),v.getEndLoc()),createCreationString(curVar));
-
+    //TheRewriter.ReplaceText(SourceRange(v.getBeginLoc(),v.getEndLoc()),createCreationString(curVar));
+    strRes=createCreationString(curVar);
   }
-  return true;
+  else
+    strRes=getCompleteVarDeclStr(v);
+  return strRes;
 }
 bool ASTHeapifyVisitor::subVisitReturnStmt(ReturnStmt& retStmt)
 {

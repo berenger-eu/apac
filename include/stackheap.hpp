@@ -47,6 +47,10 @@ std::vector<struct item_found> currentVarsInScope; //TODO implement in cleaner m
 using namespace clang;
 
 bool isArrayVariable(VarDecl& );
+
+//Returns a string containing the complete instruction for the declaration of a variable
+//Used mostly for multiple declaration (since it is broken down in multiple instructions)
+std::string getCompleteVarDeclStr(VarDecl& );
 //Creates a string to store the initialisation of a variable 
 std::string createInitString(VarDecl& v);
 //Creates a string for the deletion of a variable (delete ...)
@@ -73,7 +77,7 @@ public:
     bool VisitCompoundStmt(CompoundStmt *);
 private:
     //Like Visit functions, but called by VisitCompoundStmt and not by default when encountering specific nodes
-    bool subVisitVarDecl(VarDecl& );
+    std::string subVisitVarDecl(VarDecl& );
     bool subVisitReturnStmt(ReturnStmt& );
     Rewriter &TheRewriter;
 };
