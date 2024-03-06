@@ -11,6 +11,29 @@ bool isArrayVariable(VarDecl& v)
 {
   return ( v.getType().getTypePtrOrNull()!=NULL && v.getType().getTypePtrOrNull()->isArrayType() );
 }
+bool isInitNew(VarDecl& v)
+{
+  bool result=false;
+  Expr* vInit=v.getInit();
+  if(vInit)
+  {
+    result=isa<CXXNewExpr>(vInit);
+  }
+  return result;
+}
+//Returns a string containing the complete instruction for the declaration of a variable
+//Used mostly for multiple declaration (since it is broken down in multiple instructions)
+std::string getCompleteVarDeclStr(VarDecl& v)
+{
+  std::stringstream SSresult;
+  SSresult<<v.getType().getAsString()<<" "<<v.getNameAsString();
+  if(v.getInit())
+  {
+    SSresult<<" = "<<createInitString(v);
+  }
+  SSresult<<";\n";
+  return SSresult.str();
+}
 
 //returns the string containing the Init part of a variable (Variable is supposed to be init here)
 std::string createInitString(VarDecl& v)
@@ -21,6 +44,20 @@ std::string createInitString(VarDecl& v)
   llvm::raw_string_ostream stringStreamInit(initString);
   v.getInit()->printPretty(stringStreamInit,NULL,print_policy);
   return initString;
+}
+//Remove the reference from a qualtype and returns the result
+QualType unreferenceQType(QualType qt,const ASTContext& aContext)
+{
+  const Type* innerType=qt.getTypePtrOrNull();
+  if(innerType&&innerType->isReferenceType())
+    qt=qt.getNonReferenceType();
+  return qt;
+}
+//Returns a reference to a given type
+QualType referenceToQType(QualType qt,const ASTContext& aContext)
+{
+  qt=aContext.getLValueReferenceType(qt);
+  return qt;
 }
 //Builds the string to delete a variable
 std::string createDeleteString(struct item_found& v)
@@ -48,27 +85,44 @@ std::string createCreationString(struct item_found& itFound)
 {
   std::stringstream SSprint;
   VarDecl& v=*(itFound.declaration);
-  std::string vType=v.getType().getAsString();
+  std::string strTempMemType=itFound.qTypeTempMem.getAsString();
+  std::string strNewType=itFound.qTypeNew.getAsString();
+  std::string strVarType=itFound.qTypeVar.getAsString();
   if(isArrayVariable(v))
   {
-    //type* varname = new type[N]
-    SSprint<<v.getType().getTypePtrOrNull()->getAsArrayTypeUnsafe()->getElementType().getAsString()<<"* "
-    <<"apacMemeBloc__"<<v.getNameAsString()<<"_"<<itFound.uid<<" = new "<<vType;
+    //type (* varname) = new type[N]
+    std::string strStart(strTempMemType);
+    std::stringstream SSapacBloc;
+    SSapacBloc<<" apacMemeBloc__"<<v.getNameAsString()<<'_'<<itFound.uid;
+    std::size_t found = strVarType.find('&');
+    //std::size_t found1 = strStart.find('=');
+
+    if (found!=std::string::npos)
+      strStart.insert(found,SSapacBloc.str());
+    /*SSprint<<v.getType().getTypePtrOrNull()->getAsArrayTypeUnsafe()->getElementType().getAsString()<<"* "
+    <<"apacMemeBloc__"<<v.getNameAsString()<<"_"<<itFound.uid<<" = new "<<strNewType;
+    */
+    SSprint<<strStart<<" = new "<<strNewType;
     if(v.getInit()!=NULL)
       SSprint<<createInitString(v);
-    SSprint<<";\n"<<v.getType().getTypePtrOrNull()->getAsArrayTypeUnsafe()->getElementType().getAsString()<<"*& "<<v.getNameAsString()<<"= (apacMemeBloc__"<<itFound.name<<'_'<<itFound.uid<<")";
+    strStart=strVarType;
+    //found = strVarType.find('&');
+    if (found!=std::string::npos)
+      strStart.insert(found+1,itFound.name);
+    SSprint<<";\n"<<strStart<<"= (apacMemeBloc__"<<itFound.name<<'_'<<itFound.uid<<");\n";
   }
   else
   {
-    SSprint<<vType<<"*apacMemeBloc__"<<itFound.name<<'_'<<itFound.uid<<" = new "
-    <<vType;
+    SSprint<<strTempMemType<<" apacMemeBloc__"<<itFound.name<<'_'<<itFound.uid<<" = new "
+    <<strNewType;
     if(v.getInit()!=NULL)
     {
       SSprint<<'('<<createInitString(v)<<')';
     }
     else
       SSprint<<"()";
-    SSprint<<";\n"<<vType<<"& "<<v.getNameAsString()<<"= *(apacMemeBloc__"<<itFound.name<<'_'<<itFound.uid<<")";
+    SSprint<<";\n"<<strVarType<<v.getNameAsString()
+    <<"= *(apacMemeBloc__"<<itFound.name<<'_'<<itFound.uid<<");\n";
   }
   return SSprint.str();
 }
@@ -104,11 +158,19 @@ bool ASTHeapifyVisitor::VisitCompoundStmt(CompoundStmt* coSt)
     else if (isa<DeclStmt>(st))
     {
       DeclStmt* decStmt=cast<DeclStmt>(st);
-      Decl* dec;
+      DeclGroupRef decGrpRef=decStmt->getDeclGroup();
+      /*
       if(decStmt->isSingleDecl())
         dec=decStmt->getSingleDecl();
-      if(dec!=NULL && isa<VarDecl>(dec))
-        subVisitVarDecl(*(cast<VarDecl>(dec)));
+      */std::stringstream SSprint;
+      for(DeclGroupRef::iterator curDeclPtr=decGrpRef.begin(),decGrpEnd=decGrpRef.end()
+      ;curDeclPtr!=decGrpEnd;curDeclPtr++)
+      {
+        Decl* curDecl=*curDeclPtr;
+        if(curDecl!=NULL && isa<VarDecl>(curDecl))
+          SSprint<<subVisitVarDecl(*(cast<VarDecl>(curDecl)));
+      }
+      TheRewriter.ReplaceText(SourceRange(decStmt->getBeginLoc(),decStmt->getEndLoc()),SSprint.str());
       //True when variable was found in the current scope, so we have to add a delete at the end of it
       if(curState!=variableHeap.found)
       {
@@ -121,22 +183,46 @@ bool ASTHeapifyVisitor::VisitCompoundStmt(CompoundStmt* coSt)
       TheRewriter.InsertTextAfter(coSt->getEndLoc(),createDeleteSegment()); 
   return true;
 }
-bool ASTHeapifyVisitor::subVisitVarDecl(VarDecl& v)
+std::string ASTHeapifyVisitor::subVisitVarDecl(VarDecl& v)
 {     
   //True when VarDecl corresponds to the searched variable
-  if(foundCorrectVariable(v))
+  std::string strRes;
+  if(foundCorrectVariable(v)&&!isInitNew(v))
   {
     struct item_found curVar;
-    curVar.found=true;
-    curVar.array=isArrayVariable(v);
     curVar.name=v.getNameAsString();
     curVar.uid=varCounter[v.getNameAsString()];
+    curVar.array=isArrayVariable(v);
+    curVar.found=true;
     varCounter[v.getNameAsString()]++;
     curVar.declaration=&v;
+    curVar.qTypeNew=v.getType();
+    if(v.getType().getTypePtrOrNull()->isReferenceType()||
+    isConstantInit(v))
+      curVar.qTypeNew=unreferenceQType(curVar.qTypeNew,v.getASTContext()); 
+    if(curVar.array)
+    {
+      
+      curVar.qTypeTempMem=v.getASTContext().getPointerType(v.getType().getTypePtrOrNull()->getAsArrayTypeUnsafe()->getElementType());
+      curVar.qTypeVar=referenceToQType(curVar.qTypeTempMem,v.getASTContext());
+    }
+    else
+    {
+      
+      curVar.qTypeTempMem=v.getASTContext().getPointerType(curVar.qTypeNew);
+      curVar.qTypeTempMem.addConst();
+      curVar.qTypeVar=referenceToQType(curVar.qTypeNew,v.getASTContext());
+    }  
+
     currentVarsInScope.push_back(curVar);
-    TheRewriter.ReplaceText(SourceRange(v.getBeginLoc(),v.getEndLoc()),createCreationString(curVar));
+    //TOTEST
+     
+    //TheRewriter.ReplaceText(SourceRange(v.getTypeSpecStartLoc(),v.getTypeSpecEndLoc()),curVar.qTypeNew.getAsString());
+    strRes=createCreationString(curVar);
   }
-  return true;
+  else
+    strRes=getCompleteVarDeclStr(v);
+  return strRes;
 }
 bool ASTHeapifyVisitor::subVisitReturnStmt(ReturnStmt& retStmt)
 {
@@ -145,12 +231,40 @@ bool ASTHeapifyVisitor::subVisitReturnStmt(ReturnStmt& retStmt)
     return true;
 }
 
-// Implementation of the ASTConsumer interface for reading an AST produced
-// by the Clang parser.
+
 bool foundCorrectVariable(VarDecl& vDec)
 {
-  return variableHeap.name.empty()||vDec.getNameAsString().compare(variableHeap.name)==0;
+  return (variableHeap.name.empty()||  //If we want our action to be on all variables
+  vDec.getNameAsString().compare(variableHeap.name)==0)&&  //Or if we found the variable we're looking for
+  foundCorrectVarType(vDec);  //And the type is one that can be put on the heap
 }
+//True when the type of the variable is a type that has to be put on heap 
+//(false for references for now)
+bool foundCorrectVarType(VarDecl& vDec)
+{
+  const Type* varType=vDec.getType().getTypePtrOrNull();
+  bool result=true;
+  assert(varType);
+  if(varType)
+  {
+    result=!(varType->isPointerType()||
+    (varType->isReferenceType()&&!isConstantInit(vDec)));
+  }
+  return result;  
+}
+//True if the initialization does not reference a variable,false otherwise
+bool isConstantInit(VarDecl& vDec)
+{
+  Expr* vInit=vDec.getInit();
+  bool result=false;
+  if(vInit)
+  {
+    vInit=vInit->IgnoreCasts();
+    result= !isa<DeclRefExpr>(vInit);
+  }
+  return result;
+}
+
 bool foundCorrectFunction(Decl& dec)
 {
   if(isa<FunctionDecl>(dec))
@@ -162,7 +276,8 @@ bool foundCorrectFunction(Decl& dec)
   }
   return false;
 }
-
+// Implementation of the ASTConsumer interface for reading an AST produced
+// by the Clang parser.
 class MyASTConsumer : public ASTConsumer
 {
 public:

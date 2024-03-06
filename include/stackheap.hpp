@@ -34,9 +34,12 @@
     std::string name;
     //unique, increments by 1 for each variable with the same name
     unsigned int uid;   
-    clang::VarDecl* declaration;
+    clang::QualType qTypeTempMem;
+    clang::QualType qTypeNew;
+    clang::QualType qTypeVar;
     bool found;
     bool array;
+    clang::VarDecl* declaration;
  };
 std::unordered_map<std::string,int> varCounter;
 std::vector<struct item_found> currentVarsInScope; //TODO implement in cleaner manner
@@ -45,6 +48,10 @@ std::vector<struct item_found> currentVarsInScope; //TODO implement in cleaner m
 using namespace clang;
 
 bool isArrayVariable(VarDecl& );
+
+//Returns a string containing the complete instruction for the declaration of a variable
+//Used mostly for multiple declaration (since it is broken down in multiple instructions)
+std::string getCompleteVarDeclStr(VarDecl& );
 //Creates a string to store the initialisation of a variable 
 std::string createInitString(VarDecl& v);
 //Creates a string for the deletion of a variable (delete ...)
@@ -55,7 +62,12 @@ std::string createDeleteSegment();
 //Creates a string for the creation of a variable (type* = new type)
 std::string createCreationString(VarDecl& v);
 bool foundCorrectFunction(Decl&);
+bool foundCorrectVarType(VarDecl&);
 bool foundCorrectVariable(VarDecl&);
+bool isConstantInit(VarDecl& );
+bool isInitNew(VarDecl& );
+QualType unreferenceQType(QualType,const ASTContext& );
+QualType referenceToQType(QualType,const ASTContext&);
 
 class ASTHeapifyVisitor : public RecursiveASTVisitor<ASTHeapifyVisitor>
 {
@@ -66,7 +78,7 @@ public:
     bool VisitCompoundStmt(CompoundStmt *);
 private:
     //Like Visit functions, but called by VisitCompoundStmt and not by default when encountering specific nodes
-    bool subVisitVarDecl(VarDecl& );
+    std::string subVisitVarDecl(VarDecl& );
     bool subVisitReturnStmt(ReturnStmt& );
     Rewriter &TheRewriter;
 };
