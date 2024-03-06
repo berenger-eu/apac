@@ -26,7 +26,7 @@ bool isInitNew(VarDecl& v)
 std::string getCompleteVarDeclStr(VarDecl& v)
 {
   std::stringstream SSresult;
-  SSresult<<v.getType().getAsString()<<v.getNameAsString();
+  SSresult<<v.getType().getAsString()<<" "<<v.getNameAsString();
   if(v.getInit())
   {
     SSresult<<" = "<<createInitString(v);
@@ -85,18 +85,31 @@ std::string createCreationString(struct item_found& itFound)
 {
   std::stringstream SSprint;
   VarDecl& v=*(itFound.declaration);
-  std::string strTempMemType=itFound.qTypeNew.getAsString();
-  std::string strNewType=itFound.qTypeVar.getNonReferenceType().getAsString();
+  std::string strTempMemType=itFound.qTypeTempMem.getAsString();
+  std::string strNewType=itFound.qTypeNew.getAsString();
   std::string strVarType=itFound.qTypeVar.getAsString();
   if(isArrayVariable(v))
   {
-    //type* varname = new type[N]
-    SSprint<<v.getType().getTypePtrOrNull()->getAsArrayTypeUnsafe()->getElementType().getAsString()<<"* "
+    //type (* varname) = new type[N]
+    std::string strStart(strTempMemType);
+    std::stringstream SSapacBloc;
+    SSapacBloc<<" apacMemeBloc__"<<v.getNameAsString()<<'_'<<itFound.uid;
+    std::size_t found = strVarType.find('&');
+    //std::size_t found1 = strStart.find('=');
+
+    if (found!=std::string::npos)
+      strStart.insert(found,SSapacBloc.str());
+    /*SSprint<<v.getType().getTypePtrOrNull()->getAsArrayTypeUnsafe()->getElementType().getAsString()<<"* "
     <<"apacMemeBloc__"<<v.getNameAsString()<<"_"<<itFound.uid<<" = new "<<strNewType;
+    */
+    SSprint<<strStart<<" = new "<<strNewType;
     if(v.getInit()!=NULL)
       SSprint<<createInitString(v);
-    SSprint<<";\n"<<v.getType().getTypePtrOrNull()->getAsArrayTypeUnsafe()->getElementType().getAsString()<<"*& "<<v.getNameAsString()
-    <<"= (apacMemeBloc__"<<itFound.name<<'_'<<itFound.uid<<");\n";
+    strStart=strVarType;
+    //found = strVarType.find('&');
+    if (found!=std::string::npos)
+      strStart.insert(found+1,itFound.name);
+    SSprint<<";\n"<<strStart<<"= (apacMemeBloc__"<<itFound.name<<'_'<<itFound.uid<<");\n";
   }
   else
   {
@@ -179,19 +192,32 @@ std::string ASTHeapifyVisitor::subVisitVarDecl(VarDecl& v)
     struct item_found curVar;
     curVar.name=v.getNameAsString();
     curVar.uid=varCounter[v.getNameAsString()];
-    curVar.qTypeNew=v.getType();
-    curVar.qTypeVar=referenceToQType(v.getType(),v.getASTContext());
-    curVar.found=true;
     curVar.array=isArrayVariable(v);
+    curVar.found=true;
     varCounter[v.getNameAsString()]++;
     curVar.declaration=&v;
-    currentVarsInScope.push_back(curVar);
+    curVar.qTypeNew=v.getType();
     if(v.getType().getTypePtrOrNull()->isReferenceType()||
     isConstantInit(v))
-      curVar.qTypeNew=unreferenceQType(curVar.qTypeNew,v.getASTContext());
-    curVar.qTypeNew=v.getASTContext().getPointerType(curVar.qTypeNew);    
-    curVar.qTypeNew.addConst();
-    //TheRewriter.ReplaceText(SourceRange(v.getBeginLoc(),v.getEndLoc()),createCreationString(curVar));
+      curVar.qTypeNew=unreferenceQType(curVar.qTypeNew,v.getASTContext()); 
+    if(curVar.array)
+    {
+      
+      curVar.qTypeTempMem=v.getASTContext().getPointerType(v.getType().getTypePtrOrNull()->getAsArrayTypeUnsafe()->getElementType());
+      curVar.qTypeVar=referenceToQType(curVar.qTypeTempMem,v.getASTContext());
+    }
+    else
+    {
+      
+      curVar.qTypeTempMem=v.getASTContext().getPointerType(curVar.qTypeNew);
+      curVar.qTypeTempMem.addConst();
+      curVar.qTypeVar=referenceToQType(curVar.qTypeNew,v.getASTContext());
+    }  
+
+    currentVarsInScope.push_back(curVar);
+    //TOTEST
+     
+    //TheRewriter.ReplaceText(SourceRange(v.getTypeSpecStartLoc(),v.getTypeSpecEndLoc()),curVar.qTypeNew.getAsString());
     strRes=createCreationString(curVar);
   }
   else
@@ -221,7 +247,8 @@ bool foundCorrectVarType(VarDecl& vDec)
   assert(varType);
   if(varType)
   {
-    result=!varType->isReferenceType()||isConstantInit(vDec);
+    result=!(varType->isPointerType()||
+    (varType->isReferenceType()&&!isConstantInit(vDec)));
   }
   return result;  
 }

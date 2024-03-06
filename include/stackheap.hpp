@@ -34,6 +34,7 @@
     std::string name;
     //unique, increments by 1 for each variable with the same name
     unsigned int uid;   
+    clang::QualType qTypeTempMem;
     clang::QualType qTypeNew;
     clang::QualType qTypeVar;
     bool found;
