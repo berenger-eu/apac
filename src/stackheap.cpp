@@ -69,10 +69,10 @@ std::string createDeleteString(struct item_found& v)
   SSprint<<" apacMemeBloc__"<<v.name<<'_'<<v.uid<<";\n";
   return SSprint.str();
 }
-std::string createDeleteSegment()
+std::string createDeleteSegment(std::vector<item_found>& itemsToDelete)
 {
   std::stringstream SSprint;
-  for(auto b =currentVarsInScope.begin(); b!=currentVarsInScope.end();b++)
+  for(auto b =itemsToDelete.begin(); b!=itemsToDelete.end();b++)
     SSprint<<createDeleteString(*b);
   return SSprint.str();
 }
@@ -141,14 +141,24 @@ bool ASTHeapifyVisitor::VisitFunctionDecl(FunctionDecl* fDecl)
     return true;
 }
 //Visits each scope
+bool visitedOnce=false;
 bool ASTHeapifyVisitor::VisitCompoundStmt(CompoundStmt* coSt)
 {
-  bool deleteEnd=false; //If we have to delete at the end of the scope (so if there is no return)
+  if(!visitedOnce){
+    visitedOnce=true;
+    subVisitCompoundStmt(coSt);
+  }
+  return true;
+}
+
+bool ASTHeapifyVisitor::subVisitCompoundStmt(CompoundStmt* coSt)
+{
+  bool deleteEnd=true; //If we have to delete at the end of the scope (so if there is no return)
   bool curState=variableHeap.found; //If variable is found, we're in a subLoop, so no delete (unless there is a return) 
+  std::vector<item_found> currentVarsInScope;
   for (CompoundStmt::body_iterator b = coSt->body_begin(), e = coSt->body_end(); b != e; ++b)
   {
     Stmt* st=*b;
-    
     if(isa<ReturnStmt>(st))
     {
       ReturnStmt* retStmt=cast<ReturnStmt>(st);
@@ -168,22 +178,29 @@ bool ASTHeapifyVisitor::VisitCompoundStmt(CompoundStmt* coSt)
       {
         Decl* curDecl=*curDeclPtr;
         if(curDecl!=NULL && isa<VarDecl>(curDecl))
-          SSprint<<subVisitVarDecl(*(cast<VarDecl>(curDecl)));
+          SSprint<<subVisitVarDecl(*(cast<VarDecl>(curDecl)),currentVarsInScope);
       }
       TheRewriter.ReplaceText(SourceRange(decStmt->getBeginLoc(),decStmt->getEndLoc()),SSprint.str());
       //True when variable was found in the current scope, so we have to add a delete at the end of it
+      /*
       if(curState!=variableHeap.found)
       {
         curState=!curState;
         deleteEnd=true;
       }
+      */
     }
+    else if (isa<CompoundStmt>(st))
+      subVisitCompoundStmt(cast<CompoundStmt>(st));
   }
   if(deleteEnd)
-      TheRewriter.InsertTextAfter(coSt->getEndLoc(),createDeleteSegment()); 
+      TheRewriter.InsertTextAfter(coSt->getEndLoc(),createDeleteSegment(currentVarsInScope)); 
+  for(int i=0;i<currentVarsInScope.size();i++)
+    currentVarsEncountered.pop_back();
   return true;
 }
-std::string ASTHeapifyVisitor::subVisitVarDecl(VarDecl& v)
+
+std::string ASTHeapifyVisitor::subVisitVarDecl(VarDecl& v,std::vector<item_found>& currentVarsInScope)
 {     
   //True when VarDecl corresponds to the searched variable
   std::string strRes;
@@ -215,6 +232,7 @@ std::string ASTHeapifyVisitor::subVisitVarDecl(VarDecl& v)
     }  
 
     currentVarsInScope.push_back(curVar);
+    currentVarsEncountered.push_back(curVar);
     //TOTEST
      
     //TheRewriter.ReplaceText(SourceRange(v.getTypeSpecStartLoc(),v.getTypeSpecEndLoc()),curVar.qTypeNew.getAsString());
@@ -227,7 +245,7 @@ std::string ASTHeapifyVisitor::subVisitVarDecl(VarDecl& v)
 bool ASTHeapifyVisitor::subVisitReturnStmt(ReturnStmt& retStmt)
 {
     //We have to delete the variable when it has been found (and thus created)
-    TheRewriter.InsertText(retStmt.getBeginLoc(),createDeleteSegment());
+    TheRewriter.InsertText(retStmt.getBeginLoc(),createDeleteSegment(currentVarsEncountered));
     return true;
 }
 

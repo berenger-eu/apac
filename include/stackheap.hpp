@@ -41,8 +41,9 @@
     bool array;
     clang::VarDecl* declaration;
  };
+
 std::unordered_map<std::string,int> varCounter;
-std::vector<struct item_found> currentVarsInScope; //TODO implement in cleaner manner
+std::vector<struct item_found> currentVarsEncountered; //TODO implement in cleaner manner
  struct item_found variableHeap;
  struct item_found functionHeap;
 using namespace clang;
@@ -78,8 +79,10 @@ public:
     bool VisitCompoundStmt(CompoundStmt *);
 private:
     //Like Visit functions, but called by VisitCompoundStmt and not by default when encountering specific nodes
-    std::string subVisitVarDecl(VarDecl& );
+    std::string subVisitVarDecl(VarDecl& ,std::vector<item_found>&);
     bool subVisitReturnStmt(ReturnStmt& );
+    bool subVisitCompoundStmt(CompoundStmt* coSt);
+
     Rewriter &TheRewriter;
 };
 
