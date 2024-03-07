@@ -10,7 +10,7 @@ message(STATUS "Found LLVM libs ${LLVM_DEFINITIONS}")
 
 # Now build our tools
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
-add_executable(stackheap stackheap.cpp)
+add_executable(stackheap stackheap.cpp stringManipulation.cpp utilitaryFunctions.cpp ASTHeapifyVisitor.cpp )
 
 
 
