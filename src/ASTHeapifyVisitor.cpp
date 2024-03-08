@@ -1,26 +1,26 @@
 #include "../include/ASTHeapifyVisitor.hpp"
 using namespace clang;
 
-bool ASTHeapifyVisitor::VisitStmt(Stmt *s)
-{
-    return true;
-}
+//TODO: Put in a class
 struct item_found variableHeap;
 struct item_found functionHeap;
 std::unordered_map<std::string,int> varCounter;
 std::vector<struct item_found> currentVarsEncountered; //TODO implement in cleaner manner
 
 //To see if the function was found (mostly for debugging)
+bool visitedOnce=false;
 bool ASTHeapifyVisitor::VisitFunctionDecl(FunctionDecl* fDecl)
 {
-    if(fDecl->getNameAsString().compare(functionHeap.name)==0)
-    {
-        functionHeap.found=true;
-    }
+    
+    functionHeap.found=functionHeap.found||
+    fDecl->getNameAsString().compare(functionHeap.name)==0;
+    if(foundCorrectFunction(*fDecl))
+      visitedOnce=false;
+    
     return true;
 }
-//Visits each scope
-bool visitedOnce=false;
+//Visits each scope, should only visit top scope
+
 bool ASTHeapifyVisitor::VisitCompoundStmt(CompoundStmt* coSt)
 {
   if(!visitedOnce){
@@ -74,6 +74,7 @@ bool ASTHeapifyVisitor::subVisitCompoundStmt(CompoundStmt* coSt)
   }
   if(deleteEnd)
       TheRewriter.InsertTextAfter(coSt->getEndLoc(),createDeleteSegment(currentVarsInScope)); 
+  //We remove variables seen in the scope at the end of it
   for(int i=0;i<currentVarsInScope.size();i++)
     currentVarsEncountered.pop_back();
   return true;
@@ -86,30 +87,9 @@ std::string ASTHeapifyVisitor::subVisitVarDecl(VarDecl& v,std::vector<item_found
   if(foundCorrectVariable(v)&&!isInitNew(v))
   {
     struct item_found curVar;
-    curVar.name=v.getNameAsString();
-    curVar.uid=varCounter[v.getNameAsString()];
-    curVar.array=isArrayVariable(v);
-    curVar.found=true;
-    varCounter[v.getNameAsString()]++;
-    curVar.declaration=&v;
-    curVar.qTypeNew=v.getType();
-    if(v.getType().getTypePtrOrNull()->isReferenceType()||
-    isConstantInit(v))
-      curVar.qTypeNew=unreferenceQType(curVar.qTypeNew,v.getASTContext()); 
-    if(curVar.array)
-    {
-      
-      curVar.qTypeTempMem=v.getASTContext().getPointerType(v.getType().getTypePtrOrNull()->getAsArrayTypeUnsafe()->getElementType());
-      curVar.qTypeVar=referenceToQType(curVar.qTypeTempMem,v.getASTContext());
-    }
-    else
-    {
-      
-      curVar.qTypeTempMem=v.getASTContext().getPointerType(curVar.qTypeNew);
-      curVar.qTypeTempMem.addConst();
-      curVar.qTypeVar=referenceToQType(curVar.qTypeNew,v.getASTContext());
-    }  
+    initItem(curVar,v);
 
+    //We add it to the variables in the scope and the ones encountered so far
     currentVarsInScope.push_back(curVar);
     currentVarsEncountered.push_back(curVar);
     //TOTEST
@@ -126,4 +106,32 @@ bool ASTHeapifyVisitor::subVisitReturnStmt(ReturnStmt& retStmt)
     //We have to delete the variable when it has been found (and thus created)
     TheRewriter.InsertText(retStmt.getBeginLoc(),createDeleteSegment(currentVarsEncountered));
     return true;
+}
+void ASTHeapifyVisitor::initItem(struct item_found& item,VarDecl& vDec)
+{
+  item.name=vDec.getNameAsString();
+    item.uid=varCounter[vDec.getNameAsString()];
+    item.array=isArrayVariable(vDec);
+    item.found=true;
+    varCounter[vDec.getNameAsString()]++;
+    item.declaration=&vDec;
+    item.qTypeNew=vDec.getType();
+    if(vDec.getType().getTypePtrOrNull()->isReferenceType()||
+    !isInitAReference(vDec))
+      item.qTypeNew=getUnreferencedQType(item.qTypeNew,vDec.getASTContext()); 
+    if(item.array)
+    {
+      
+      item.qTypeTempMem=vDec.getASTContext().getPointerType(
+        vDec.getType().getTypePtrOrNull()->getAsArrayTypeUnsafe()->getElementType());
+      item.qTypeVar=getReferenceToQType(item.qTypeTempMem,vDec.getASTContext());
+    }
+    else
+    {
+      
+      item.qTypeTempMem=vDec.getASTContext().getPointerType(item.qTypeNew);
+      item.qTypeTempMem.addConst();
+      item.qTypeVar=getReferenceToQType(item.qTypeNew,vDec.getASTContext());
+    }  
+
 }
