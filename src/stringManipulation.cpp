@@ -3,9 +3,11 @@ using namespace clang;
 std::string getCompleteVarDeclStr(VarDecl& v)
 {
   std::stringstream SSresult;
+  //type varName
   SSresult<<v.getType().getAsString()<<" "<<v.getNameAsString();
   if(v.getInit())
   {
+    //= initValue
     SSresult<<" = "<<createInitString(v);
   }
   SSresult<<";\n";
@@ -22,68 +24,74 @@ std::string createInitString(VarDecl& v)
   v.getInit()->printPretty(stringStreamInit,NULL,print_policy);
   return initString;
 }
-//Remove the reference from a qualtype and returns the result
 
 //Builds the string to delete a variable
-std::string createDeleteString(struct item_found& v)
+std::string createDeleteString(struct item_found& item)
 {
   std::stringstream SSprint;
-  SSprint<<"delete";
-  if(v.array)
+  SSprint<<"delete ";
+  if(item.array)
     SSprint<<"[] ";
-  SSprint<<" apacMemeBloc__"<<v.name<<'_'<<v.uid<<";\n";
+  SSprint<<getApacMemBlockStr(item)<<";\n";
   return SSprint.str();
 }
+
 std::string createDeleteSegment(std::vector<item_found>& itemsToDelete)
 {
   std::stringstream SSprint;
+  //We iterate over all elements that have to be deleted 
+  //and create the corresponding text part
   for(auto b =itemsToDelete.begin(); b!=itemsToDelete.end();b++)
     SSprint<<createDeleteString(*b);
   return SSprint.str();
 }
 
-std::string createCreationString(struct item_found& itFound)
+std::string createCreationStringArray(struct item_found& itFound)
 {
   std::stringstream SSprint;
   VarDecl& v=*(itFound.declaration);
   std::string strTempMemType=itFound.qTypeTempMem.getAsString();
   std::string strNewType=itFound.qTypeNew.getAsString();
   std::string strVarType=itFound.qTypeVar.getAsString();
-  if(itFound.array)
-  {
-    //type (* varname) = new type[N]
-    std::string strStart(strTempMemType);
-    std::stringstream SSapacBloc;
-    SSapacBloc<<" apacMemeBloc__"<<v.getNameAsString()<<'_'<<itFound.uid;
-    std::size_t found = strVarType.find('&');
-    //std::size_t found1 = strStart.find('=');
+  std::string apacMemBloc=getApacMemBlockStr(itFound);
+  
+  //strVarType adds a '&' before where the name of the variable should be
+  //So using the its index, we can find where to place the variable name
+  //in strTempMemType which is the same string as strVarType except for the '&'
+  std::string strStart(strTempMemType);
+  std::size_t found = strVarType.find('&');
+  if (found!=std::string::npos)
+    strStart.insert(found,' '+apacMemBloc);
+  
+  SSprint<<strStart<<" = new "<<strNewType;
+  if(v.getInit()!=NULL)
+    SSprint<<createInitString(v);
+  
+  strStart=strVarType;
+  if (found!=std::string::npos)
+    strStart.insert(found+1,itFound.name);
+  
+  SSprint<<";\n"<<
+  strStart<<"= ("<<apacMemBloc<<");\n";
+  return SSprint.str();
+}
 
-    if (found!=std::string::npos)
-      strStart.insert(found,SSapacBloc.str());
-    /*SSprint<<v.getType().getTypePtrOrNull()->getAsArrayTypeUnsafe()->getElementType().getAsString()<<"* "
-    <<"apacMemeBloc__"<<v.getNameAsString()<<"_"<<itFound.uid<<" = new "<<strNewType;
-    */
-    SSprint<<strStart<<" = new "<<strNewType;
-    if(v.getInit()!=NULL)
-      SSprint<<createInitString(v);
-    strStart=strVarType;
-    //found = strVarType.find('&');
-    if (found!=std::string::npos)
-      strStart.insert(found+1,itFound.name);
-    SSprint<<";\n"<<strStart<<"= (apacMemeBloc__"<<itFound.name<<'_'<<itFound.uid<<");\n";
-  }
+std::string createCreationStringNonArray(struct item_found& itFound)
+{
+  std::stringstream SSprint;
+  VarDecl& v=*(itFound.declaration);
+  std::string strTempMemType=itFound.qTypeTempMem.getAsString();
+  std::string strNewType=itFound.qTypeNew.getAsString();
+  std::string strVarType=itFound.qTypeVar.getAsString();
+  std::string apacMemBloc=getApacMemBlockStr(itFound);
+
+  SSprint<<strTempMemType<<' '<<apacMemBloc<<" = new "<<strNewType;
+  if(v.getInit()!=NULL)
+    SSprint<<'('<<createInitString(v)<<')';
   else
-  {
-    SSprint<<strTempMemType<<" apacMemeBloc__"<<itFound.name<<'_'<<itFound.uid<<" = new "
-    <<strNewType;
-    if(v.getInit()!=NULL)
-    {
-      SSprint<<'('<<createInitString(v)<<')';
-    }
-    else
-      SSprint<<"()";
-    SSprint<<";\n"<<strVarType<<v.getNameAsString()
-    <<"= *(apacMemeBloc__"<<itFound.name<<'_'<<itFound.uid<<");\n";
-  }
+    SSprint<<"()";
+
+  SSprint<<";\n"<<
+  strVarType<<v.getNameAsString()<<"= *("<<apacMemBloc<<");\n";
   return SSprint.str();
 }
