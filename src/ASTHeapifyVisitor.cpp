@@ -52,6 +52,8 @@ bool ASTHeapifyVisitor::subVisitCompoundStmt(CompoundStmt* coSt)
     //Will create a scope possibly outside of a compound stmt
     else if (isa<IfStmt>(st))
       subVisitIfStmt(cast<IfStmt>(st));
+    else if (isa<ForStmt>(st))
+      subVisitForStmt(cast<ForStmt>(st));
   }
   if(deleteEnd)
       TheRewriter.InsertTextAfter(coSt->getEndLoc(),createDeleteSegment(currentVarsInScope)); 
@@ -70,10 +72,14 @@ void ASTHeapifyVisitor::subVisitIfStmt(IfStmt* ifSt)
     //UNHANDLED, either do it in the if BUT c++17 will be required
     //Or outside of if, but then the same has to be done for else if
   }
-  handleIfSubStmt(ifSt->getThen());
-  handleIfSubStmt(ifSt->getElse());
+  handleSubStmt(ifSt->getThen());
+  handleSubStmt(ifSt->getElse());
 }
-void ASTHeapifyVisitor::handleIfSubStmt(Stmt* st)
+void ASTHeapifyVisitor::subVisitForStmt(ForStmt* forSt)
+{
+  handleSubStmt(forSt->getBody());
+}
+void ASTHeapifyVisitor::handleSubStmt(Stmt* st)
 {
   if(st==NULL)
     ;
@@ -81,9 +87,13 @@ void ASTHeapifyVisitor::handleIfSubStmt(Stmt* st)
     subVisitCompoundStmt(cast<CompoundStmt>(st));
   else if (isa<IfStmt>(st))
     subVisitIfStmt(cast<IfStmt>(st));
-  //TODO: handle single instructions if
+  else if(isa<ForStmt>(st))
+    subVisitForStmt(cast<ForStmt>(st));
+  //Case for single instruction for : for,while or if
   else if (isa<DeclStmt>(st))
   {
+    //We treat it as if it was a compound statement
+    //We simply add the brackets around it
     std::vector<struct item_found> currentVarsInScope;
     TheRewriter.InsertTextAfter(st->getBeginLoc(),"{");
     handleDeclStmt(cast<DeclStmt>(st),currentVarsInScope);

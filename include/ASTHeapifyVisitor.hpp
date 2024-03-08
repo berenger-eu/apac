@@ -12,10 +12,11 @@ private:
     //Like Visit functions, but called by VisitCompoundStmt and not by default when encountering specific nodes
     std::string subVisitVarDecl(VarDecl& ,std::vector<struct item_found>&);
     void subVisitIfStmt(IfStmt*);
-    void handleIfSubStmt(Stmt* );
-    void handleDeclStmt(DeclStmt*,std::vector<struct item_found>&);
+    void subVisitForStmt(ForStmt* );
     bool subVisitReturnStmt(ReturnStmt& );
     bool subVisitCompoundStmt(CompoundStmt* coSt);
+    void handleSubStmt(Stmt* );
+    void handleDeclStmt(DeclStmt*,std::vector<struct item_found>&);
     void initItem(struct item_found&,VarDecl&);
     Rewriter &TheRewriter;
 };
