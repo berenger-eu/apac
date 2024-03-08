@@ -11,7 +11,7 @@ void functionj() {
 }
 
 int main() {
-  int *const apacMemeBloc__m_1 = new int ();
+  int *const apacMemeBloc__m_1 = new int();
   int &m = *(apacMemeBloc__m_1);
 
   delete apacMemeBloc__m_1;
