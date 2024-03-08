@@ -46,27 +46,7 @@ bool ASTHeapifyVisitor::subVisitCompoundStmt(CompoundStmt* coSt)
       deleteEnd=false;  //No need to delete at the end of the scope if there is a return (and so a delete)
     }
     else if (isa<DeclStmt>(st))
-    {
-      DeclStmt* decStmt=cast<DeclStmt>(st);
-      DeclGroupRef decGrpRef=decStmt->getDeclGroup();
-      std::stringstream SSprint;
-      for(DeclGroupRef::iterator curDeclPtr=decGrpRef.begin(),decGrpEnd=decGrpRef.end()
-      ;curDeclPtr!=decGrpEnd;curDeclPtr++)
-      {
-        Decl* curDecl=*curDeclPtr;
-        if(curDecl!=NULL && isa<VarDecl>(curDecl))
-          SSprint<<subVisitVarDecl(*(cast<VarDecl>(curDecl)),currentVarsInScope);
-      }
-      TheRewriter.ReplaceText(SourceRange(decStmt->getBeginLoc(),decStmt->getEndLoc()),SSprint.str());
-      //True when variable was found in the current scope, so we have to add a delete at the end of it
-      /*
-      if(curState!=variableHeap.found)
-      {
-        curState=!curState;
-        deleteEnd=true;
-      }
-      */
-    }
+      handleDeclStmt(cast<DeclStmt>(st),currentVarsInScope);
     else if (isa<CompoundStmt>(st))
       subVisitCompoundStmt(cast<CompoundStmt>(st));
     //Will create a scope possibly outside of a compound stmt
@@ -103,7 +83,39 @@ void ASTHeapifyVisitor::handleIfSubStmt(Stmt* st)
     subVisitIfStmt(cast<IfStmt>(st));
   //TODO: handle single instructions if
   else if (isa<DeclStmt>(st))
-    ;
+  {
+    std::vector<struct item_found> currentVarsInScope;
+    TheRewriter.InsertTextAfter(st->getBeginLoc(),"{");
+    handleDeclStmt(cast<DeclStmt>(st),currentVarsInScope);
+    TheRewriter.InsertTextAfterToken(st->getEndLoc(),createDeleteSegment(currentVarsInScope)); 
+    //We remove variables seen in the scope at the end of it
+    for(int i=0;i<currentVarsInScope.size();i++)
+      currentVarsEncountered.pop_back();
+    TheRewriter.InsertTextAfterToken(st->getEndLoc(),"}");
+  }
+  else if(isa<ReturnStmt>(st))
+    subVisitReturnStmt(cast<ReturnStmt>(*st));
+}
+void ASTHeapifyVisitor::handleDeclStmt(DeclStmt* st,std::vector<struct item_found>& currentVarsInScope){
+  DeclStmt* decStmt=cast<DeclStmt>(st);
+  DeclGroupRef decGrpRef=decStmt->getDeclGroup();
+  std::stringstream SSprint;
+  for(DeclGroupRef::iterator curDeclPtr=decGrpRef.begin(),decGrpEnd=decGrpRef.end()
+  ;curDeclPtr!=decGrpEnd;curDeclPtr++)
+  {
+    Decl* curDecl=*curDeclPtr;
+    if(curDecl!=NULL && isa<VarDecl>(curDecl))
+      SSprint<<subVisitVarDecl(*(cast<VarDecl>(curDecl)),currentVarsInScope);
+  }
+  TheRewriter.ReplaceText(SourceRange(decStmt->getBeginLoc(),decStmt->getEndLoc()),SSprint.str());
+  //True when variable was found in the current scope, so we have to add a delete at the end of it
+  /*
+  if(curState!=variableHeap.found)
+  {
+    curState=!curState;
+    deleteEnd=true;
+  }
+  */
 }
 std::string ASTHeapifyVisitor::subVisitVarDecl(VarDecl& v,std::vector<item_found>& currentVarsInScope)
 {     

@@ -10,9 +10,10 @@ public:
     bool VisitCompoundStmt(CompoundStmt *);
 private:
     //Like Visit functions, but called by VisitCompoundStmt and not by default when encountering specific nodes
-    std::string subVisitVarDecl(VarDecl& ,std::vector<item_found>&);
+    std::string subVisitVarDecl(VarDecl& ,std::vector<struct item_found>&);
     void subVisitIfStmt(IfStmt*);
     void handleIfSubStmt(Stmt* );
+    void handleDeclStmt(DeclStmt*,std::vector<struct item_found>&);
     bool subVisitReturnStmt(ReturnStmt& );
     bool subVisitCompoundStmt(CompoundStmt* coSt);
     void initItem(struct item_found&,VarDecl&);
