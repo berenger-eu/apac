@@ -54,6 +54,8 @@ bool ASTHeapifyVisitor::subVisitCompoundStmt(CompoundStmt* coSt)
       subVisitIfStmt(cast<IfStmt>(st));
     else if (isa<ForStmt>(st))
       subVisitForStmt(cast<ForStmt>(st));
+    else if (isa<WhileStmt>(st))
+      subVisitWhileStmt(cast<WhileStmt>(st));
   }
   if(deleteEnd)
       TheRewriter.InsertTextAfter(coSt->getEndLoc(),createDeleteSegment(currentVarsInScope)); 
@@ -79,6 +81,10 @@ void ASTHeapifyVisitor::subVisitForStmt(ForStmt* forSt)
 {
   handleSubStmt(forSt->getBody());
 }
+void ASTHeapifyVisitor::subVisitWhileStmt(WhileStmt* whileSt)
+{
+  handleSubStmt(whileSt->getBody());
+}
 void ASTHeapifyVisitor::handleSubStmt(Stmt* st)
 {
   if(st==NULL)
@@ -89,6 +95,8 @@ void ASTHeapifyVisitor::handleSubStmt(Stmt* st)
     subVisitIfStmt(cast<IfStmt>(st));
   else if(isa<ForStmt>(st))
     subVisitForStmt(cast<ForStmt>(st));
+  else if (isa<WhileStmt>(st))
+      subVisitWhileStmt(cast<WhileStmt>(st));
   //Case for single instruction for : for,while or if
   else if (isa<DeclStmt>(st))
   {

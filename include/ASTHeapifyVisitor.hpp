@@ -13,6 +13,7 @@ private:
     std::string subVisitVarDecl(VarDecl& ,std::vector<struct item_found>&);
     void subVisitIfStmt(IfStmt*);
     void subVisitForStmt(ForStmt* );
+    void subVisitWhileStmt(WhileStmt* );
     bool subVisitReturnStmt(ReturnStmt& );
     bool subVisitCompoundStmt(CompoundStmt* coSt);
     void handleSubStmt(Stmt* );
