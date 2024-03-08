@@ -26,6 +26,7 @@ bool ASTHeapifyVisitor::VisitCompoundStmt(CompoundStmt* coSt)
   if(!visitedOnce){
     visitedOnce=true;
     subVisitCompoundStmt(coSt);
+    currentVarsEncountered.clear();
   }
   return true;
 }

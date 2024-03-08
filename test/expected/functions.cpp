@@ -7,10 +7,13 @@ void functionj() {
 
   delete apacMemeBloc__nm_0;
   delete apacMemeBloc__m_0;
+  return;
 }
 
 int main() {
-  int *const apacMemeBloc_m_1 = new int ();
-  int &m = *(apacMemeBloc_m_1);
+  int *const apacMemeBloc__m_1 = new int ();
+  int &m = *(apacMemeBloc__m_1);
+
+  delete apacMemeBloc__m_1;
   return 1;
 }
