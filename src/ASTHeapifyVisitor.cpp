@@ -49,10 +49,7 @@ bool ASTHeapifyVisitor::subVisitCompoundStmt(CompoundStmt* coSt)
     {
       DeclStmt* decStmt=cast<DeclStmt>(st);
       DeclGroupRef decGrpRef=decStmt->getDeclGroup();
-      /*
-      if(decStmt->isSingleDecl())
-        dec=decStmt->getSingleDecl();
-      */std::stringstream SSprint;
+      std::stringstream SSprint;
       for(DeclGroupRef::iterator curDeclPtr=decGrpRef.begin(),decGrpEnd=decGrpRef.end()
       ;curDeclPtr!=decGrpEnd;curDeclPtr++)
       {
@@ -72,6 +69,9 @@ bool ASTHeapifyVisitor::subVisitCompoundStmt(CompoundStmt* coSt)
     }
     else if (isa<CompoundStmt>(st))
       subVisitCompoundStmt(cast<CompoundStmt>(st));
+    //Will create a scope possibly outside of a compound stmt
+    else if (isa<IfStmt>(st))
+      subVisitIfStmt(cast<IfStmt>(st));
   }
   if(deleteEnd)
       TheRewriter.InsertTextAfter(coSt->getEndLoc(),createDeleteSegment(currentVarsInScope)); 
@@ -80,7 +80,31 @@ bool ASTHeapifyVisitor::subVisitCompoundStmt(CompoundStmt* coSt)
     currentVarsEncountered.pop_back();
   return true;
 }
-
+void ASTHeapifyVisitor::subVisitIfStmt(IfStmt* ifSt)
+{
+  
+  if(ifSt->hasVarStorage())
+  {
+    //First declStmt contains variables,
+    //add them to curVarEncoutered and curVarsInScope
+    //UNHANDLED, either do it in the if BUT c++17 will be required
+    //Or outside of if, but then the same has to be done for else if
+  }
+  handleIfSubStmt(ifSt->getThen());
+  handleIfSubStmt(ifSt->getElse());
+}
+void ASTHeapifyVisitor::handleIfSubStmt(Stmt* st)
+{
+  if(st==NULL)
+    ;
+  else if(isa<CompoundStmt>(st))
+    subVisitCompoundStmt(cast<CompoundStmt>(st));
+  else if (isa<IfStmt>(st))
+    subVisitIfStmt(cast<IfStmt>(st));
+  //TODO: handle single instructions if
+  else if (isa<DeclStmt>(st))
+    ;
+}
 std::string ASTHeapifyVisitor::subVisitVarDecl(VarDecl& v,std::vector<item_found>& currentVarsInScope)
 {     
   //True when VarDecl corresponds to the searched variable
