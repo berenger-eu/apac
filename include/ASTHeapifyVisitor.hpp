@@ -14,7 +14,7 @@ private:
     void subVisitIfStmt(IfStmt*);
     void subVisitForStmt(ForStmt* );
     void subVisitWhileStmt(WhileStmt* );
-    bool subVisitReturnStmt(ReturnStmt& );
+    bool deleteSegmentAtStmt(Stmt& st);
     bool subVisitCompoundStmt(CompoundStmt* coSt);
     void handleSubStmt(Stmt* );
     void handleDeclStmt(DeclStmt*,std::vector<struct item_found>&);

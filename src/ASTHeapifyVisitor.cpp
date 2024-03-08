@@ -41,9 +41,13 @@ bool ASTHeapifyVisitor::subVisitCompoundStmt(CompoundStmt* coSt)
     Stmt* st=*b;
     if(isa<ReturnStmt>(st))
     {
-      ReturnStmt* retStmt=cast<ReturnStmt>(st);
-      subVisitReturnStmt(*retStmt);
+      deleteSegmentAtStmt(*st);
       deleteEnd=false;  //No need to delete at the end of the scope if there is a return (and so a delete)
+    }
+    else if (isa<GotoStmt>(st))
+    {
+      deleteSegmentAtStmt(*st);
+      deleteEnd=false;
     }
     else if (isa<DeclStmt>(st))
       handleDeclStmt(cast<DeclStmt>(st),currentVarsInScope);
@@ -112,7 +116,7 @@ void ASTHeapifyVisitor::handleSubStmt(Stmt* st)
     TheRewriter.InsertTextAfterToken(st->getEndLoc(),"}");
   }
   else if(isa<ReturnStmt>(st))
-    subVisitReturnStmt(cast<ReturnStmt>(*st));
+    deleteSegmentAtStmt(*st);
 }
 void ASTHeapifyVisitor::handleDeclStmt(DeclStmt* st,std::vector<struct item_found>& currentVarsInScope){
   DeclStmt* decStmt=cast<DeclStmt>(st);
@@ -156,10 +160,10 @@ std::string ASTHeapifyVisitor::subVisitVarDecl(VarDecl& v,std::vector<item_found
     strRes=getCompleteVarDeclStr(v);
   return strRes;
 }
-bool ASTHeapifyVisitor::subVisitReturnStmt(ReturnStmt& retStmt)
+bool ASTHeapifyVisitor::deleteSegmentAtStmt(Stmt& st)
 {
     //We have to delete the variable when it has been found (and thus created)
-    TheRewriter.InsertText(retStmt.getBeginLoc(),createDeleteSegment(currentVarsEncountered));
+    TheRewriter.InsertText(st.getBeginLoc(),createDeleteSegment(currentVarsEncountered));
     return true;
 }
 void ASTHeapifyVisitor::initItem(struct item_found& item,VarDecl& vDec)
