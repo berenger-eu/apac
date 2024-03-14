@@ -112,7 +112,26 @@ void ASTHeapifyVisitor::subVisitIfStmt(IfStmt* ifSt)
 }
 void ASTHeapifyVisitor::subVisitForStmt(ForStmt* forSt)
 {
+  std::vector<struct item_found> currentVarsInScope;
+  if(forSt->getInit()&&isa<DeclStmt>(forSt->getInit()))
+  {
+    std::stringstream SSprint;
+    SSprint<<"{\n";
+    DeclStmt* forStCond=cast<DeclStmt>(forSt->getInit());
+    SSprint<<stringDeclStmt(forStCond,currentVarsInScope);
+    TheRewriter.ReplaceText(SourceRange(forStCond->getBeginLoc(),forStCond->getEndLoc()),";");
+    //We remove variables seen in the scope at the end of it
+    TheRewriter.InsertTextAfter(forSt->getBeginLoc(),SSprint.str());
+  }
   handleSubStmt(forSt->getBody());
+  if(!currentVarsInScope.empty())
+  {
+    std::stringstream SSprint;
+    SSprint<<";\n"<<createDeleteSegment(currentVarsInScope)<<"}";
+    TheRewriter.InsertTextAfterToken(forSt->getEndLoc(),SSprint.str()); 
+    for(int i=0;i<currentVarsInScope.size();i++)
+        currentVarsEncountered.pop_back();
+  }
 }
 void ASTHeapifyVisitor::subVisitWhileStmt(WhileStmt* whileSt)
 {
