@@ -14,5 +14,20 @@ int main() {
     int &m = *(apacMemeBloc__m_1);
     delete apacMemeBloc__m_1;
   }
+  {
+    int *const apacMemeBloc__i_1 = new int(-1);
+    int &i = *(apacMemeBloc__i_1);
+    while (i) {
+      i++;
+    };
+    delete apacMemeBloc__i_1;
+  }
+  {
+    int *const apacMemeBloc__i_2 = new int(-1);
+    int &i = *(apacMemeBloc__i_2);
+    while (i)
+      i++;
+    delete apacMemeBloc__i_2;
+  };
   delete apacMemeBloc__i_0;
 }
