@@ -69,10 +69,30 @@ bool ASTHeapifyVisitor::subVisitCompoundStmt(CompoundStmt* coSt)
   return true;
 }
 void ASTHeapifyVisitor::subVisitIfStmt(IfStmt* ifSt)
-{
-  
-  if(ifSt->hasVarStorage())
+{  
+  std::vector<struct item_found> currentVarsInScope;
+  if(ifSt->hasVarStorage()||ifSt->hasInitStorage())
   {
+    
+    std::stringstream SSprint;
+    SSprint<<"{\n";
+    if(ifSt->getInit()!=NULL&& isa<DeclStmt>(ifSt->getInit()))
+    {
+      DeclStmt* ifStInit=cast<DeclStmt>(ifSt->getInit());
+      SSprint<<stringDeclStmt(ifStInit,currentVarsInScope);
+      TheRewriter.RemoveText(SourceRange(ifStInit->getBeginLoc(),ifStInit->getEndLoc()));
+    }
+    if(ifSt->getConditionVariableDeclStmt()!=NULL)
+    {
+      DeclStmt* ifStCond=ifSt->getConditionVariableDeclStmt();
+      SSprint<<stringDeclStmt(ifStCond,currentVarsInScope);
+      if(isa<VarDecl>(ifStCond->getSingleDecl()))
+        TheRewriter.ReplaceText(SourceRange(ifStCond->getBeginLoc(),ifStCond->getEndLoc())
+        ,(cast<VarDecl>(ifStCond->getSingleDecl()))->getNameAsString());
+    }
+    
+    //We remove variables seen in the scope at the end of it
+    TheRewriter.InsertTextAfter(ifSt->getBeginLoc(),SSprint.str());
     //First declStmt contains variables,
     //add them to curVarEncoutered and curVarsInScope
     //UNHANDLED, either do it in the if BUT c++17 will be required
@@ -80,6 +100,15 @@ void ASTHeapifyVisitor::subVisitIfStmt(IfStmt* ifSt)
   }
   handleSubStmt(ifSt->getThen());
   handleSubStmt(ifSt->getElse());
+  if(!currentVarsInScope.empty())
+  {
+    std::stringstream SSprint;
+    SSprint<<";\n"<<createDeleteSegment(currentVarsInScope)<<"}";
+    TheRewriter.InsertTextAfterToken(ifSt->getEndLoc(),SSprint.str()); 
+    
+    for(int i=0;i<currentVarsInScope.size();i++)
+        currentVarsEncountered.pop_back();
+  }
 }
 void ASTHeapifyVisitor::subVisitForStmt(ForStmt* forSt)
 {
@@ -139,6 +168,22 @@ void ASTHeapifyVisitor::handleDeclStmt(DeclStmt* st,std::vector<struct item_foun
   }
   */
 }
+
+std::string ASTHeapifyVisitor::stringDeclStmt(DeclStmt* st,std::vector<struct item_found>& currentVarsInScope)
+{
+  DeclStmt* decStmt=cast<DeclStmt>(st);
+  DeclGroupRef decGrpRef=decStmt->getDeclGroup();
+  std::stringstream SSprint;
+  for(DeclGroupRef::iterator curDeclPtr=decGrpRef.begin(),decGrpEnd=decGrpRef.end()
+  ;curDeclPtr!=decGrpEnd;curDeclPtr++)
+  {
+    Decl* curDecl=*curDeclPtr;
+    if(curDecl!=NULL && isa<VarDecl>(curDecl))
+      SSprint<<subVisitVarDecl(*(cast<VarDecl>(curDecl)),currentVarsInScope);
+  }
+  return SSprint.str();
+}
+
 std::string ASTHeapifyVisitor::subVisitVarDecl(VarDecl& v,std::vector<item_found>& currentVarsInScope)
 {     
   //True when VarDecl corresponds to the searched variable

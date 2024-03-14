@@ -17,6 +17,7 @@ private:
     bool deleteSegmentAtStmt(Stmt& st);
     bool subVisitCompoundStmt(CompoundStmt* coSt);
     void handleSubStmt(Stmt* );
+    std::string stringDeclStmt(DeclStmt*,std::vector<struct item_found>&);
     void handleDeclStmt(DeclStmt*,std::vector<struct item_found>&);
     void initItem(struct item_found&,VarDecl&);
     Rewriter &TheRewriter;
