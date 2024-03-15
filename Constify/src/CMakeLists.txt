@@ -9,10 +9,12 @@ add_definitions(${LLVM_DEFINITIONS})
 message(STATUS "Found LLVM libs ${LLVM_DEFINITIONS}")
 
 # Now build our tools
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
-add_executable(apac ASTInitVisitor.cpp ASTConstifyVisitor.cpp ASTPrintVisitor.cpp SymTab.cpp core.cpp rewritersample.cpp)
-
-
+set(INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+set(SOURCES ASTInitVisitor.cpp ASTConstifyVisitor.cpp ASTPrintVisitor.cpp SymTab.cpp core.cpp rewritersample.cpp)
+add_executable(constify)
+ 
+target_sources(constify PRIVATE ${SOURCES})
+target_include_directories(constify PRIVATE ${INC_DIR})
 
 
 # Find the libraries that correspond to the LLVM components
@@ -20,7 +22,7 @@ add_executable(apac ASTInitVisitor.cpp ASTConstifyVisitor.cpp ASTPrintVisitor.cp
 llvm_map_components_to_libnames(llvm_libs x86asmparser bitreader support mc option profiledata)
 message(STATUS "LLVM_LIBS: ${llvm_libs}")
 
-target_link_libraries(apac
+target_link_libraries(constify
     clangFrontend
     clangSerialization
     clangDriver
@@ -48,9 +50,9 @@ target_link_libraries(apac
     LLVMFrontendOpenMP
   )
 
-target_link_libraries(apac ${llvm_libs})
+target_link_libraries(constify ${llvm_libs})
 
 execute_process(COMMAND bash "-c" "llvm-config --cxxflags" OUTPUT_VARIABLE compile_flags OUTPUT_STRIP_TRAILING_WHITESPACE)
-set_property(TARGET apac APPEND PROPERTY COMPILE_FLAGS "${compile_flags} -Wno-strict-aliasing")
+set_property(TARGET constify APPEND PROPERTY COMPILE_FLAGS "${compile_flags} -Wno-strict-aliasing")
 
-install(TARGETS apac DESTINATION bin)
+install(TARGETS constify DESTINATION bin)

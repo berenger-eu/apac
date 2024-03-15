@@ -9,10 +9,13 @@ add_definitions(${LLVM_DEFINITIONS})
 message(STATUS "Found LLVM libs ${LLVM_DEFINITIONS}")
 
 # Now build our tools
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
-add_executable(stackheap stackheap.cpp stringManipulation.cpp utilitaryFunctions.cpp ASTHeapifyVisitor.cpp )
 
-
+set(INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+set(SOURCES stackheap.cpp stringManipulation.cpp utilitaryFunctions.cpp ASTHeapifyVisitor.cpp)
+add_executable(stackheap)
+ 
+target_sources(stackheap PRIVATE ${SOURCES})
+target_include_directories(stackheap PRIVATE ${INC_DIR})
 
 
 # Find the libraries that correspond to the LLVM components
