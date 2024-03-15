@@ -12,7 +12,7 @@ countTotal=0
 curPath="$(realpath $(dirname "$0"))"
 constify="$curPath/../../../build/constify"
 expectedPath="$curPath/../expected"
-resultPath="$curPath/results"
+resultPath="$curPath"
 testsPath="$curPath"
 
 
@@ -68,7 +68,8 @@ for file in $testsPath/*.cpp; do
         fi
         
         if [ $differenceInAST == false ] && [ $differenceInText == false ]; then
-            rm -rf "$foldername"/
+            rm -rf "$resultPath/$foldername"/
+            echo "$resultPath/$foldername"
         fi
         
     fi
