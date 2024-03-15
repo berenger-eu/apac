@@ -10,7 +10,7 @@ countPassed=0
 countTotal=0
 
 curPath="$(realpath $(dirname "$0"))"
-stackHeap="$curPath/../build/stackheap"
+stackHeap="$curPath/../../build/stackheap"
 expectedPath="$curPath/expected"
 resultPath="$curPath/results"
 testsPath="$curPath/autotests"
@@ -22,7 +22,6 @@ for file in $testsPath/*.cpp; do
     # Check if the file exists and is a regular file
     if [ -f "$file" ]; then
         ((countTotal++))
-        echo "Processing $file"
         differenceInText=false
         differenceInAST=false
         fileName=$(basename "$file" /)
@@ -30,12 +29,13 @@ for file in $testsPath/*.cpp; do
         mkdir $resultPath/$folderName
         folderResultPath="$resultPath/$folderName"
         $stackHeap $file $arguments > "$folderResultPath/$fileName" 2> /dev/null
-        clang-format -i "$folderResultPath/$fileName"
+                         
         if [ $? -ne 0 ]; then
             echo -e "${RED}${BOLD}Failed to process file : $file"
             differenceInAST=true
             differenceInText=true
         else
+            clang-format -i "$folderResultPath/$fileName" 
             for file2 in "$folderResultPath"/*.cpp; do
                 if [ -f "$file2" ] && [[ "$file2" != *"astdiff"* ]]; then
                     #echo "Created file : $file2"
@@ -47,7 +47,7 @@ for file in $testsPath/*.cpp; do
                     fi
                     clang-check -ast-print "$expectedResult" > "$curPath/ast_result" 2> /dev/null
                     clang-check -ast-print $file2 > "$curPath/ast_expected" 2> /dev/null
-                    diff ast_expected ast_result > "$folderResultPath"/astdiff
+                    diff "$curPath/ast_expected" "$curPath/ast_result" > "$folderResultPath"/astdiff
                     if [ $? -ne 0 ]; then
                         differenceInAST=true
                         echo -e "${RED}Different AST : $fileName${NC}"
@@ -75,7 +75,7 @@ for file in $testsPath/*.cpp; do
 done
 echo -e "${BLUE}${BOLD}Tests passed : $countPassed/$countTotal ${NC}"
 if [ $countPassed != $countTotal ]; then
-    exit 0
+    exit 1
 fi
 rm -rf "$resultsPath/*"
 exit 0
