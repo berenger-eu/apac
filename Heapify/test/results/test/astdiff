@@ -1,0 +1,9 @@
+0a1,8
+> int main() {
+>     int i = 50;
+>     const int &f = 1;
+>     const int &f2 = 1 + 4;
+>     const int &g = i;
+>     const int &h = i + 1;
+>     return 1;
+> }
