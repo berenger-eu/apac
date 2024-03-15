@@ -1,4 +1,4 @@
-#include "../include/stackheap.hpp"
+#include "stackheap.hpp"
 
 static llvm::cl::OptionCategory ToolingSampleCategory("Tooling Sample");
 

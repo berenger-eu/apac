@@ -1,4 +1,4 @@
-#include "../include/utilitaryFunctions.hpp"
+#include "utilitaryFunctions.hpp"
 using namespace clang;
 
 //Bool functions, to evaluate complex conditions

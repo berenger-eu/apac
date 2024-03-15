@@ -1,4 +1,4 @@
-#include "../include/ASTHeapifyVisitor.hpp"
+#include "ASTHeapifyVisitor.hpp"
 using namespace clang;
 
 //TODO: Put in a class

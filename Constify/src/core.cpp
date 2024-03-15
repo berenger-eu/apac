@@ -1,4 +1,4 @@
-#include "../include/core.hpp"
+#include "core.hpp"
 using namespace clang;
 
 //To verify more clearly if a QualType is a Pointer

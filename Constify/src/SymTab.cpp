@@ -1,4 +1,4 @@
-#include "../include/SymTab.hpp"
+#include "SymTab.hpp"
 
 using namespace clang;
 //Retrieve the corresponding value to an expression inside the table

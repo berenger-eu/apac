@@ -1,4 +1,4 @@
-#include "../include/stringManipulation.hpp"
+#include "stringManipulation.hpp"
 using namespace clang;
 std::string getCompleteVarDeclStr(VarDecl& v)
 {
