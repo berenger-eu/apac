@@ -10,7 +10,7 @@ countPassed=0
 countTotal=0
 
 curPath="$(realpath $(dirname "$0"))"
-stackHeap="$curPath/../../build/stackheap"
+stackHeap="$curPath/../../../build/stackheap"
 expectedPath="$curPath/expected"
 resultPath="$curPath/results"
 testsPath="$curPath/autotests"
@@ -76,6 +76,6 @@ echo -e "${BLUE}${BOLD}Tests passed : $countPassed/$countTotal ${NC}"
 if [ $countPassed != $countTotal ]; then
     exit 1
 fi
-rm -rf "$resultsPath/"
+rm -rf "$resultPath/"
 exit 0
 done

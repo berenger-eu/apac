@@ -7,32 +7,22 @@ BOLD='\033[1m'
 
 countPassed=0
 countTotal=0
+transformationsPath=Transformations
 
 # Iterate over all .cpp files in the current directory
-bash Constify/tests/autotests/test.sh
-if [ $? -ne 0 ]; then
-    echo -e "${RED}${BOLD}FAILURE: Test suite for Constify transformation${NC}"
-else
-    ((countPassed++))
-    echo -e "${GREEN}${BOLD}SUCCESS: Test suite for Constify transformation${NC}"
-fi
-((countTotal++))
-bash Heapify/tests/test.sh
-if [ $? -ne 0 ]; then
-    echo -e "${RED}${BOLD}FAILURE: Test suite for Heapify transformation${NC}"
-else
-    ((countPassed++))
-    echo -e "${GREEN}${BOLD}SUCCESS: Test suite for Heapify transformation${NC}"
-fi
-((countTotal++))
-bash GotoTransfo/tests/test.sh
-if [ $? -ne 0 ]; then
-    echo -e "${RED}${BOLD}FAILURE: Test suite for Goto transformation${NC}"
-else
-    ((countPassed++))
-    echo -e "${GREEN}${BOLD}SUCCESS: Test suite for Goto transformation${NC}"
-fi
-((countTotal++))
+for folder in $transformationsPath/*; do
+    if [ -d "$folder" ]; then
+        folderName=$(basename "$folder" $transformationsPath)
+        bash $folder/tests/test.sh
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}${BOLD}FAILURE: Test suite for $folderName transformation${NC}"
+        else
+            ((countPassed++))
+            echo -e "${GREEN}${BOLD}SUCCESS: Test suite for $folderName transformation${NC}"
+        fi
+        ((countTotal++))
+    fi
+done
 echo -e "${BLUE}${BOLD}Test suite passed : $countPassed/$countTotal ${NC}"
 if [ $countPassed != $countTotal ]; then
     exit 1

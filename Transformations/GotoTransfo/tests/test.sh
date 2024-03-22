@@ -10,7 +10,7 @@ countPassed=0
 countTotal=0
 
 curPath="$(realpath $(dirname "$0"))"
-gotoRet="$curPath/../../build/gotoRet"
+gotoRet="$curPath/../../../build/gotoRet"
 expectedPath="$curPath/expected"
 resultPath="$curPath/results"
 testsPath="$curPath/autotests"
@@ -78,6 +78,5 @@ if [ $countPassed != $countTotal ]; then
     exit 1
 fi
 rm -rf "$resultPath/"
-
 exit 0
 done
