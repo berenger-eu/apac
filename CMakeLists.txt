@@ -23,8 +23,8 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 add_subdirectory(Constify)
 add_subdirectory(Heapify)
-
-set(EXECUTABLES stackheap constify)
+add_subdirectory(GotoTransfo)
+set(EXECUTABLES stackheap constify gotoRet)
 
 add_custom_target(test 
 COMMENT "Building project"
