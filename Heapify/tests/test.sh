@@ -15,8 +15,7 @@ expectedPath="$curPath/expected"
 resultPath="$curPath/results"
 testsPath="$curPath/autotests"
 
-rm -rf "$resultPath"/*
-
+mkdir -p $resultPath
 # Iterate over all .cpp files in the current directory
 for file in $testsPath/*.cpp; do
     # Check if the file exists and is a regular file
@@ -77,6 +76,6 @@ echo -e "${BLUE}${BOLD}Tests passed : $countPassed/$countTotal ${NC}"
 if [ $countPassed != $countTotal ]; then
     exit 1
 fi
-rm -rf "$resultsPath/*"
+rm -rf "$resultsPath/"
 exit 0
 done
