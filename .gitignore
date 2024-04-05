@@ -1,4 +1,4 @@
 build/
 bin/
-*/tests/results
-*/tests/autotests/*/
+Transformations/*/tests/results
+Transformations/*/tests/autotests/*/

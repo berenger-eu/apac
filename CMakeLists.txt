@@ -22,7 +22,7 @@ set (CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 add_subdirectory(Transformations)
 
-set(EXECUTABLES stackheap constify gotoRet)
+set(EXECUTABLES stackheap constify gotoRet unstack)
 
 add_custom_target(test 
 COMMENT "Building project"
