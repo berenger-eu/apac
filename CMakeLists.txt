@@ -20,6 +20,7 @@ SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 add_compile_options(-std=c++17)
 set (CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+add_subdirectory(lib)
 add_subdirectory(Transformations)
 
 set(EXECUTABLES stackheap constify gotoRet unstack)

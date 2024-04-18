@@ -6,13 +6,14 @@ using namespace clang;
 using namespace clang::driver;
 using namespace clang::tooling;
 
-
+struct item_found functionHeap;
+struct item_found variableHeap;
 // Implementation of the ASTConsumer interface for reading an AST produced
 // by the Clang parser.
 class MyASTConsumer : public ASTConsumer
 {
 public:
-	MyASTConsumer(Rewriter &R) : VisitorHeapify(R) {}
+	MyASTConsumer(Rewriter &R) : VisitorHeapify(R,functionHeap,variableHeap) {}
 
 	// Override the method that gets called for each parsed top-level
 	// declaration.
@@ -20,7 +21,7 @@ public:
     for (DeclGroupRef::iterator b = DR.begin(), e = DR.end(); b != e; ++b)
     {   
       Decl* dec=*b;
-      if(foundCorrectFunction(*dec))
+      if(foundCorrectFunction(*dec,functionHeap.name))
           VisitorHeapify.TraverseDecl(dec);
         // Traverse the declaration using our AST visitor.
             

@@ -2,12 +2,6 @@
 using namespace clang;
 // Printing pass, rewrite variables and add const if they are
 
-    // To avoid errors on unused Stmt, crashes without it
-bool ASTPrintVisitor::VisitStmt(Stmt *s)
-{
-    return true;
-}
-
 bool ASTPrintVisitor::VisitParmVarDecl(ParmVarDecl* pvd)
 {
     if(TheRewriter.getSourceMgr().isInSystemHeader(pvd->getBeginLoc()))
@@ -72,16 +66,7 @@ void ASTPrintVisitor::PrepareRewriteVarDecl(VarDecl *v,std::stringstream& stream
     if (SymT.getHashTableValue(v)->is_const)
             addConstToVar(v);
     //We prepare the change in the text ( Type VarName)
-    stream<<v->getType().getAsString()<<' '<<v->getNameAsString();
-    //If the variable is initialized, we add the initializer too
-    if(v->getInit()!=NULL){
-        PrintingPolicy print_policy(v->getASTContext().getLangOpts());
-        std::string initString;
-        llvm::raw_string_ostream stringStreamInit(initString);
-        v->getInit()->printPretty(stringStreamInit,NULL,print_policy);
-        stream<<CHAR_ASSIGNEMENT<<initString;
-    }
-    stream<<CHAR_INSTR_END;
+    stream<<getCompleteVarDeclStr(*v);
 }
 
 

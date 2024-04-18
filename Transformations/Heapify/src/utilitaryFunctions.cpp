@@ -3,19 +3,20 @@ using namespace clang;
 
 //Bool functions, to evaluate complex conditions
 
-
-bool foundCorrectFunction(Decl& dec)
+//True when it's the function we're looking for or when we want
+//to put on heap all variables (and so when we're not looking for a specific function) 
+bool foundCorrectFunction(Decl& dec,const std::string& soughtFunctionName)
 {
   if(isa<FunctionDecl>(dec))
   {
     FunctionDecl& fDec=cast<FunctionDecl>(dec);
     //If function name is NULL, then we're trying to put on the heap all variables,
     //Otherwise, we will only traverse the Function Declaration if it's the one we're looking for 
-    return (functionHeap.name.empty()||(fDec.getNameAsString().compare(functionHeap.name)==0));
+    return (soughtFunctionName.empty()||(fDec.getNameAsString().compare(soughtFunctionName)==0));
   }
   return false;
 }
-
+//True when the variable can be put on the heap (so not a pointer or a reference to a variable)
 bool foundCorrectVarType(VarDecl& vDec)
 {
   const Type* varType=vDec.getType().getTypePtrOrNull();
@@ -28,10 +29,12 @@ bool foundCorrectVarType(VarDecl& vDec)
   }
   return result;  
 }
-bool foundCorrectVariable(VarDecl& vDec)
+//True when the variable can be put on the heap AND it's either the one we're looking for
+// or we're looking for all variables
+bool foundCorrectVariable(VarDecl& vDec,const std::string& soughtVariableName)
 {
-  return (variableHeap.name.empty()||  //If we want our action to be on all variables
-  vDec.getNameAsString().compare(variableHeap.name)==0)&&  //Or if we found the variable we're looking for
+  return (soughtVariableName.empty()||  //If we want our action to be on all variables
+  vDec.getNameAsString().compare(soughtVariableName)==0)&&  //Or if we found the variable we're looking for
   foundCorrectVarType(vDec);  //And the type is one that can be put on the heap
 }
 

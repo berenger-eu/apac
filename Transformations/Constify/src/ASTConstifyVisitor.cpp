@@ -1,9 +1,5 @@
 #include "ASTConstifyVisitor.hpp"  
 using namespace clang;
-bool ASTConstifyVisitor::VisitStmt(Stmt *s)
-    {
-        return true;
-    }
 
 bool ASTConstifyVisitor::VisitCXXMethodDecl(CXXMethodDecl* methDecl)
 {

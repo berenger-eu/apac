@@ -1,34 +1,17 @@
 #include "ASTHeapifyVisitor.hpp"
 using namespace clang;
 
-//TODO: Put in a class
-struct item_found variableHeap;
-struct item_found functionHeap;
-std::unordered_map<std::string,int> varCounter;
-std::vector<struct item_found> currentVarsEncountered; //TODO implement in cleaner manner
-
-//To see if the function was found (mostly for debugging)
-bool visitedOnce=false;
 bool ASTHeapifyVisitor::VisitFunctionDecl(FunctionDecl* fDecl)
 {
-    
-    functionHeap.found=functionHeap.found||
-    fDecl->getNameAsString().compare(functionHeap.name)==0;
-    if(foundCorrectFunction(*fDecl))
-      visitedOnce=false;
+  //In case we were trying to look for a function defined in the header
+    if(TheRewriter.getSourceMgr().isInSystemHeader(fDecl->getBeginLoc()))
+        return true;
+    functionHeap.found=true;
+    subVisitCompoundStmt(cast<CompoundStmt>(fDecl->getBody()));
+      //End of the function, so we clear all variablesEncountered so far
+    currentVarsEncountered.clear();
     
     return true;
-}
-//Visits each scope, should only visit top scope
-
-bool ASTHeapifyVisitor::VisitCompoundStmt(CompoundStmt* coSt)
-{
-  if(!visitedOnce){
-    visitedOnce=true;
-    subVisitCompoundStmt(coSt);
-    currentVarsEncountered.clear();
-  }
-  return true;
 }
 
 bool ASTHeapifyVisitor::subVisitCompoundStmt(CompoundStmt* coSt)
@@ -61,9 +44,11 @@ bool ASTHeapifyVisitor::subVisitCompoundStmt(CompoundStmt* coSt)
     else if (isa<WhileStmt>(st))
       subVisitWhileStmt(cast<WhileStmt>(st));
   }
+  //True when we haven't seen any Goto or Return so far.
+  //So we have to delete at the end of the scope
   if(deleteEnd)
       TheRewriter.InsertTextAfter(coSt->getEndLoc(),createDeleteSegment(currentVarsInScope)); 
-  //We remove variables seen in the scope at the end of it
+  //We remove variables declared in the scope at the end of it (since they no longer exist)
   for(int i=0;i<currentVarsInScope.size();i++)
     currentVarsEncountered.pop_back();
   return true;
@@ -71,6 +56,8 @@ bool ASTHeapifyVisitor::subVisitCompoundStmt(CompoundStmt* coSt)
 void ASTHeapifyVisitor::subVisitIfStmt(IfStmt* ifSt)
 {  
   std::vector<struct item_found> currentVarsInScope;
+  //When there is a declaration in the If, we add a section from its beginning to its end (after the else)
+  // In this section we declare its variables on the heap
   if(ifSt->hasVarStorage()||ifSt->hasInitStorage())
   {
     
@@ -90,9 +77,9 @@ void ASTHeapifyVisitor::subVisitIfStmt(IfStmt* ifSt)
         TheRewriter.ReplaceText(SourceRange(ifStCond->getBeginLoc(),ifStCond->getEndLoc())
         ,(cast<VarDecl>(ifStCond->getSingleDecl()))->getNameAsString());
     }
-    
-    //We remove variables seen in the scope at the end of it
+    //Adds the built text section before the If statement
     TheRewriter.InsertTextAfter(ifSt->getBeginLoc(),SSprint.str());
+    //We remove variables seen in the scope at the end of it
     //First declStmt contains variables,
     //add them to curVarEncoutered and curVarsInScope
     //UNHANDLED, either do it in the if BUT c++17 will be required
@@ -100,15 +87,9 @@ void ASTHeapifyVisitor::subVisitIfStmt(IfStmt* ifSt)
   }
   handleSubStmt(ifSt->getThen());
   handleSubStmt(ifSt->getElse());
+  //True when there are variables to delete at the end
   if(!currentVarsInScope.empty())
-  {
-    std::stringstream SSprint;
-    SSprint<<";\n"<<createDeleteSegment(currentVarsInScope)<<"}";
-    TheRewriter.InsertTextAfterToken(ifSt->getEndLoc(),SSprint.str()); 
-    
-    for(int i=0;i<currentVarsInScope.size();i++)
-        currentVarsEncountered.pop_back();
-  }
+    deleteSectionAfterCreatedScope(ifSt->getEndLoc(),currentVarsInScope);
 }
 void ASTHeapifyVisitor::subVisitForStmt(ForStmt* forSt)
 {
@@ -125,13 +106,17 @@ void ASTHeapifyVisitor::subVisitForStmt(ForStmt* forSt)
   }
   handleSubStmt(forSt->getBody());
   if(!currentVarsInScope.empty())
-  {
-    std::stringstream SSprint;
-    SSprint<<";\n"<<createDeleteSegment(currentVarsInScope)<<"}";
-    TheRewriter.InsertTextAfterToken(forSt->getEndLoc(),SSprint.str()); 
-    for(int i=0;i<currentVarsInScope.size();i++)
-        currentVarsEncountered.pop_back();
-  }
+    deleteSectionAfterCreatedScope(forSt->getEndLoc(),currentVarsInScope);
+}
+//Adds a delete section in a generated scope (used when a section had to be created to handle variable declarations
+//in If statement or similar types of statements)
+void ASTHeapifyVisitor::deleteSectionAfterCreatedScope(const SourceLocation& deleteLoc,const std::vector<struct item_found>& currentVarsInScope)
+{
+  std::stringstream SSprint;
+  SSprint<<";\n"<<createDeleteSegment(currentVarsInScope)<<"}";
+  TheRewriter.InsertTextAfterToken(deleteLoc,SSprint.str()); 
+  for(int i=0;i<currentVarsInScope.size();i++)
+      currentVarsEncountered.pop_back();
 }
 void ASTHeapifyVisitor::subVisitWhileStmt(WhileStmt* whileSt)
 {
@@ -151,13 +136,7 @@ void ASTHeapifyVisitor::subVisitWhileStmt(WhileStmt* whileSt)
   }
   handleSubStmt(whileSt->getBody());
   if(!currentVarsInScope.empty())
-  {
-    std::stringstream SSprint;
-    SSprint<<";\n"<<createDeleteSegment(currentVarsInScope)<<"}";
-    TheRewriter.InsertTextAfterToken(whileSt->getEndLoc(),SSprint.str()); 
-    for(int i=0;i<currentVarsInScope.size();i++)
-        currentVarsEncountered.pop_back();
-  }
+    deleteSectionAfterCreatedScope(whileSt->getEndLoc(),currentVarsInScope);
 }
 void ASTHeapifyVisitor::handleSubStmt(Stmt* st)
 {
@@ -229,7 +208,7 @@ std::string ASTHeapifyVisitor::subVisitVarDecl(VarDecl& v,std::vector<item_found
 {     
   //True when VarDecl corresponds to the searched variable
   std::string strRes;
-  if(foundCorrectVariable(v)&&!isInitNew(v))
+  if(foundCorrectVariable(v,variableHeap.name)&&!isInitNew(v))
   {
     struct item_found curVar;
     initItem(curVar,v);
@@ -238,9 +217,7 @@ std::string ASTHeapifyVisitor::subVisitVarDecl(VarDecl& v,std::vector<item_found
     currentVarsInScope.push_back(curVar);
     currentVarsEncountered.push_back(curVar);
     //TOTEST
-     
-    //TheRewriter.ReplaceText(SourceRange(v.getTypeSpecStartLoc(),v.getTypeSpecEndLoc()),curVar.qTypeNew.getAsString());
-    strRes=createCreationString(curVar);
+     strRes=createCreationString(curVar);
   }
   else
     strRes=getCompleteVarDeclStr(v);

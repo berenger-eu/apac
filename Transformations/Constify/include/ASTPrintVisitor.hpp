@@ -6,7 +6,7 @@ class ASTPrintVisitor : public RecursiveASTVisitor<ASTPrintVisitor>
 public:
     ASTPrintVisitor(Rewriter &R,SymTab& SymTableIn) : TheRewriter(R),SymT(SymTableIn) {}
     // To avoid errors on unused Stmt
-    bool VisitStmt(Stmt *);
+    inline bool VisitStmt(Stmt *){return true ;};
     //bool VisitFunctionDecl(FunctionDecl *);
     bool VisitDeclStmt(DeclStmt* );
     bool VisitParmVarDecl(ParmVarDecl*);

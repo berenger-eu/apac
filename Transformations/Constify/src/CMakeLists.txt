@@ -9,7 +9,9 @@ add_definitions(${LLVM_DEFINITIONS})
 message(STATUS "Found LLVM libs ${LLVM_DEFINITIONS}")
 
 # Now build our tools
-set(INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+set (COMMON_LIB ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib)
+set(INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../include ${COMMON_LIB})
+
 set(SOURCES ASTInitVisitor.cpp ASTConstifyVisitor.cpp ASTPrintVisitor.cpp SymTab.cpp core.cpp rewritersample.cpp)
 add_executable(constify)
  
@@ -23,6 +25,7 @@ llvm_map_components_to_libnames(llvm_libs x86asmparser bitreader support mc opti
 message(STATUS "LLVM_LIBS: ${llvm_libs}")
 
 target_link_libraries(constify
+    commonLib
     clangFrontend
     clangSerialization
     clangDriver

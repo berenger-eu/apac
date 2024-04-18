@@ -1,28 +1,6 @@
 #include "core.hpp"
 using namespace clang;
 
-//To verify more clearly if a QualType is a Pointer
-bool isPointerQualType(QualType qType)
-{
-    const Type* typeTemp;
-    bool returnValue=false;
-    if((typeTemp=qType.getTypePtrOrNull()))
-    {
-        returnValue=typeTemp->isPointerType();
-    }
-    return returnValue;
-}
-bool isReferenceQualType(QualType qType)
-{
-    const Type* typeTemp;
-    bool returnValue=false;
-    if((typeTemp=qType.getTypePtrOrNull()))
-    {
-        returnValue=typeTemp->isReferenceType();
-    }
-    return returnValue;
-}
-
 
 Expr* getInnerPtr(Expr* expression)
 {

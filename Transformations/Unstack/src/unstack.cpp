@@ -14,16 +14,7 @@ class MyASTConsumer : public ASTConsumer
 public:
 	MyASTConsumer(Rewriter &R) : VisitorUnstack(R) {}
 
-	// Override the method that gets called for each parsed top-level
-	// declaration.
-    /*
-	virtual bool HandleTopLevelDecl(DeclGroupRef DR) {
-    for (DeclGroupRef::iterator b = DR.begin(), e = DR.end(); b != e; ++b)
-    {   
-      Decl* dec=*b;
-        VisitorGoto.TraverseDecl(dec);
-        // Traverse the declaration using our AST visitor.     
-    }*/
+	//Parse all the file
     virtual void HandleTranslationUnit(ASTContext &Ctx)
 	{
         VisitorUnstack.TraverseAST(Ctx);

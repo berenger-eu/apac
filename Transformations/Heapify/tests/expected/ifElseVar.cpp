@@ -2,25 +2,28 @@ int main() {
   {
     int *const apacMemeBloc__i_0 = new int(1);
     int &i = *(apacMemeBloc__i_0);
-    if (i)
-      i++;
-    else
-      i++;
-    delete apacMemeBloc__i_0;
-  };
+    if (i) {
 
-  if (true)
+      i++;
+    } else {
+
+      i++;
+    };
+    delete apacMemeBloc__i_0;
+  }
+
+  if (true) {
     ;
-  else {
+  } else {
     int *const apacMemeBloc__i_1 = new int(1);
     int &i = *(apacMemeBloc__i_1);
-    if (i)
+    if (i) {
       ;
-    else
+    } else {
       i++;
+    };
     delete apacMemeBloc__i_1;
-  };
-
+  }
   {
     int *const apacMemeBloc__h_0 = new int(1);
     int &h = *(apacMemeBloc__h_0);
@@ -33,14 +36,15 @@ int main() {
       int &h = *(apacMemeBloc__h_1);
       int *const apacMemeBloc__j_1 = new int(4 + h);
       int &j = *(apacMemeBloc__j_1);
-      if (j)
+      if (j) {
         h++;
-      else
+      } else {
         j = 5;
+      };
       delete apacMemeBloc__h_1;
       delete apacMemeBloc__j_1;
     };
     delete apacMemeBloc__h_0;
     delete apacMemeBloc__j_0;
-  };
+  }
 }

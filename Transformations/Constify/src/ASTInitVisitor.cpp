@@ -6,11 +6,6 @@
 
 using namespace clang;
 
-//To avoid crashes
-bool ASTInitVisitor::VisitStmt(Stmt *s)
-{
-    return true;
-}
 bool ASTInitVisitor::VisitCXXThisExpr(CXXThisExpr* thisExpr)
 {
     if(TheRewriter.getSourceMgr().isInSystemHeader(thisExpr->getBeginLoc()))
@@ -146,9 +141,5 @@ bool ASTInitVisitor::VisitBinaryOperator(BinaryOperator* bop)
             SymT.addDependencyHashTable(pointedArg,curArg);
         }
     }   
-    return true;
-}
-bool ASTInitVisitor::VisitCXXRecordDecl(CXXRecordDecl* recDecl)
-{
     return true;
 }
