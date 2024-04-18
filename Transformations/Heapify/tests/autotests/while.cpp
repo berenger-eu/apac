@@ -5,12 +5,11 @@ int main()
         i++;
         int m;
     }
-    while((i++)<10)
+    while((i++)<10){
         int m;
+    }
     while(int i=-1)
     {
         i++;
     }
-    while(int i=-1)
-        i++;
 }

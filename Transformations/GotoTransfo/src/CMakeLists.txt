@@ -9,10 +9,12 @@ add_definitions(${LLVM_DEFINITIONS})
 message(STATUS "Found LLVM libs ${LLVM_DEFINITIONS}")
 
 # Now build our tools
+set (COMMON_LIB ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib)
+set(INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../include ${COMMON_LIB})
 
-set(INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../include)
-set(SOURCES gotoRet.cpp ASTGotoVisitor.cpp)
+set(SOURCES ASTGotoVisitor.cpp gotoRet.cpp)
 add_executable(gotoRet)
+
  
 target_sources(gotoRet PRIVATE ${SOURCES})
 target_include_directories(gotoRet PRIVATE ${INC_DIR})
@@ -24,6 +26,7 @@ llvm_map_components_to_libnames(llvm_libs x86asmparser bitreader support mc opti
 message(STATUS "LLVM_LIBS: ${llvm_libs}")
 
 target_link_libraries(gotoRet
+    commonLib
     clangFrontend
     clangSerialization
     clangDriver

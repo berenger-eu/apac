@@ -5,7 +5,7 @@ class ASTConstifyVisitor : public RecursiveASTVisitor<ASTConstifyVisitor>
 {
 public:
     ASTConstifyVisitor(Rewriter &R,SymTab& SymTableIn) : TheRewriter(R),SymT(SymTableIn) {};
-    bool VisitStmt(Stmt *);
+    inline bool VisitStmt(Stmt *){return true ;};
     bool VisitCXXMethodDecl(CXXMethodDecl*);
     bool VisitBinaryOperator(BinaryOperator*);
     bool VisitUnaryOperator(UnaryOperator*);

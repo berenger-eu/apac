@@ -1,34 +1,15 @@
 #pragma once
-#include <cstdio>
-#include <iostream>
+
 #include <sstream>
 #include <string>
-#include <memory>
-#include <vector>
-#include <unordered_map>
 
 #include "clang/AST/ASTContext.h"
-#include "clang/AST/ASTConsumer.h"
+
 #include "clang/AST/RecursiveASTVisitor.h"
-#include "clang/Basic/Diagnostic.h"
-#include "clang/Basic/FileManager.h"
 #include "clang/Basic/SourceManager.h"
-#include "clang/Basic/TargetInfo.h"
-#include "clang/Basic/TargetOptions.h"
-
-#include "clang/Frontend/CompilerInstance.h"
-#include "clang/Lex/Preprocessor.h"
-#include "clang/Parse/ParseAST.h"
-
 #include "clang/Rewrite/Core/Rewriter.h"
-#include "clang/Rewrite/Frontend/Rewriters.h"
 
-#include "clang/Tooling/CommonOptionsParser.h"
-#include "clang/Tooling/Tooling.h"
-
-
-#include "llvm/Support/Host.h"
-#include "llvm/Support/raw_ostream.h"
+#include "common.hpp"
 
 using namespace clang;
 class ASTGotoVisitor : public RecursiveASTVisitor<ASTGotoVisitor>
@@ -38,16 +19,29 @@ public:
     inline bool VisitStmt(Stmt *) {return true;} 
     bool VisitFunctionDecl(FunctionDecl*); 
 private:
-    void subVisitIfStmt(IfStmt* );
+    //Like Visit functions, but called by VisitCompoundStmt and not by default when encountering specific nodes
     void subVisitCompoundStmt(CompoundStmt* );
-    void subVisitWhileStmt(WhileStmt* );
-    void subVisitForStmt(ForStmt* );
+    //Handles the transformation of the found ReturnStmt
     void subVisitReturnStmt(ReturnStmt* );
-    void handleSubStmt(Stmt* );
+    //Looks through the body of the ForStmt
+    inline void subVisitForStmt(ForStmt* forSt){
+        handleSubStmt(forSt->getBody());
+    }
+    //Looks through the body of the WhileStmt
+    inline void subVisitWhileStmt(WhileStmt* whileSt){
+        handleSubStmt(whileSt->getBody());
+    }
+    //Looks through the Then and Else part of the IfStmt
+    inline void subVisitIfStmt(IfStmt* ifSt){
+            handleSubStmt(ifSt->getThen());
+            handleSubStmt(ifSt->getElse());
+    }
+    //Will continue to Visit the compoundStmt 
+    void handleSubStmt(Stmt*);
     //Used to give a unique number for the exit section of each function
     unsigned int functionsCounter;  
-    //Like Visit functions, but called by VisitCompoundStmt and not by default when encountering specific nodes
     Rewriter &TheRewriter;
 };
 
-std::string createGotoString(ReturnStmt& ,Rewriter& ,unsigned int&);
+//Returns string : __result=<returnValue>;goto __exitX;\n
+std::string createGotoString(const ReturnStmt& ,const Rewriter& ,const unsigned int&);

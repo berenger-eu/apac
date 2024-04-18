@@ -21,6 +21,7 @@ bool ASTUnstackVisitor::VisitCompoundStmt(CompoundStmt* coSt)
 }
 void ASTUnstackVisitor::handleSubStmt(Stmt* st)
 {
+    std::vector<Expr*> exprList;
     if(st==NULL)
         ;
     else if(isa<BinaryOperator>(st)){
@@ -36,58 +37,44 @@ void ASTUnstackVisitor::handleSubStmt(Stmt* st)
     else if(isa<CallExpr>(st)){
         subVisitCallExpr(cast<CallExpr>(st));
     }
+    else{
+        llvm::errs()<<"Statement is not handled\n";
+    }
     
 }
-void ASTUnstackVisitor::subVisitCallExpr(CallExpr* calExpr)
-{
-    std::vector<Expr*> exprList {calExpr};
-    transfoInstruction(exprList,calExpr);
-}
-void ASTUnstackVisitor::subVisitBinaryOperator(BinaryOperator* bop)
-{
-    std::vector<Expr*> exprList {bop->getLHS(),bop->getRHS()};
-    transfoInstruction(exprList,bop);
-}
-void ASTUnstackVisitor::subVisitUnaryOperator(UnaryOperator* uop)
-{
-    std::vector<Expr*> exprList {uop->getSubExpr()};
-    transfoInstruction(exprList,uop);
-}
+
 void ASTUnstackVisitor::subVisitDeclStmt(DeclStmt* declSt)
 {    
     std::stringstream SSprint;
+    //Vector containing all expressions that might need to be transformed by the transformation
+    std::vector<Expr*> exprList;
     if((declSt->isSingleDecl()))
     {
         Decl* d=declSt->getSingleDecl();
         if(isa<VarDecl>(d))
         {
             VarDecl* varDec=cast<VarDecl>(d);
-            std::vector<Expr*> exprList {varDec->getInit()};
-            transfoInstruction(exprList,declSt);
+            exprList.push_back (varDec->getInit());
+            transfoInstruction(exprList,declSt->getBeginLoc());
          }
     }
     //Multiple decl
-    //Ignored for now
     else
     {
-        DeclGroup& dgr=declSt->getDeclGroup().getDeclGroup();
-        int dgrSize=dgr.size();
-        std::vector<Expr*> exprList;
-        for(int i=0;i<dgrSize;i++)
-            if(isa<VarDecl>(dgr[i]))
-            {
-                VarDecl* vd =cast<VarDecl>(dgr[i]);
-                exprList.push_back(vd->getInit());
-            }
-        transfoInstruction(exprList,declSt);
+        const DeclGroupRef& dgr=declSt->getDeclGroup();
+        //We add the Init part of each declaration to the list of expression
+        for(DeclGroupRef::const_iterator b=dgr.begin(),e=dgr.end();b!=e;b++)
+            if(isa<VarDecl>(*b))
+                exprList.push_back((cast<VarDecl>(*b))->getInit());
+        transfoInstruction(exprList,declSt->getBeginLoc());
     }
 }
-//Transform a CallExpr into a varTemp and adds the unstacked call before instructionBegin
 
-void ASTUnstackVisitor::unstackTransformCallExpr(CallExpr* calExp,SourceLocation instructionBegin)
+//Transform a CallExpr into a varTemp and adds the unstacked call before instructionBegin
+void ASTUnstackVisitor::unstackTransformCallExpr(CallExpr* calExp,const SourceLocation& instructionBegin)
 {
     std::vector<CallExpr*> vectCallExpr;
-    recursiveStringCreateTransformCallExpr(calExp,vectCallExpr);
+    findAllCallExpr(calExp,vectCallExpr);
     std::stringstream SScall;
     std::queue<int>tempVarQueue;
     for(auto b=vectCallExpr.begin(),e=vectCallExpr.end();b!=e;b++)
@@ -125,18 +112,19 @@ void ASTUnstackVisitor::findTopCallsInExpr(Expr* ex,std::vector<CallExpr*>& call
     //TODO:Add cases like BinaryOp,UnaryOp, ...
 }
 
-void ASTUnstackVisitor::recursiveStringCreateTransformCallExpr(CallExpr* calExp,std::vector<CallExpr*>& vectCallExpr)
+void ASTUnstackVisitor::findAllCallExpr(CallExpr* calExp,std::vector<CallExpr*>& vectCallExpr)
 {
+    //We look for the CallExpr in each Argument
     for(auto beg=calExp->arg_begin(),end=calExp->arg_end();beg!=end;beg++)
     {
         Expr* arg=(*beg);
         std::vector<CallExpr*> callsInArg;
+        //Find all top CallExpr 
         findTopCallsInExpr(arg,callsInArg);
+        //Then look through them 
         for(auto b=callsInArg.begin(),e=callsInArg.end();b!=e;b++)
-            recursiveStringCreateTransformCallExpr(*b,vectCallExpr);
+            findAllCallExpr(*b,vectCallExpr);
     }
-    //SSprint<<createTempVarString(calExp,tempVarsCounter,argNumbers);
-    //tempVarsCounter++;
     vectCallExpr.push_back(calExp);
 }
 
@@ -146,11 +134,13 @@ std::string ASTUnstackVisitor::createCallArgString(Expr* argExpr,std::queue<int>
     if(argExpr==NULL)
         ;
     argExpr=argExpr->IgnoreImpCasts();
+    //If it's a call, we can replace it by the corresponding variable
     if(isa<CallExpr>(argExpr))
     {
         res<<" __tempVar_"<<tempVarQueue.front()<<" ";
         tempVarQueue.pop(); 
     }
+    //If it's a BinaryOperator, then we have to look at both expressions
     else if(isa<BinaryOperator>(argExpr))
     {
         BinaryOperator* bop=cast<BinaryOperator>(argExpr);
@@ -173,9 +163,11 @@ std::string ASTUnstackVisitor::createCallArgString(Expr* argExpr,std::queue<int>
             res<<opcodeStr
             <<createCallArgString(uop->getSubExpr(),tempVarQueue);
     }
+    //Either the Expr does not contain a call, or we haven't found it
+    //So we don't change anything either way 
     else
     {
-        res<<getExprAsString(argExpr);
+        res<<getExprAsString(argExpr,TheRewriter.getLangOpts());
     }
     return res.str();
 }
@@ -194,40 +186,30 @@ std::string ASTUnstackVisitor::createTempVarString(CallExpr* calExp,int currentC
     int currentArg=0;
     bool firstArg=true;
     //Prints all of its arguments 
-    for(auto b=calExp->arg_begin(),e=calExp->arg_end();b!=e;b++)
-    {
-        if(firstArg)
-        {
-            firstArg=false;
-            SSresult<<createCallArgString(*b,tempVarQueue);
-        }
-        else
+    for(auto b=calExp->arg_begin(),e=calExp->arg_end();b!=e;b++){
+        if(!firstArg)
             SSresult<<","<<createCallArgString(*b,tempVarQueue);
+        else{
+            SSresult<<createCallArgString(*b,tempVarQueue);
+            firstArg=false;
+        }
+        
         
     }
     SSresult<<");\n";
     return SSresult.str();
 }
 
-void ASTUnstackVisitor::transfoInstruction(std::vector<Expr*>& exprVect,Stmt* instruction)
+void ASTUnstackVisitor::transfoInstruction(std::vector<Expr*>& exprVect,const SourceLocation& instructionBeginLoc)
 {
     for(auto beg=exprVect.begin(),end=exprVect.end();beg!=end;beg++)
-        tranfoExpr(*beg,instruction);
+        tranfoExpr(*beg,instructionBeginLoc);
 }
-void ASTUnstackVisitor::tranfoExpr(Expr* ex,Stmt* instruction)
+void ASTUnstackVisitor::tranfoExpr(Expr* ex,const SourceLocation& instructionBeginLoc)
 {
     std::vector<CallExpr*> callList;
     findTopCallsInExpr(ex,callList);
     for(auto beg=callList.begin();beg!=callList.end();beg++)
-        unstackTransformCallExpr(*beg,instruction->getBeginLoc());
+        unstackTransformCallExpr(*beg,instructionBeginLoc);
 
-}
-std::string ASTUnstackVisitor::getExprAsString(Expr* expression)
-{
-    std::stringstream SSprint;
-    PrintingPolicy print_policy(TheRewriter.getLangOpts());
-    std::string exprString;
-    llvm::raw_string_ostream stringStreamExpr(exprString);
-    expression->printPretty(stringStreamExpr,NULL,print_policy);
-    return exprString;
 }
