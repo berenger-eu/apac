@@ -3,7 +3,7 @@ using namespace clang;
 //Mostly here to reset the counter for variables, we assume that number will not overflow
 bool ASTUnstackVisitor::VisitFunctionDecl(FunctionDecl* fDecl)
 {
-    if(TheRewriter.getSourceMgr().isInSystemHeader(fDecl->getBeginLoc()))
+    if(isInHeaders(TheRewriter.getSourceMgr(),fDecl->getBeginLoc()))
         return true;
 
     tempVarsCounter=0;
@@ -11,7 +11,7 @@ bool ASTUnstackVisitor::VisitFunctionDecl(FunctionDecl* fDecl)
 }
 bool ASTUnstackVisitor::VisitCompoundStmt(CompoundStmt* coSt)
 {
-    if(TheRewriter.getSourceMgr().isInSystemHeader(coSt->getBeginLoc()))
+    if(isInHeaders(TheRewriter.getSourceMgr(),coSt->getBeginLoc()))
         return true;
     for (CompoundStmt::body_iterator b = coSt->body_begin(), e = coSt->body_end()
     ; b != e; ++b)

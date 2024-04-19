@@ -6,6 +6,7 @@
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Decl.h"
 #include "clang/AST/Expr.h"
+#include "clang/Basic/SourceManager.h"
 
 using namespace clang;
 
@@ -48,4 +49,9 @@ inline QualType getReferenceToQType(QualType qt,const ASTContext& aContext){
 inline std::string getInitString(VarDecl& v)
 {
     return getExprAsString(v.getInit(),v.getASTContext().getLangOpts());
+}
+
+inline bool isInHeaders(SourceManager& sm,SourceLocation sl)
+{
+  return (!(sm.isWrittenInMainFile(sl)))||sm.isInSystemHeader(sl);
 }

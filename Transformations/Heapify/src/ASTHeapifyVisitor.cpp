@@ -3,15 +3,14 @@ using namespace clang;
 
 bool ASTHeapifyVisitor::VisitFunctionDecl(FunctionDecl* fDecl)
 {
-  //In case we were trying to look for a function defined in the header
-    if(TheRewriter.getSourceMgr().isInSystemHeader(fDecl->getBeginLoc()))
-        return true;
-    functionHeap.found=true;
-    subVisitCompoundStmt(cast<CompoundStmt>(fDecl->getBody()));
-      //End of the function, so we clear all variablesEncountered so far
-    currentVarsEncountered.clear();
-    
-    return true;
+//In case we were trying to look for a function defined in the header
+  if(isInHeaders(TheRewriter.getSourceMgr(),fDecl->getEndLoc()))
+      return true;
+  functionHeap.found=true;
+  subVisitCompoundStmt(cast<CompoundStmt>(fDecl->getBody()));
+    //End of the function, so we clear all variablesEncountered so far
+  currentVarsEncountered.clear();
+  return true;
 }
 
 bool ASTHeapifyVisitor::subVisitCompoundStmt(CompoundStmt* coSt)

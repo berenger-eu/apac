@@ -2,7 +2,7 @@
 using namespace clang;
 bool ASTGotoVisitor::VisitFunctionDecl(FunctionDecl* fDecl)
 {
-    if(TheRewriter.getSourceMgr().isInSystemHeader(fDecl->getBeginLoc()))
+    if(isInHeaders(TheRewriter.getSourceMgr(),fDecl->getBeginLoc()))
         return true;
 
     functionsCounter++;
