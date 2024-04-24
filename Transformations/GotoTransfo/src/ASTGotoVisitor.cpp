@@ -9,7 +9,7 @@ bool ASTGotoVisitor::VisitFunctionDecl(FunctionDecl* fDecl)
 
     std::stringstream SSprint;
     //Declares the result
-    SSprint<<"\n"<<fDecl->getReturnType().getAsString()<<" __result;\n";
+    SSprint<<"\n"<<fDecl->getReturnType().getAsString(TheRewriter.getLangOpts())<<" __result;\n";
     TheRewriter.InsertTextAfterToken(fDecl->getBody()->getBeginLoc(),SSprint.str());
 
     //Adds the exit section

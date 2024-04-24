@@ -1,0 +1,4 @@
+bool h()
+{
+    return true;
+}
