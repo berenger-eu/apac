@@ -216,7 +216,7 @@ std::string ASTHeapifyVisitor::subVisitVarDecl(VarDecl& v,std::vector<item_found
     currentVarsInScope.push_back(curVar);
     currentVarsEncountered.push_back(curVar);
     //TOTEST
-     strRes=createCreationString(curVar);
+     strRes=createCreationString(curVar,TheRewriter.getLangOpts());
   }
   else
     strRes=getCompleteVarDeclStr(v);

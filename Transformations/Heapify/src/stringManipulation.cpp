@@ -22,13 +22,13 @@ std::string createDeleteSegment(const std::vector<item_found>& itemsToDelete)
   return SSprint.str();
 }
 
-std::string createCreationStringArray(const struct item_found& itFound)
+std::string createCreationStringArray(const struct item_found& itFound,const LangOptions& langOpts)
 {
   std::stringstream SSprint;
   VarDecl& v=*(itFound.declaration);
-  std::string strTempMemType=itFound.qTypeTempMem.getAsString();
-  std::string strNewType=itFound.qTypeNew.getAsString();
-  std::string strVarType=itFound.qTypeVar.getAsString();
+  std::string strTempMemType=itFound.qTypeTempMem.getAsString(langOpts);
+  std::string strNewType=itFound.qTypeNew.getAsString(langOpts);
+  std::string strVarType=itFound.qTypeVar.getAsString(langOpts);
   std::string apacMemBloc=getApacMemBlockStr(itFound);
   
   //strVarType adds a '&' before where the name of the variable should be
@@ -52,13 +52,13 @@ std::string createCreationStringArray(const struct item_found& itFound)
   return SSprint.str();
 }
 
-std::string createCreationStringNonArray(const struct item_found& itFound)
+std::string createCreationStringNonArray(const struct item_found& itFound,const LangOptions& langOpts)
 {
   std::stringstream SSprint;
   VarDecl& v=*(itFound.declaration);
-  std::string strTempMemType=itFound.qTypeTempMem.getAsString();
-  std::string strNewType=itFound.qTypeNew.getAsString();
-  std::string strVarType=itFound.qTypeVar.getAsString();
+  std::string strTempMemType=itFound.qTypeTempMem.getAsString(langOpts);
+  std::string strNewType=itFound.qTypeNew.getAsString(langOpts);
+  std::string strVarType=itFound.qTypeVar.getAsString(langOpts);
   std::string apacMemBloc=getApacMemBlockStr(itFound);
 
   SSprint<<strTempMemType<<' '<<apacMemBloc<<" = new "<<strNewType;
