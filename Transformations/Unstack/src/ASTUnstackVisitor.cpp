@@ -178,7 +178,7 @@ std::string ASTUnstackVisitor::createTempVarString(CallExpr* calExp,int currentC
     std::stringstream SSresult;
     //Get the return type of the function
     ASTContext& aCons=calExp->getDirectCallee()->getASTContext();
-    std::string functionType=calExp->getCallReturnType(aCons).getAsString();
+    std::string functionType=calExp->getCallReturnType(aCons).getAsString(TheRewriter.getLangOpts());
     //Type __tempVar_x;
     SSresult<<functionType<<" __tempVar_"<<currentCounterNumber
     //= functionName ( 

@@ -6,6 +6,10 @@ int& g(int& a)
 {
     return a;
 }
+bool h(bool a)
+{
+    return a;
+}
 int main()
 {
     
@@ -15,5 +19,6 @@ int main()
     f(g(a));
     int b=f(a++);
     int c= g(a)++;
+    bool d=h(true);
     return 0;
 }

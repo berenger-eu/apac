@@ -1,5 +1,6 @@
 int f(int a) { return a; }
 int &g(int &a) { return a; }
+bool h(bool a) { return a; }
 int main() {
 
   int a = 1;
@@ -15,5 +16,7 @@ int main() {
   int b = __tempVar_5;
   int &__tempVar_6 = g(a);
   int c = __tempVar_6++;
+  bool __tempVar_7 = h(true);
+  bool d = __tempVar_7;
   return 0;
 }
