@@ -19,7 +19,14 @@ std::string getExprAsString(const Expr*,const LangOptions&);
 //From a VarDecl Type, get the string corresponding to its declaration in a single instruction
 //Useful to create multiple single declarations from a single multiple declaration
 //Format: "type varName [= initValue];\n"
-std::string getCompleteVarDeclStr(VarDecl&);
+std::string getCompleteVarDeclStr(const VarDecl&);
+
+//From a VarDecl Type, get the string : 
+// <varName> [= <init>] ;
+std::string getVarDeclDefStr(const VarDecl& );
+//From a VarDecl Type, get the string :
+// <type> <varName> ;
+std::string getVarDeclDeclStr(const VarDecl& v);
 
 //True when the input is a pointer type
 bool isPointerQualType(clang::QualType );
@@ -46,7 +53,7 @@ inline QualType getReferenceToQType(QualType qt,const ASTContext& aContext){
 }
 
 //Returns the initialization part of a variable declaration as a string
-inline std::string getInitString(VarDecl& v)
+inline std::string getInitString(const VarDecl& v)
 {
     return getExprAsString(v.getInit(),v.getASTContext().getLangOpts());
 }
