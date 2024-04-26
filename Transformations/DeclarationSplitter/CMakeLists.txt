@@ -1,0 +1,10 @@
+add_subdirectory(src)
+
+add_custom_target(testDeclarationSplitter
+COMMENT "Building DeclarationSplitter"
+DEPENDS declarationSplitter
+COMMENT "Starting tests"
+WORKING_DIRECTORY ../test
+COMMAND ./test.sh
+COMMENT "Ending tests"
+)

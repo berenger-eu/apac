@@ -1,16 +1,28 @@
 #include "common.hpp"
 
-std::string getCompleteVarDeclStr(VarDecl& v)
+std::string getCompleteVarDeclStr(const VarDecl& v){
+  std::stringstream SSprint;
+  SSprint<<v.getType().getAsString()<<" "<<getVarDeclDefStr(v);
+  return SSprint.str();
+}
+std::string getVarDeclDefStr(const VarDecl& v)
 {
     std::stringstream SSresult;
     //type varName
-    SSresult<<v.getType().getAsString()<<" "<<v.getNameAsString();
     if(v.getInit())
     {
+        SSresult<<v.getNameAsString();
         //= initValue
         SSresult<<" = "<<getInitString(v);
+        SSresult<<";\n";
     }
-    SSresult<<";\n";
+    return SSresult.str();
+}
+std::string getVarDeclDeclStr(const VarDecl& v)
+{
+    std::stringstream SSresult;
+    //type varName
+    SSresult<<v.getType().getAsString()<<" "<<v.getNameAsString()<<";\n";
     return SSresult.str();
 }
 std::string getExprAsString(const Expr* expression,const LangOptions& langOpt)
