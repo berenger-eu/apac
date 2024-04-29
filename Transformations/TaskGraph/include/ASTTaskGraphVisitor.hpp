@@ -18,9 +18,12 @@ public:
     ASTTaskGraphVisitor(Rewriter &R) : TheRewriter(R) {};
     inline bool VisitStmt(Stmt *s){return true;}
     bool VisitFunctionDecl(FunctionDecl *f);
-    bool VisitVarDecl(VarDecl *v);
-    bool VisitUnaryOperator(UnaryOperator* uop);
-    bool VisitBinaryOperator(BinaryOperator* bop);
+    void handleSubStmt(Stmt* st);
+    void subVisitCompoundStmt(CompoundStmt* coSt);
+    void subVisitVarDecl(VarDecl *v);
+    void subVisitUnaryOperator(UnaryOperator* uop);
+    void subVisitBinaryOperator(BinaryOperator* bop);
+    const std::stack<PotTaskGraph>& getTaskGraphs(){return taskGraphs;}
 private:
     std::stack<PotTaskGraph> taskGraphs;
     Rewriter &TheRewriter;

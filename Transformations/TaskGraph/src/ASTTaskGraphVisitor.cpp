@@ -1,16 +1,49 @@
 #include "ASTTaskGraphVisitor.hpp"
 
 bool ASTTaskGraphVisitor::VisitFunctionDecl(FunctionDecl *f) {
-  if(!TheRewriter.getSourceMgr().isWrittenInMainFile(f->getBeginLoc())) 
+  if(isInHeaders(TheRewriter.getSourceMgr(),f->getBeginLoc())) 
     return true;
-  PotTaskGraph graph;  
-  taskGraphs.push(graph);
+  if(f->getBody()&&f->isThisDeclarationADefinition()){
+    PotTaskGraph graph;  
+    taskGraphs.push(graph);
+    subVisitCompoundStmt(cast<CompoundStmt>(f->getBody()));
+  }
   return true;
 }
 
-bool ASTTaskGraphVisitor::VisitVarDecl(VarDecl *v) {
-  if(!TheRewriter.getSourceMgr().isWrittenInMainFile(v->getBeginLoc())) 
-    return true;
+void ASTTaskGraphVisitor::subVisitCompoundStmt(CompoundStmt* coSt)
+{
+  for (auto&b : coSt->body() )
+      handleSubStmt(b);
+}
+void ASTTaskGraphVisitor::handleSubStmt(Stmt* st)
+{
+    std::vector<Expr*> exprList;
+    if(st==NULL)
+        ;
+    else if(isa<BinaryOperator>(st)){
+        subVisitBinaryOperator(cast<BinaryOperator>(st));
+    }
+    else if(isa<UnaryOperator>(st)){
+        subVisitUnaryOperator(cast<UnaryOperator>(st));
+    }
+    /*   
+    else if(isa<DeclStmt>(st)){
+        subVisitDeclStmt(cast<DeclStmt>(st));
+    }
+    
+    else if(isa<CallExpr>(st)){
+        subVisitCallExpr(cast<CallExpr>(st));
+    }
+    */
+    else{
+        llvm::errs()<<"Statement is not handled\n";
+    }
+    
+}
+
+
+void ASTTaskGraphVisitor::subVisitVarDecl(VarDecl *v) {
   if(v->getInit())
   {
     PotTaskGraph graph=taskGraphs.top();
@@ -29,13 +62,10 @@ bool ASTTaskGraphVisitor::VisitVarDecl(VarDecl *v) {
     }
    graph.addTask(task);
   }
-  return true;
 }
 
-bool ASTTaskGraphVisitor::VisitUnaryOperator(UnaryOperator* uop)
+void ASTTaskGraphVisitor::subVisitUnaryOperator(UnaryOperator* uop)
 {
-    if(!TheRewriter.getSourceMgr().isWrittenInMainFile(uop->getBeginLoc())) 
-        return true;
     //uop->dump();
     Expr* subExpr=uop->getSubExpr();
     if(isa<DeclRefExpr>(subExpr))
@@ -54,14 +84,37 @@ bool ASTTaskGraphVisitor::VisitUnaryOperator(UnaryOperator* uop)
       llvm::errs()<<"UnaryOperator not handled for following Stmt\n";
       uop->dump();
     }
-    return true;
 }
 
-bool ASTTaskGraphVisitor::VisitBinaryOperator(BinaryOperator* bop)
+void ASTTaskGraphVisitor::subVisitBinaryOperator(BinaryOperator* bop)
 {
-    if(!TheRewriter.getSourceMgr().isWrittenInMainFile(bop->getBeginLoc())) 
-        return true;
     //bop->dump();
-    return true;
+    Expr* leftSide=bop->getLHS();
+    if(isa<DeclRefExpr>(leftSide))
+    {
+      DeclRefExpr& d=cast<DeclRefExpr>(*leftSide);
+      PotTaskGraph graph=taskGraphs.top();
+      PotTask task(0);
+      task.addParam(AccessType::AccessWrite, d.getDecl()->getNameAsString());
+      //When we have i '+=','-=',... , i is also read
+      if(isa<CompoundAssignOperator>(bop))
+        task.addParam(AccessType::AccessRead, d.getDecl()->getNameAsString());
+      std::vector< Stmt*> leafs;
+      getLeafs(bop->getRHS(),leafs);
+      for (auto& b : leafs)
+      {
+        if(isa<DeclRefExpr>(b))
+        {
+          DeclRefExpr& d=cast<DeclRefExpr>(*b);
+          task.addParam(AccessType::AccessRead, d.getDecl()->getNameAsString());
+        }
+      }
+      graph.addTask(task);
+    }
+    else
+    {
+      llvm::errs()<<"BinaryOperator not handled for following Stmt\n";
+      bop->dump();
+    }
 }
 
