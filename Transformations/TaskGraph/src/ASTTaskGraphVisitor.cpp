@@ -37,6 +37,22 @@ bool ASTTaskGraphVisitor::VisitUnaryOperator(UnaryOperator* uop)
     if(!TheRewriter.getSourceMgr().isWrittenInMainFile(uop->getBeginLoc())) 
         return true;
     //uop->dump();
+    Expr* subExpr=uop->getSubExpr();
+    //TODO : Cases like so : f(a)++; with int& f (int& a) {return a;} ?
+    if(isa<DeclRefExpr>(subExpr))
+    {
+        DeclRefExpr& d=cast<DeclRefExpr>(*subExpr);
+        PotTaskGraph graph=taskGraphs.top();
+        PotTask task(0);
+        task.addParam(AccessType::AccessWrite, d.getDecl()->getNameAsString());
+        task.addParam(AccessType::AccessRead, d.getDecl()->getNameAsString());
+        graph.addTask(task);
+    }
+    else
+    {
+      llvm::errs()<<"UnaryOperator not handled for following Stmt\n";
+      uop->dump();
+    }
     return true;
 }
 
