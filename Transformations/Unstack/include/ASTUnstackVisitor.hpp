@@ -2,7 +2,7 @@
 #include <sstream>
 #include <string>
 #include <queue>
-
+#include <stack>
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Basic/SourceManager.h"
@@ -28,17 +28,17 @@ private:
     void subVisitDeclStmt(DeclStmt* );
     //Will call transfoInstruction and give the call
     inline void subVisitCallExpr(CallExpr* calExpr){
-        std::vector<Expr*> exprList {calExpr};
+        std::stack<Expr*> exprList ({calExpr});
         transfoInstruction(exprList,calExpr->getBeginLoc());
     }
     //Will call transfoInstruction and give the Expr on the Right side and the Left side of the operator
     inline void subVisitBinaryOperator(BinaryOperator* bop){
-        std::vector<Expr*> exprList {bop->getLHS(),bop->getRHS()};
+        std::stack<Expr*> exprList ({bop->getLHS(),bop->getRHS()});
         transfoInstruction(exprList,bop->getBeginLoc());
     }
     //Will call transfoInstruction and give it the Expr linked to the Unary operator
     inline void subVisitUnaryOperator(UnaryOperator* uop){
-        std::vector<Expr*> exprList {uop->getSubExpr()};
+        std::stack<Expr*> exprList ({uop->getSubExpr()});
         transfoInstruction(exprList,uop->getBeginLoc());
     }
 
@@ -64,7 +64,7 @@ private:
     void findTopCallsInExpr(Expr*,std::vector<CallExpr*>&);
     //Transforms an instruction, which can be composed of multiple expressions (BinaryOperator, multiple declaration)
     //Will write its modified version at the given SourceLocation
-    void transfoInstruction(std::vector<Expr*>&,const SourceLocation& instructionBeginLoc);
+    void transfoInstruction(std::stack<Expr*>&,const SourceLocation& instructionBeginLoc);
     //Transforms a single Expr
     //Will write its modified version at the given SourceLocation
     void tranfoExpr(Expr* ,const SourceLocation&  );
