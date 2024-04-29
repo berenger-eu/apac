@@ -5,13 +5,15 @@ enum AccessType{
 
 class PotTask{
 public:
-    PotTask(const int inTaskId);
-    PotTask& addParam(AccessType inAccess, const std::string& inDepId);
+    PotTask(const int inTaskId) : inTaskId(inTaskId) {};
+    void addParam(AccessType inAccess, const std::string& inDepId){;}
+private:
+    const int inTaskId;
 };
 
 class PotTaskGraph{
 public:
     PotTaskGraph() = default;
-    void addTask(PotTask& inTask);
+    void addTask(PotTask& inTask){;}
 };
 
