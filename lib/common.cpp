@@ -59,3 +59,22 @@ bool isReferenceQualType(QualType qType)
     }
     return returnValue;
 }
+
+void getLeafs(Stmt* st,std::vector< Stmt*>& leafs)
+{
+    std::queue<Stmt*> vectNodes;
+    vectNodes.push(st);
+    int temp=0;
+    while(!vectNodes.empty()&&temp<10)
+    {
+        temp++;
+        Stmt* s=vectNodes.front();
+        int lastSize=vectNodes.size();
+        for (auto it = s->child_begin(); it != s->child_end(); ++it) {
+            vectNodes.push(*it);
+        }
+        if(lastSize==vectNodes.size())
+            leafs.push_back(s);
+        vectNodes.pop();
+    }
+}
