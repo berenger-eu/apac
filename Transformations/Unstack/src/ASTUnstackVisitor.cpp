@@ -47,14 +47,14 @@ void ASTUnstackVisitor::subVisitDeclStmt(DeclStmt* declSt)
 {    
     std::stringstream SSprint;
     //Vector containing all expressions that might need to be transformed by the transformation
-    std::vector<Expr*> exprList;
+    std::stack<Expr*> exprList;
     if((declSt->isSingleDecl()))
     {
         Decl* d=declSt->getSingleDecl();
         if(isa<VarDecl>(d))
         {
             VarDecl* varDec=cast<VarDecl>(d);
-            exprList.push_back (varDec->getInit());
+            exprList.push (varDec->getInit());
             transfoInstruction(exprList,declSt->getBeginLoc());
          }
     }
@@ -65,7 +65,7 @@ void ASTUnstackVisitor::subVisitDeclStmt(DeclStmt* declSt)
         //We add the Init part of each declaration to the list of expression
         for(DeclGroupRef::const_iterator b=dgr.begin(),e=dgr.end();b!=e;b++)
             if(isa<VarDecl>(*b))
-                exprList.push_back((cast<VarDecl>(*b))->getInit());
+                exprList.push((cast<VarDecl>(*b))->getInit());
         transfoInstruction(exprList,declSt->getBeginLoc());
     }
 }
@@ -200,10 +200,12 @@ std::string ASTUnstackVisitor::createTempVarString(CallExpr* calExp,int currentC
     return SSresult.str();
 }
 
-void ASTUnstackVisitor::transfoInstruction(std::vector<Expr*>& exprVect,const SourceLocation& instructionBeginLoc)
+void ASTUnstackVisitor::transfoInstruction(std::stack<Expr*>& exprStack,const SourceLocation& instructionBeginLoc)
 {
-    for(auto beg=exprVect.begin(),end=exprVect.end();beg!=end;beg++)
-        tranfoExpr(*beg,instructionBeginLoc);
+    while(!exprStack.empty()){
+        tranfoExpr(exprStack.top(),instructionBeginLoc);
+        exprStack.pop();
+    }
 }
 void ASTUnstackVisitor::tranfoExpr(Expr* ex,const SourceLocation& instructionBeginLoc)
 {
