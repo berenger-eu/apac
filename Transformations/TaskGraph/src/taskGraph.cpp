@@ -24,6 +24,7 @@ public:
 	//Parse all the file
     virtual void HandleTranslationUnit(ASTContext &Ctx){
       VisitorTaskGraph.TraverseAST(Ctx);
+      llvm::errs()<<VisitorTaskGraph.getTaskGraphs().size()<<"\n";
     }
   
 
