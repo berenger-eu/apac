@@ -36,7 +36,7 @@ bool isPointerQualType(clang::QualType );
 //True when the input is a reference
 bool isReferenceQualType(clang::QualType );
 
-//Returns the leafs of a given statement
+//Returns the leafs (CallExpr,DeclRefExpr,...) of a given statement
 void getLeafs( clang::Stmt* s,std::vector< clang::Stmt*>& leafs);
 
 
