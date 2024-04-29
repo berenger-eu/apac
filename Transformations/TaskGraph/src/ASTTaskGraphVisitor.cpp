@@ -38,7 +38,6 @@ bool ASTTaskGraphVisitor::VisitUnaryOperator(UnaryOperator* uop)
         return true;
     //uop->dump();
     Expr* subExpr=uop->getSubExpr();
-    //TODO : Cases like so : f(a)++; with int& f (int& a) {return a;} ?
     if(isa<DeclRefExpr>(subExpr))
     {
         DeclRefExpr& d=cast<DeclRefExpr>(*subExpr);
@@ -48,6 +47,8 @@ bool ASTTaskGraphVisitor::VisitUnaryOperator(UnaryOperator* uop)
         task.addParam(AccessType::AccessRead, d.getDecl()->getNameAsString());
         graph.addTask(task);
     }
+    //TODO? : Cases like so : f(a)++; with int& f (int& a) {return a;} 
+    //Should not happen since function calls are unstacked, so f(a)++ would be temp_var++;    
     else
     {
       llvm::errs()<<"UnaryOperator not handled for following Stmt\n";
@@ -63,3 +64,4 @@ bool ASTTaskGraphVisitor::VisitBinaryOperator(BinaryOperator* bop)
     //bop->dump();
     return true;
 }
+
