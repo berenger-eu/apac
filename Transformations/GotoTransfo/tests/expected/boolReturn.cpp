@@ -2,7 +2,7 @@ bool h() {
   bool __result;
 
   __result = true;
-  goto __exit1;
-__exit1:
+  goto __exit0;
+__exit0:
   return __result;
 }
