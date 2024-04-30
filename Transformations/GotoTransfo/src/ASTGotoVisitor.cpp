@@ -2,24 +2,31 @@
 using namespace clang;
 bool ASTGotoVisitor::VisitFunctionDecl(FunctionDecl* fDecl)
 {
-    if(isInHeaders(TheRewriter.getSourceMgr(),fDecl->getBeginLoc()))
+    if(isInHeaders(TheRewriter.getSourceMgr(),fDecl->getBeginLoc())
+    ||!fDecl->isThisDeclarationADefinition())
         return true;
-
-    functionsCounter++;
-
-    std::stringstream SSprint;
-    //Declares the result
-    SSprint<<"\n"<<fDecl->getReturnType().getAsString(TheRewriter.getLangOpts())<<" __result;\n";
-    TheRewriter.InsertTextAfterToken(fDecl->getBody()->getBeginLoc(),SSprint.str());
+    //Declares the result in the transformed source file, only if it's not void
+    if(!fDecl->getReturnType().getTypePtr()->isVoidType())
+    {
+        std::stringstream SSprint;
+        //Declares the result
+        SSprint<<"\n"<<fDecl->getReturnType().getAsString(TheRewriter.getLangOpts())<<" __result;\n";
+        TheRewriter.InsertTextAfterToken(fDecl->getBody()->getBeginLoc(),SSprint.str());
+    }
 
     //Adds the exit section
     std::stringstream SSexit;
-    //TODO:Handle void result or cases with no returns 
-    SSexit<<"__exit"<<functionsCounter<<": return __result;\n";
+    //TODO:Handle other cases with no returns 
+    if(!fDecl->getReturnType().getTypePtr()->isVoidType())
+        SSexit<<"__exit"<<functionsCounter<<": return __result;\n";
+    else
+        SSexit<<"__exit"<<functionsCounter<<": return ;\n";
     TheRewriter.InsertTextAfter(fDecl->getBody()->getEndLoc(),SSexit.str());
     Stmt* fDeclBody=fDecl->getBody();
+    assert(fDeclBody&&"Function body is null\n");
     if( fDeclBody&&isa<CompoundStmt>(fDecl->getBody()))
         subVisitCompoundStmt(cast<CompoundStmt>(fDeclBody));
+    functionsCounter++;
     return true;
 }
 
@@ -55,8 +62,10 @@ void ASTGotoVisitor::subVisitReturnStmt(ReturnStmt* retStmt)
 std::string createGotoString(const ReturnStmt& retStmt,const Rewriter& TheRewriter,const unsigned int& exitCounter)
 {
     std::stringstream SSprint;
-    //Replaces return with __result=<returnValue>;goto __exitX;\n
-    SSprint<<"__result = "<<getExprAsString(retStmt.getRetValue(), TheRewriter.getLangOpts())
-    <<";\ngoto __exit"<<exitCounter;
+    //Replaces return with __result=<returnValue>; if there is a return value   
+    if(retStmt.getRetValue())
+        SSprint<<"__result = "<<getExprAsString(retStmt.getRetValue(), TheRewriter.getLangOpts())<<";\n";
+    // goto __exitX;\n
+    SSprint<<"goto __exit"<<exitCounter;
     return SSprint.str();
 }   
