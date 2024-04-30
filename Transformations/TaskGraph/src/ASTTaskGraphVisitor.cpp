@@ -118,3 +118,20 @@ void ASTTaskGraphVisitor::subVisitBinaryOperator(BinaryOperator* bop)
     }
 }
 
+void subVisitCallExpr(CallExpr* c)
+{
+  PotTaskGraph& graph=taskGraphs.top();
+  PotTask task(0);
+  std::vector< Stmt*> leafs;
+  getLeafs(c,leafs);
+  for(auto& b : leafs)
+  {
+    if(isa<DeclRefExpr>(b))
+    {
+      DeclRefExpr& d=cast<DeclRefExpr>(*b);
+      task.addParam(AccessType::AccessRead, d.getDecl()->getNameAsString());
+      //TODO: Analyze dependencies 
+      //task.addParam(AccessType::AccessWrite, d.getDecl()->getNameAsString());
+    }
+  }
+}

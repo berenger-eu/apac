@@ -23,6 +23,7 @@ public:
     void subVisitVarDecl(VarDecl *v);
     void subVisitUnaryOperator(UnaryOperator* uop);
     void subVisitBinaryOperator(BinaryOperator* bop);
+    void subVisitCallExpr(CallExpr* c);
     const std::stack<PotTaskGraph>& getTaskGraphs(){return taskGraphs;}
 private:
     std::stack<PotTaskGraph> taskGraphs;
