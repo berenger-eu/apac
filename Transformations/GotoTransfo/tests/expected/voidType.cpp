@@ -1,3 +1,4 @@
+#include <memory>
 void f();
 void f() {
   int a = 1;
@@ -12,12 +13,12 @@ __exit1:
 }
 
 int main() {
-  int __result;
+  std::unique_ptr<int> __result;
 
   f();
   g();
-  __result = 0;
+  __result = std::make_unique<int>(0);
   goto __exit2;
 __exit2:
-  return __result;
+  return *__result;
 }

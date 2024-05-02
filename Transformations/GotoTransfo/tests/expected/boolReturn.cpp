@@ -1,8 +1,9 @@
+#include <memory>
 bool h() {
-  bool __result;
+  std::unique_ptr<bool> __result;
 
-  __result = true;
+  __result = std::make_unique<bool>(true);
   goto __exit0;
 __exit0:
-  return __result;
+  return *__result;
 }
