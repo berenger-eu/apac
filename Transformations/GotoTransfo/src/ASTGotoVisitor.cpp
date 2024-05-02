@@ -10,7 +10,7 @@ bool ASTGotoVisitor::VisitFunctionDecl(FunctionDecl* fDecl)
     {
         std::stringstream SSprint;
         //Declares the result
-        SSprint<<"\n"<<fDecl->getReturnType().getAsString(TheRewriter.getLangOpts())<<" __result;\n";
+        SSprint<<"\nstd::unique_ptr<"<<fDecl->getReturnType().getAsString(TheRewriter.getLangOpts())<<"> __result;\n";
         TheRewriter.InsertTextAfterToken(fDecl->getBody()->getBeginLoc(),SSprint.str());
     }
 
@@ -18,7 +18,7 @@ bool ASTGotoVisitor::VisitFunctionDecl(FunctionDecl* fDecl)
     std::stringstream SSexit;
     //TODO:Handle other cases with no returns 
     if(!fDecl->getReturnType().getTypePtr()->isVoidType())
-        SSexit<<"__exit"<<functionsCounter<<": return __result;\n";
+        SSexit<<"__exit"<<functionsCounter<<": return *__result;\n";
     else
         SSexit<<"__exit"<<functionsCounter<<": return ;\n";
     TheRewriter.InsertTextAfter(fDecl->getBody()->getEndLoc(),SSexit.str());
@@ -62,9 +62,10 @@ void ASTGotoVisitor::subVisitReturnStmt(ReturnStmt* retStmt)
 std::string createGotoString(const ReturnStmt& retStmt,const Rewriter& TheRewriter,const unsigned int& exitCounter)
 {
     std::stringstream SSprint;
-    //Replaces return with __result=<returnValue>; if there is a return value   
+    //Replaces return with __result=std::make_unique<type>(); if there is a return value   
     if(retStmt.getRetValue())
-        SSprint<<"__result = "<<getExprAsString(retStmt.getRetValue(), TheRewriter.getLangOpts())<<";\n";
+        SSprint<<"__result = std::make_unique<"<<retStmt.getRetValue()->getType().getAsString(TheRewriter.getLangOpts())<<">("
+        <<getExprAsString(retStmt.getRetValue(), TheRewriter.getLangOpts())<<");\n";
     // goto __exitX;\n
     SSprint<<"goto __exit"<<exitCounter;
     return SSprint.str();
