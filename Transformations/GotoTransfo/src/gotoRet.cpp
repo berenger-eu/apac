@@ -12,17 +12,20 @@ using namespace clang::tooling;
 class MyASTConsumer : public ASTConsumer
 {
 public:
-	MyASTConsumer(Rewriter &R) : VisitorGoto(R) {}
+	MyASTConsumer(Rewriter &R) : VisitorGoto(R),TheRewriter(R) {}
 
 //Parse all the AST
     virtual void HandleTranslationUnit(ASTContext &Ctx)
 	{
-        VisitorGoto.TraverseAST(Ctx);
+    SourceManager &SM = TheRewriter.getSourceMgr();
+    TheRewriter.InsertTextAfter(SM.getLocForStartOfFile(SM.getMainFileID()),"#include <memory>\n");
+    VisitorGoto.TraverseAST(Ctx);
 	}
   
 
 private:
 	ASTGotoVisitor VisitorGoto;
+  Rewriter &TheRewriter;
 };
 
 class MyFrontendAction : public ASTFrontendAction {
