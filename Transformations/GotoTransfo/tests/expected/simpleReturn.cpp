@@ -1,16 +1,17 @@
+#include <memory>
 char fun() {
-  char __result;
+  std::unique_ptr<char> __result;
 
-  __result = 'c';
+  __result = std::make_unique<char>('c');
   goto __exit0;
 __exit0:
-  return __result;
+  return *__result;
 }
 int main() {
-  int __result;
+  std::unique_ptr<int> __result;
 
-  __result = 4;
+  __result = std::make_unique<int>(4);
   goto __exit1;
 __exit1:
-  return __result;
+  return *__result;
 }
