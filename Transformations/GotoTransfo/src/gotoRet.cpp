@@ -34,7 +34,7 @@ public:
   void EndSourceFileAction() override {
     SourceManager &SM = TheRewriter.getSourceMgr();
     llvm::errs() << "** EndSourceFileAction for: "
-                 << SM.getFileEntryForID(SM.getMainFileID())->getName() << "\n";
+                 << SM.getFileEntryRefForID(SM.getMainFileID())->getName() << "\n";
 
     // Now emit the rewritten buffer.
     TheRewriter.getEditBuffer(SM.getMainFileID()).write(llvm::outs());

@@ -26,32 +26,38 @@ llvm_map_components_to_libnames(llvm_libs x86asmparser bitreader support mc opti
 message(STATUS "LLVM_LIBS: ${llvm_libs}")
 
 target_link_libraries(gotoRet
-    commonLib
+    clangAST 
+    clangASTMatchers
+    clangBasic
     clangFrontend
     clangSerialization
+    clangTooling 
+    commonLib
     clangDriver
-    clangTooling
     clangParse
     clangSema
     clangAnalysis
-    clangRewriteFrontend
     clangRewrite
     clangEdit
+
     clangAST
     clangLex
-    clangBasic
-    clangASTMatchers
-    clangAST 
-    clangFrontendTool 
-    clangStaticAnalyzerFrontend 
-    clangStaticAnalyzerCheckers 
-    clangStaticAnalyzerCore 
-    clangCrossTU 
-    clangIndex 
-    clangToolingCore 
-    clangTooling 
-    clangFormat
+
+    #clangFrontendTool 
+    #clangRewriteFrontend
+    #clangStaticAnalyzerFrontend 
+    #clangStaticAnalyzerCheckers 
+    #clangStaticAnalyzerCore 
+
+    #clangIndex 
+    #clangToolingCore 
+    #clangFormat
+
     LLVMFrontendOpenMP
+    clangAPINotes
+    clangSupport
+    LLVMWindowsManifest
+    LLVMWindowsDriver
   )
 
 target_link_libraries(gotoRet ${llvm_libs})
