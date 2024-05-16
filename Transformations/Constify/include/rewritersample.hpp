@@ -22,7 +22,5 @@
 #include "clang/Tooling/Tooling.h"
 
 
-#include "llvm/Support/Host.h"
-
 
 #define PRINT_TABLE 1

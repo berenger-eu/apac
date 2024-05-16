@@ -13,4 +13,4 @@ void g(const float *const a, const double &b, const int *const *const &c) {}
 
 void h(const int *const a, const int *const *const b) {}
 
-void i(const struct A &a) {}
+void i(const A &a) {}
