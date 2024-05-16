@@ -30,8 +30,10 @@ std::string getExprAsString(const Expr* expression,const LangOptions& langOpt)
     std::string exprString;
     if(expression!=NULL)
     {
+
         std::stringstream SSprint;
         PrintingPolicy print_policy(langOpt);
+        print_policy.SuppressUnwrittenScope=true;
         llvm::raw_string_ostream stringStreamExpr(exprString);
         expression->printPretty(stringStreamExpr,NULL,print_policy);
     }
