@@ -52,7 +52,7 @@ public:
   void EndSourceFileAction() override {
     SourceManager &SM = TheRewriter.getSourceMgr();
     llvm::errs() << "** EndSourceFileAction for: "
-                 << SM.getFileEntryForID(SM.getMainFileID())->getName() << "\n";
+                 << SM.getFileEntryRefForID(SM.getMainFileID())->getName() << "\n";
 	printTextToFiles(); 
 	if(PRINT_TABLE)
 		dumpTableArgs();
@@ -91,7 +91,7 @@ private:
 	//To print contents of headers files
 	for (std::unordered_map<unsigned, FileID>::iterator it = SymT.fileID_table.begin(); it != SymT.fileID_table.end(); ++it) {
         //Parsing the path to the file
-		std::string fullPath=SM.getFileEntryForID(it->second)->getName().str();
+		std::string fullPath=SM.getFileEntryRefForID(it->second)->getName().str();
 		std::stringstream fullPathStream(fullPath);
 		if(it==SymT.fileID_table.begin())
 		{
