@@ -25,6 +25,14 @@ public:
     virtual void HandleTranslationUnit(ASTContext &Ctx){
       VisitorTaskGraph.TraverseAST(Ctx);
       llvm::errs()<<VisitorTaskGraph.getTaskGraphs().size()<<"\n";
+      auto taskGraphs=VisitorTaskGraph.getTaskGraphs();
+      for(int i=0;i<taskGraphs.size();i++)
+      {
+        PotTaskGraph g=taskGraphs.top();
+        taskGraphs.pop();
+        llvm::errs()<<"TaskGraph "<<g.dump()<<"\n";
+      }
+
     }
   
 
