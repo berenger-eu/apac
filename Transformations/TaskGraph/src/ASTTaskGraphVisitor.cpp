@@ -27,11 +27,12 @@ void ASTTaskGraphVisitor::handleSubStmt(Stmt* st)
     else if(isa<UnaryOperator>(st)){
         subVisitUnaryOperator(cast<UnaryOperator>(st));
     }
-    /*   
-    else if(isa<DeclStmt>(st)){
-        subVisitDeclStmt(cast<DeclStmt>(st));
+
+    else if(isa<DeclStmt>(st)&&cast<DeclStmt>(st)->isSingleDecl()){
+      if(isa<VarDecl>(cast<DeclStmt>(st)->getSingleDecl()))
+        subVisitVarDecl(cast<VarDecl>(cast<DeclStmt>(st)->getSingleDecl()));
     }
-    
+    /*    
     else if(isa<CallExpr>(st)){
         subVisitCallExpr(cast<CallExpr>(st));
     }
@@ -46,11 +47,12 @@ void ASTTaskGraphVisitor::handleSubStmt(Stmt* st)
 void ASTTaskGraphVisitor::subVisitVarDecl(VarDecl *v) {
   if(v->getInit())
   {
-    PotTaskGraph graph=taskGraphs.top();
+    PotTaskGraph& graph=taskGraphs.top();
     PotTask task(0);
     task.addParam(AccessType::AccessWrite, v->getNameAsString());
     std::vector< Stmt*> leafs;
     getLeafs(v->getInit(),leafs); 
+    llvm::errs()<<"Leafs size "<<leafs.size()<<"\n";
     for(auto& b : leafs)
     {
         b->dump();
@@ -71,7 +73,7 @@ void ASTTaskGraphVisitor::subVisitUnaryOperator(UnaryOperator* uop)
     if(isa<DeclRefExpr>(subExpr))
     {
         DeclRefExpr& d=cast<DeclRefExpr>(*subExpr);
-        PotTaskGraph graph=taskGraphs.top();
+        PotTaskGraph& graph=taskGraphs.top();
         PotTask task(0);
         task.addParam(AccessType::AccessWrite, d.getDecl()->getNameAsString());
         task.addParam(AccessType::AccessRead, d.getDecl()->getNameAsString());
@@ -93,7 +95,7 @@ void ASTTaskGraphVisitor::subVisitBinaryOperator(BinaryOperator* bop)
     if(isa<DeclRefExpr>(leftSide))
     {
       DeclRefExpr& d=cast<DeclRefExpr>(*leftSide);
-      PotTaskGraph graph=taskGraphs.top();
+      PotTaskGraph& graph=taskGraphs.top();
       PotTask task(0);
       task.addParam(AccessType::AccessWrite, d.getDecl()->getNameAsString());
       //When we have i '+=','-=',... , i is also read
@@ -118,7 +120,7 @@ void ASTTaskGraphVisitor::subVisitBinaryOperator(BinaryOperator* bop)
     }
 }
 
-void subVisitCallExpr(CallExpr* c)
+void ASTTaskGraphVisitor::subVisitCallExpr(CallExpr* c)
 {
   PotTaskGraph& graph=taskGraphs.top();
   PotTask task(0);
