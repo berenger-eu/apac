@@ -17,15 +17,18 @@ class ASTTaskGraphVisitor : public RecursiveASTVisitor<ASTTaskGraphVisitor>
 public:
     ASTTaskGraphVisitor(Rewriter &R) : TheRewriter(R) {};
     inline bool VisitStmt(Stmt *s){return true;}
-    bool VisitFunctionDecl(FunctionDecl *f);
-    void handleSubStmt(Stmt* st);
-    void subVisitCompoundStmt(CompoundStmt* coSt);
+    bool TraverseCallExpr(CallExpr* c);
+    bool TraverseFunctionDecl(FunctionDecl *f);
+    bool TraverseDeclStmt(DeclStmt* declSt);
+    bool TraverseUnaryOperator(UnaryOperator* uop);
+    bool TraverseBinaryOperator(BinaryOperator* bop);
     void subVisitVarDecl(VarDecl *v);
-    void subVisitUnaryOperator(UnaryOperator* uop);
-    void subVisitBinaryOperator(BinaryOperator* bop);
-    void subVisitCallExpr(CallExpr* c);
     const std::stack<PotTaskGraph>& getTaskGraphs(){return taskGraphs;}
 private:
+    bool isEmptyTask(const PotTask& task){return task.getParams().size()==0;};
+    void handleUnaryOperator(const UnaryOperator& ,PotTask&);
+    void handleBinaryOperator(const BinaryOperator& ,PotTask&);
+    void handleCallExpr(const CallExpr& ,PotTask&);
     std::stack<PotTaskGraph> taskGraphs;
     Rewriter &TheRewriter;
 };
