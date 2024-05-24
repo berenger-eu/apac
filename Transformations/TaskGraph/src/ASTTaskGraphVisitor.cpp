@@ -107,31 +107,66 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator& bop,PotTask
           curTask.addParam(AccessType::AccessRead, d.getDecl()->getNameAsString());
       }
       else
-        handleExpr(bop.getLHS(),curTask);
-      handleExpr(bop.getRHS(),curTask);
+        handleExpr(*bop.getLHS(),curTask);
+      handleExpr(*bop.getRHS(),curTask);
     }
     else
     {
-      handleExpr(bop.getLHS(),curTask);
-      handleExpr(bop.getRHS(),curTask);
+      handleExpr(*bop.getLHS(),curTask);
+      handleExpr(*bop.getRHS(),curTask);
     }
 }
 
 void ASTTaskGraphVisitor::handleCallExpr(const CallExpr& c,PotTask& curTask)
 {
-  /*
-  std::vector< Stmt*> leafs;
-  getLeafs(c,leafs);
-  for(auto& b : leafs)
+  const FunctionDecl& f=*(c.getDirectCallee());
+  for(int i=0;i<f.getNumParams();i++)
   {
-    if(isa<DeclRefExpr>(b))
+    const ParmVarDecl& p=*(f.getParamDecl(i));
+    const Expr* b=c.getArg(i);
+    if(isa<DeclRefExpr>(b->IgnoreCasts()))
     {
-      DeclRefExpr& d=cast<DeclRefExpr>(*b);
-      task.addParam(AccessType::AccessRead, d.getDecl()->getNameAsString());
-      //TODO: Analyze dependencies 
+      const DeclRefExpr& d=cast<DeclRefExpr>(*(b->IgnoreCasts()));
+      curTask.addParam(AccessType::AccessRead, d.getDecl()->getNameAsString());
+      if(isFullConstType(p.getType())||!(isReferenceQualType(p.getType())||isPointerQualType(p.getType())))
+        ;
+      else
+        curTask.addParam(AccessType::AccessWrite, d.getDecl()->getNameAsString());
       //task.addParam(AccessType::AccessWrite, d.getDecl()->getNameAsString());
     }
+    else
+      handleExpr(*b,curTask);
   }
-  */
-  return false;
+  
+}
+void ASTTaskGraphVisitor::handleExpr(const Expr& exp,PotTask& task)
+{
+  const Expr& curExp=*exp.IgnoreCasts(); 
+  if(isa<UnaryOperator>(curExp))
+  {
+    handleUnaryOperator(cast<UnaryOperator>(curExp),task);
+  }
+  else if(isa<BinaryOperator>(curExp))
+  {
+    handleBinaryOperator(cast<BinaryOperator>(curExp),task);
+  }
+  else if(isa<CallExpr>(curExp))
+  {
+    handleCallExpr(cast<CallExpr>(curExp),task);
+  }
+  else if(isa<DeclRefExpr>(curExp))
+  {
+    const DeclRefExpr& d=cast<DeclRefExpr>(curExp);
+    task.addParam(AccessType::AccessRead, d.getDecl()->getNameAsString());
+  }
+  //Ignored expressions case
+  else if(isa<IntegerLiteral>(curExp))
+  {
+    //Do nothing
+  }
+  else
+  {
+    llvm::errs()<<"Unhandled expression\n";
+    exp.dump();
+  }
 }

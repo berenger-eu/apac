@@ -29,6 +29,7 @@ private:
     void handleUnaryOperator(const UnaryOperator& ,PotTask&);
     void handleBinaryOperator(const BinaryOperator& ,PotTask&);
     void handleCallExpr(const CallExpr& ,PotTask&);
+    void handleExpr(const Expr& exp,PotTask&);
     std::stack<PotTaskGraph> taskGraphs;
     Rewriter &TheRewriter;
 };
