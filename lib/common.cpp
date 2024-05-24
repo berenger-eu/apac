@@ -83,3 +83,25 @@ void getLeafs(Stmt* st,std::vector< Stmt*>& leafs)
         vectNodes.pop();
     }
 }
+
+bool isFullConstType(const QualType& qType)
+{
+    const Type* typeTemp;
+    bool workDone=false;
+    bool returnValue=true;
+    QualType qTypeTemp=qType;
+    if(isReferenceQualType(qType))
+        qTypeTemp=qType.getNonReferenceType();
+    do
+    {
+        if(qTypeTemp.isConstQualified())
+            qTypeTemp=qTypeTemp->getPointeeType();
+        else
+        {
+            workDone=true;
+            returnValue=false;
+        }
+    }
+    while ((typeTemp=qTypeTemp.getTypePtrOrNull())&&!workDone);
+    return returnValue;
+}
