@@ -29,6 +29,7 @@ public:
     }
     return ssPrint.str();
     }
+    const std::vector<std::pair<AccessType, std::string>>& getParams() const {return params;}
 private:
     std::vector<std::pair<AccessType, std::string>> params;
     const int inTaskId;
