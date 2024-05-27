@@ -117,7 +117,9 @@ void ASTTaskGraphVisitor::handleExpr(const Expr& exp,PotTask& task)
 
 bool ASTTaskGraphVisitor::TraverseUnaryOperator(UnaryOperator* uop)
 {
-  PotTask task(0);
+  int idTask=TheRewriter.getSourceMgr().getSpellingLineNumber (uop->getBeginLoc(),nullptr)*1000;
+  idTask+=TheRewriter.getSourceMgr().getSpellingColumnNumber (uop->getEndLoc(),nullptr);
+  PotTask task(idTask);
   handleUnaryOperator(*uop,task);
   PotTaskGraph& graph=taskGraphs.top();
   if(!isEmptyTask(task)){
@@ -129,7 +131,9 @@ bool ASTTaskGraphVisitor::TraverseUnaryOperator(UnaryOperator* uop)
 
 bool ASTTaskGraphVisitor::TraverseBinaryOperator(BinaryOperator* bop)
 {
-  PotTask task(0);
+  int idTask=TheRewriter.getSourceMgr().getSpellingLineNumber (bop->getBeginLoc(),nullptr)*1000;
+  idTask+=TheRewriter.getSourceMgr().getSpellingColumnNumber (bop->getEndLoc(),nullptr);
+  PotTask task(idTask);
   handleBinaryOperator(*bop,task);
   PotTaskGraph& graph=taskGraphs.top();
   if(!isEmptyTask(task)){
@@ -140,7 +144,9 @@ bool ASTTaskGraphVisitor::TraverseBinaryOperator(BinaryOperator* bop)
 }
 bool ASTTaskGraphVisitor::TraverseCallExpr(CallExpr* c)
 {
-  PotTask task(0);
+  int idTask=TheRewriter.getSourceMgr().getSpellingLineNumber (c->getBeginLoc(),nullptr)*1000;
+  idTask+=TheRewriter.getSourceMgr().getSpellingColumnNumber (c->getEndLoc(),nullptr);
+  PotTask task(idTask);
   handleCallExpr(*c,task);
   if(!isEmptyTask(task)){
     PotTaskGraph& graph=taskGraphs.top();

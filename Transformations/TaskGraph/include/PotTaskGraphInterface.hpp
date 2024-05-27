@@ -30,6 +30,7 @@ public:
     return ssPrint.str();
     }
     const std::vector<std::pair<AccessType, std::string>>& getParams() const {return params;}
+    const int getTaskId() const {return inTaskId;}
 private:
     std::vector<std::pair<AccessType, std::string>> params;
     const int inTaskId;
@@ -45,7 +46,7 @@ public:
         ssPrint << "TaskGraph\n";
         int count=0;
         for (auto& t : tasks){
-            ssPrint << "Task "<<count <<"\n"<< t.dump() << "\n";
+            ssPrint << "Task "<< t.getTaskId()<<"\n"<< t.dump() << "\n";
             count++;
         }return ssPrint.str();}
 private:
