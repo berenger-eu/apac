@@ -17,12 +17,15 @@ class ASTTaskGraphVisitor : public RecursiveASTVisitor<ASTTaskGraphVisitor>
 public:
     ASTTaskGraphVisitor(Rewriter &R) : TheRewriter(R) {};
     inline bool VisitStmt(Stmt *s){return true;}
-    bool TraverseCallExpr(CallExpr* c);
+    //Traverse methods lets us stop visiting nodes that we don't need
+
+
     bool TraverseFunctionDecl(FunctionDecl *f);
-    bool TraverseDeclStmt(DeclStmt* declSt);
+    //Calls respective handle method
+    bool TraverseCallExpr(CallExpr* c);
     bool TraverseUnaryOperator(UnaryOperator* uop);
     bool TraverseBinaryOperator(BinaryOperator* bop);
-    void subVisitVarDecl(VarDecl *v);
+
     const std::stack<PotTaskGraph>& getTaskGraphs(){return taskGraphs;}
 private:
     bool isEmptyTask(const PotTask& task){return task.getParams().size()==0;};
