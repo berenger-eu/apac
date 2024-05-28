@@ -25,6 +25,19 @@ std::string getVarDeclDeclStr(const VarDecl& v)
     SSresult<<v.getType().getAsString()<<" "<<v.getNameAsString()<<";\n";
     return SSresult.str();
 }
+std::string getStmtAsString(const Stmt* statement,const LangOptions& langOpt)
+{
+    std::string stmtString;
+    if(statement!=NULL)
+    {
+        std::stringstream SSprint;
+        PrintingPolicy print_policy(langOpt);
+        print_policy.SuppressUnwrittenScope=true;
+        llvm::raw_string_ostream stringStreamStmt(stmtString);
+        statement->printPretty(stringStreamStmt,NULL,print_policy);
+    }
+    return stmtString;
+}
 std::string getExprAsString(const Expr* expression,const LangOptions& langOpt)
 {
     std::string exprString;
