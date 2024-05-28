@@ -1,4 +1,5 @@
 #include "ASTTaskGraphVisitor.hpp"
+#include "generateGraph.hpp"
 #include <iostream>
 #include "clang/AST/ASTConsumer.h"
 #include "clang/Basic/Diagnostic.h"
@@ -15,6 +16,4 @@
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
 
-
-#include "llvm/Support/Host.h"
 #include "llvm/Support/raw_ostream.h"

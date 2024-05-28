@@ -1,0 +1,85 @@
+/** This contains an implementation to convert
+ * a sequential description of instructions to
+ * a graph representation.
+ * It is similar as the openmp task-dependency
+ * approach.
+ * The graph is represented as a list of nodes.
+ * Each node contain a single instruction
+ */
+#include "generateGraph.hpp"
+
+
+auto InstructionToGraph(const std::vector<Instruction>& inInstructions){
+    Graph graph;
+    for (const auto& instruction : inInstructions){
+        auto node = std::make_shared<Node>();
+        node->instruction = instruction.instructionString;//instruction.instruction;
+        node->id = graph.nodes.size();
+        graph.nodes.push_back(node);
+    }
+
+    std::unordered_map<std::string, std::set<std::shared_ptr<Node>>> dataUsedInRead;
+    std::unordered_map<std::string, std::shared_ptr<Node>> dataUsedInWrite;
+
+    for (int i = 0; i < inInstructions.size(); ++i){
+        auto node = graph.nodes[i];
+        for (const auto& dep : inInstructions[i].dependencies){
+            if (dep.first == Access::READ){
+                if(dataUsedInWrite.find(dep.second) != dataUsedInWrite.end()){
+                    auto depNode = dataUsedInWrite[dep.second];
+                    depNode->next.push_back(node);
+                    node->prev.push_back(depNode);
+                }
+                dataUsedInRead[dep.second].insert(node);
+            } 
+            else {
+                if(dataUsedInRead.find(dep.second) != dataUsedInRead.end()){
+                    for (const auto& depNode : dataUsedInRead[dep.second]){
+                        depNode->next.push_back(node);
+                        node->prev.push_back(depNode);
+                    }
+                    dataUsedInRead[dep.second].clear();
+                }
+                else if(dataUsedInWrite.find(dep.second) != dataUsedInWrite.end()){
+                    auto depNode = dataUsedInWrite[dep.second];
+                    depNode->next.push_back(node);
+                    node->prev.push_back(depNode);
+                }    
+                dataUsedInWrite[dep.second] = node;            
+            }
+        }
+    }
+
+    for (const auto& node : graph.nodes){
+        if (node->prev.empty()){
+            graph.roots.push_back(node);
+        }
+    }
+
+    return graph;
+}
+
+void PrintGraph(const Graph& inGraph){
+    for(const auto& node : inGraph.nodes){
+        std::cout << "Node: " << node->id << " Instruction: " << node->instruction << std::endl;
+        std::cout << "-- Next: ";
+        for (const auto& next : node->next){
+            std::cout << next->id << " ";
+        }
+        std::cout << std::endl;
+        std::cout << "-- Prev: ";
+        for (const auto& prev : node->prev){
+            std::cout << prev->id << " ";
+        }
+        std::cout << std::endl;
+    }
+}
+
+//Generate all of the graph for a file, (generate one for each function)
+void generateGraph(const std::vector<std::vector<Instruction>>& graphVector){
+    for (auto& functionInstructions : graphVector)
+    {
+        auto graph = InstructionToGraph(functionInstructions);
+        PrintGraph(graph);
+    }
+}

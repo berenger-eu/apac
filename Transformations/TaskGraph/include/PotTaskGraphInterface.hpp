@@ -1,55 +1,33 @@
+#pragma once
 #include <sstream>
 #include <vector>
-enum AccessType{
-    AccessRead,
-    AccessWrite
+#include <unordered_set>
+#include "clang/AST/Stmt.h"
+enum class Access {
+    READ,
+    WRITE
+};
+struct DependencyHash {
+    std::size_t operator()(const std::pair<Access,std::string>& mt) const {
+        std::hash<std::string> string_hash;
+        std::hash<int> int_hash;
+        return string_hash(mt.second) ^ int_hash(mt.first==Access::READ?1:0);
+    }
 };
 
-class PotTask{
-public:
-    PotTask(const int inTaskId) : inTaskId(inTaskId) {};
-    void addParam(AccessType inAccess, const std::string& inDepId){
-        params.push_back(std::make_pair(inAccess, inDepId));}
-    std::string dump()
-    {
-        std::stringstream ssPrint;
-        int count =0;
-        for (auto& p : params){
-            ssPrint<<"Param "<<count<< " ";
-            switch (p.first){
-                case AccessType::AccessRead:
-                    ssPrint << "Read";
-                    break;
-                case AccessType::AccessWrite:
-                    ssPrint << "Write";
-                    break;
-            }
-            ssPrint<<" " << p.second << " "<< "\n";
-        count++;
+struct DependencyEqual {
+    bool operator()(const std::pair<Access,std::string>& lhs, const std::pair<Access,std::string>& rhs) const {
+        return lhs.first == rhs.first && lhs.second == rhs.second;
     }
-    return ssPrint.str();
-    }
-    const std::vector<std::pair<AccessType, std::string>>& getParams() const {return params;}
-    const int getTaskId() const {return inTaskId;}
-private:
-    std::vector<std::pair<AccessType, std::string>> params;
-    const int inTaskId;
+};
+struct Instruction {
+    std::string instructionString; //Instruction string
+    clang::Stmt* instruction;
+    std::unordered_set<std::pair<Access, std::string>,DependencyHash,DependencyEqual> dependencies;
+};
+struct ComplexInstruction : Instruction {
+    std::vector<Instruction> scopedInstructions;
+    unsigned scopedInstructionsNumber;  //Also takes in account number of instructions in ComplexInstructions 
 };
 
-class PotTaskGraph{
-public:
-    PotTaskGraph() = default;
-    void addTask(PotTask& inTask){
-        tasks.push_back(inTask);}
-    std::string dump(){
-        std::stringstream ssPrint;
-        ssPrint << "TaskGraph\n";
-        int count=0;
-        for (auto& t : tasks){
-            ssPrint << "Task "<< t.getTaskId()<<"\n"<< t.dump() << "\n";
-            count++;
-        }return ssPrint.str();}
-private:
-    std::vector<PotTask> tasks;
-};
 

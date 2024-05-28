@@ -1,7 +1,6 @@
 #pragma once
 #include <sstream>
 #include <string>
-#include <stack>
 
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/RecursiveASTVisitor.h"
@@ -26,13 +25,14 @@ public:
     bool TraverseUnaryOperator(UnaryOperator* uop);
     bool TraverseBinaryOperator(BinaryOperator* bop);
 
-    const std::stack<PotTaskGraph>& getTaskGraphs(){return taskGraphs;}
+    const auto& getTaskGraphs(){return functionsInstructionsVector;}
+    std::vector<std::vector<Instruction>> functionsInstructionsVector;
 private:
-    bool isEmptyTask(const PotTask& task){return task.getParams().size()==0;};
-    void handleUnaryOperator(const UnaryOperator& ,PotTask&);
-    void handleBinaryOperator(const BinaryOperator& ,PotTask&);
-    void handleCallExpr(const CallExpr& ,PotTask&);
-    void handleExpr(const Expr& exp,PotTask&);
-    std::stack<PotTaskGraph> taskGraphs;
+    bool isEmptyInstruction(const Instruction& instr){return instr.dependencies.size()==0;};
+    void handleUnaryOperator(const UnaryOperator& ,Instruction&);
+    void handleBinaryOperator(const BinaryOperator& ,Instruction&);
+    void handleCallExpr(const CallExpr& ,Instruction&);
+    void handleExpr(const Expr& exp,Instruction&);
+
     Rewriter &TheRewriter;
 };

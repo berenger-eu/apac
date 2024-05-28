@@ -5,15 +5,14 @@ bool ASTTaskGraphVisitor::TraverseFunctionDecl(FunctionDecl *f) {
     return true;
   //If function is not in headers and has a body and is a definition, then we traverse it recursively
   //Using traverse we can avoid visiting nodes that we don't need
-  if(f->getBody()&&f->isThisDeclarationADefinition()){
-    PotTaskGraph graph;  
-    taskGraphs.push(graph);
+  if(f->getBody()&&f->isThisDeclarationADefinition()){ 
+    functionsInstructionsVector.push_back(std::vector<Instruction>());
     return RecursiveASTVisitor::TraverseFunctionDecl(f);
   }
   return true;
 }
 
-void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,PotTask& curTask)
+void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instruction& curInstr)
 {
     Expr* subExpr=uop.getSubExpr();
     //If we have a variable
@@ -22,16 +21,16 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,PotTask& 
       if(uop.isIncrementOp()||uop.isDecrementOp())
       {
         DeclRefExpr& d=cast<DeclRefExpr>(*subExpr);
-        curTask.addParam(AccessType::AccessWrite, d.getDecl()->getNameAsString());
-        curTask.addParam(AccessType::AccessRead, d.getDecl()->getNameAsString());
+        curInstr.dependencies.insert({Access::WRITE, d.getDecl()->getNameAsString()});
+        curInstr.dependencies.insert({Access::READ, d.getDecl()->getNameAsString()});
       }
       //TODO: check if other cases are read and/or write
     //Otherwise, unary expression affects a temporary value so we ignore it but still look through the expression
     else
-      handleExpr(*subExpr,curTask);
+      handleExpr(*subExpr,curInstr);
 }
 
-void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator& bop,PotTask& curTask)
+void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator& bop,Instruction& curInstr)
 {
   //Special case for assignment operators, because it is a write
     if(bop.isAssignmentOp())
@@ -40,24 +39,24 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator& bop,PotTask
       if(isa<DeclRefExpr>(bop.getLHS()))
       {
         DeclRefExpr& d=cast<DeclRefExpr>(*bop.getLHS());
-        curTask.addParam(AccessType::AccessWrite, d.getDecl()->getNameAsString());
+        curInstr.dependencies.insert({Access::WRITE, d.getDecl()->getNameAsString()});
         //Also is a read if it is a compound assignment
         if(isa<CompoundAssignOperator>(bop))
-          curTask.addParam(AccessType::AccessRead, d.getDecl()->getNameAsString());
+          curInstr.dependencies.insert({Access::READ, d.getDecl()->getNameAsString()});
       }
       else
-        handleExpr(*bop.getLHS(),curTask);
-      handleExpr(*bop.getRHS(),curTask);
+        handleExpr(*bop.getLHS(),curInstr);
+      handleExpr(*bop.getRHS(),curInstr);
     }
     //Otherwise, we just look through the expression on both sides
     else
     {
-      handleExpr(*bop.getLHS(),curTask);
-      handleExpr(*bop.getRHS(),curTask);
+      handleExpr(*bop.getLHS(),curInstr);
+      handleExpr(*bop.getRHS(),curInstr);
     }
 }
 
-void ASTTaskGraphVisitor::handleCallExpr(const CallExpr& c,PotTask& curTask)
+void ASTTaskGraphVisitor::handleCallExpr(const CallExpr& c,Instruction& curInstr)
 {
   //TODO: Methods and read/write on object/data ?
   const FunctionDecl& f=*(c.getDirectCallee());
@@ -70,38 +69,38 @@ void ASTTaskGraphVisitor::handleCallExpr(const CallExpr& c,PotTask& curTask)
     if(isa<DeclRefExpr>(b->IgnoreCasts()))
     {
       const DeclRefExpr& d=cast<DeclRefExpr>(*(b->IgnoreCasts()));
-      curTask.addParam(AccessType::AccessRead, d.getDecl()->getNameAsString());
+      curInstr.dependencies.insert({Access::READ, d.getDecl()->getNameAsString()});
       //If the parameter can be modified (parameter is either a reference or a pointer AND it's not completely const)
       //  then there might be a write, so we assume there is one
       if( !(isFullConstType(p.getType())||!(isReferenceQualType(p.getType())||isPointerQualType(p.getType())) ))
-        curTask.addParam(AccessType::AccessWrite, d.getDecl()->getNameAsString());
+        curInstr.dependencies.insert({Access::WRITE, d.getDecl()->getNameAsString()});
     }
     //Otherwise, we look through the expression since it is the same as looking through any expression
     else
-      handleExpr(*b,curTask);
+      handleExpr(*b,curInstr);
   }
   
 }
-void ASTTaskGraphVisitor::handleExpr(const Expr& exp,PotTask& task)
+void ASTTaskGraphVisitor::handleExpr(const Expr& exp,Instruction& instr)
 {
   // Simple switch case to call the respective handle method, except for DeclRefExpr which is a variable so it is a read
   const Expr& curExp=*exp.IgnoreCasts(); 
   if(isa<UnaryOperator>(curExp))
   {
-    handleUnaryOperator(cast<UnaryOperator>(curExp),task);
+    handleUnaryOperator(cast<UnaryOperator>(curExp),instr);
   }
   else if(isa<BinaryOperator>(curExp))
   {
-    handleBinaryOperator(cast<BinaryOperator>(curExp),task);
+    handleBinaryOperator(cast<BinaryOperator>(curExp),instr);
   }
   else if(isa<CallExpr>(curExp))
   {
-    handleCallExpr(cast<CallExpr>(curExp),task);
+    handleCallExpr(cast<CallExpr>(curExp),instr);
   }
   else if(isa<DeclRefExpr>(curExp))
   {
     const DeclRefExpr& d=cast<DeclRefExpr>(curExp);
-    task.addParam(AccessType::AccessRead, d.getDecl()->getNameAsString());
+    instr.dependencies.insert({Access::READ, d.getDecl()->getNameAsString()});
   }
   //Ignored expressions case
   else if(isa<IntegerLiteral>(curExp))
@@ -117,40 +116,32 @@ void ASTTaskGraphVisitor::handleExpr(const Expr& exp,PotTask& task)
 
 bool ASTTaskGraphVisitor::TraverseUnaryOperator(UnaryOperator* uop)
 {
-  int idTask=TheRewriter.getSourceMgr().getSpellingLineNumber (uop->getBeginLoc(),nullptr)*1000;
-  idTask+=TheRewriter.getSourceMgr().getSpellingColumnNumber (uop->getEndLoc(),nullptr);
-  PotTask task(idTask);
-  handleUnaryOperator(*uop,task);
-  PotTaskGraph& graph=taskGraphs.top();
-  if(!isEmptyTask(task)){
-    PotTaskGraph& graph=taskGraphs.top();
-    graph.addTask(task);
-  }
+  Instruction instr;
+  instr.instruction=uop;
+  instr.instructionString=getStmtAsString(uop,TheRewriter.getLangOpts());
+  handleUnaryOperator(*uop,instr);
+  std::vector<Instruction>& functionInstructions=functionsInstructionsVector.back();
+  functionInstructions.push_back(instr);
   return true;
 }
 
 bool ASTTaskGraphVisitor::TraverseBinaryOperator(BinaryOperator* bop)
 {
-  int idTask=TheRewriter.getSourceMgr().getSpellingLineNumber (bop->getBeginLoc(),nullptr)*1000;
-  idTask+=TheRewriter.getSourceMgr().getSpellingColumnNumber (bop->getEndLoc(),nullptr);
-  PotTask task(idTask);
-  handleBinaryOperator(*bop,task);
-  PotTaskGraph& graph=taskGraphs.top();
-  if(!isEmptyTask(task)){
-    PotTaskGraph& graph=taskGraphs.top();
-    graph.addTask(task);
-  }
+  Instruction instr;
+  instr.instruction=bop;
+  instr.instructionString=getStmtAsString(bop,TheRewriter.getLangOpts());
+  handleBinaryOperator(*bop,instr);
+  std::vector<Instruction>& functionInstructions=functionsInstructionsVector.back();
+  functionInstructions.push_back(instr);
   return true;
 }
 bool ASTTaskGraphVisitor::TraverseCallExpr(CallExpr* c)
 {
-  int idTask=TheRewriter.getSourceMgr().getSpellingLineNumber (c->getBeginLoc(),nullptr)*1000;
-  idTask+=TheRewriter.getSourceMgr().getSpellingColumnNumber (c->getEndLoc(),nullptr);
-  PotTask task(idTask);
-  handleCallExpr(*c,task);
-  if(!isEmptyTask(task)){
-    PotTaskGraph& graph=taskGraphs.top();
-    graph.addTask(task);
-  }
+  Instruction instr;
+  instr.instruction=c;
+  instr.instructionString=getStmtAsString(c,TheRewriter.getLangOpts());
+  handleCallExpr(*c,instr);
+  std::vector<Instruction>& functionInstructions=functionsInstructionsVector.back();
+  functionInstructions.push_back(instr);
   return true;
 }
