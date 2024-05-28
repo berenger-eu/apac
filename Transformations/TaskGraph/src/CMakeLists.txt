@@ -11,7 +11,7 @@ message(STATUS "Found LLVM libs ${LLVM_DEFINITIONS}")
 # Now build our tools
 set (COMMON_LIB ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib)
 set(INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../include ${COMMON_LIB})
-set(SOURCES ASTTaskGraphVisitor.cpp taskGraph.cpp )
+set(SOURCES ASTTaskGraphVisitor.cpp taskGraph.cpp generateGraph.cpp )
 add_executable(taskGraph)
  
 target_sources(taskGraph PRIVATE ${SOURCES})
@@ -24,33 +24,38 @@ llvm_map_components_to_libnames(llvm_libs x86asmparser bitreader support mc opti
 message(STATUS "LLVM_LIBS: ${llvm_libs}")
 
 target_link_libraries(taskGraph
-    commonLib
+    clangAST 
+    clangASTMatchers
+    clangBasic
     clangFrontend
     clangSerialization
+    clangTooling 
+    commonLib
     clangDriver
-    clangTooling
     clangParse
     clangSema
     clangAnalysis
-    clangRewriteFrontend
     clangRewrite
     clangEdit
+
     clangAST
     clangLex
-    clangBasic
-    clangASTMatchers
-    clangAST 
-    clangFrontendTool 
-    clangStaticAnalyzerFrontend 
-    clangStaticAnalyzerCheckers 
-    clangStaticAnalyzerCore 
-    clangCrossTU 
-    clangIndex 
-    clangToolingCore 
-    clangTooling 
-    clangFormat
+
+    #clangFrontendTool 
+    #clangRewriteFrontend
+    #clangStaticAnalyzerFrontend 
+    #clangStaticAnalyzerCheckers 
+    #clangStaticAnalyzerCore 
+
+    #clangIndex 
+    #clangToolingCore 
+    #clangFormat
+
     LLVMFrontendOpenMP
-  )
+    clangAPINotes
+    clangSupport
+    LLVMWindowsManifest
+    LLVMWindowsDriver  )
 
 target_link_libraries(taskGraph ${llvm_libs})
 
