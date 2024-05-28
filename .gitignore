@@ -2,3 +2,4 @@ build/
 bin/
 Transformations/*/tests/results
 Transformations/*/tests/autotests/*/
+.*/
