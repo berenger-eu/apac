@@ -17,7 +17,7 @@ auto InstructionToGraph(const std::vector<Instruction>& inInstructions){
         instructionStack.push(instr);
     }
     while (!instructionStack.empty()){
-        const Instruction*& curInstruction =instructionStack.top();
+        const Instruction* curInstruction =instructionStack.top();
         instructionStack.pop();
         auto node = std::make_shared<Node>();
         node->instruction = curInstruction->instructionString;//instruction.instruction;

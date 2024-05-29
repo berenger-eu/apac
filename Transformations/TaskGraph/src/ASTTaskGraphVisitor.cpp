@@ -178,17 +178,19 @@ bool ASTTaskGraphVisitor::TraverseForStmt(ForStmt* f)
   if(f->getInc())
     handleExpr(*(f->getInc()),instr);
   */
-  std::vector<Instruction>& functionInstructions=functionsInstructionsVector.back();
-  functionInstructions.push_back(compInstr);
-  functionsInstructionsVector.push_back(compInstr.scopedInstructions);
+  functionsInstructionsVector.push_back(std::vector<Instruction>());
   bool res=RecursiveASTVisitor::TraverseForStmt(f);
-  
+  compInstr.scopedInstructions=functionsInstructionsVector.back();
   for(auto& instr:compInstr.scopedInstructions){
+    for(auto& dep:instr.dependencies){
+      compInstr.dependencies.insert(dep);
+    }
     if(instr.complexInstruction){
       compInstr.scopedInstructionsNumber+=instr.scopedInstructions.size();
     }
     compInstr.scopedInstructionsNumber++;
   }
   functionsInstructionsVector.pop_back();
+  functionsInstructionsVector.back().push_back(compInstr);
   return res;
 }
