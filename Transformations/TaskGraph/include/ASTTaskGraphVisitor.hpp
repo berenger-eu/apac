@@ -24,7 +24,7 @@ public:
     bool TraverseCallExpr(CallExpr* c);
     bool TraverseUnaryOperator(UnaryOperator* uop);
     bool TraverseBinaryOperator(BinaryOperator* bop);
-
+    bool TraverseReturnStmt(ReturnStmt* r);
     const auto& getTaskGraphs(){return functionsInstructionsVector;}
     std::vector<std::vector<Instruction>> functionsInstructionsVector;
 private:

@@ -146,3 +146,15 @@ bool ASTTaskGraphVisitor::TraverseCallExpr(CallExpr* c)
   functionInstructions.push_back(instr);
   return true;
 }
+
+bool ASTTaskGraphVisitor::TraverseReturnStmt(ReturnStmt* r)
+{
+  Instruction instr;
+  instr.instruction=r;
+  instr.instructionString=getStmtAsString(r,TheRewriter.getLangOpts());
+  if(r->getRetValue())
+    handleExpr(*(r->getRetValue()),instr);
+  std::vector<Instruction>& functionInstructions=functionsInstructionsVector.back();
+  functionInstructions.push_back(instr);
+  return true;
+}
