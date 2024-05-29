@@ -120,6 +120,7 @@ bool ASTTaskGraphVisitor::TraverseUnaryOperator(UnaryOperator* uop)
   Instruction instr;
   instr.instruction=uop;
   instr.instructionString=getStmtAsString(uop,TheRewriter.getLangOpts());
+  instr.complexInstruction=false;
   handleUnaryOperator(*uop,instr);
   std::vector<Instruction>& functionInstructions=functionsInstructionsVector.back();
   functionInstructions.push_back(instr);
@@ -131,6 +132,7 @@ bool ASTTaskGraphVisitor::TraverseBinaryOperator(BinaryOperator* bop)
   Instruction instr;
   instr.instruction=bop;
   instr.instructionString=getStmtAsString(bop,TheRewriter.getLangOpts());
+  instr.complexInstruction=false;
   handleBinaryOperator(*bop,instr);
   std::vector<Instruction>& functionInstructions=functionsInstructionsVector.back();
   functionInstructions.push_back(instr);
@@ -141,6 +143,7 @@ bool ASTTaskGraphVisitor::TraverseCallExpr(CallExpr* c)
   Instruction instr;
   instr.instruction=c;
   instr.instructionString=getStmtAsString(c,TheRewriter.getLangOpts());
+  instr.complexInstruction=false;
   handleCallExpr(*c,instr);
   std::vector<Instruction>& functionInstructions=functionsInstructionsVector.back();
   functionInstructions.push_back(instr);
@@ -152,9 +155,40 @@ bool ASTTaskGraphVisitor::TraverseReturnStmt(ReturnStmt* r)
   Instruction instr;
   instr.instruction=r;
   instr.instructionString=getStmtAsString(r,TheRewriter.getLangOpts());
+  instr.complexInstruction=false;
   if(r->getRetValue())
     handleExpr(*(r->getRetValue()),instr);
   std::vector<Instruction>& functionInstructions=functionsInstructionsVector.back();
   functionInstructions.push_back(instr);
+
   return true;
+}
+bool ASTTaskGraphVisitor::TraverseForStmt(ForStmt* f)
+{
+  Instruction compInstr;
+  compInstr.instruction=f;
+  compInstr.instructionString=getStmtAsString(f,TheRewriter.getLangOpts());
+  compInstr.complexInstruction=true;
+  compInstr.scopedInstructionsNumber=0;
+  /*
+  if(f->getInit())
+    handleExpr(*(f->getInit()),instr);
+  if(f->getCond())
+    handleExpr(*(f->getCond()),instr);
+  if(f->getInc())
+    handleExpr(*(f->getInc()),instr);
+  */
+  std::vector<Instruction>& functionInstructions=functionsInstructionsVector.back();
+  functionInstructions.push_back(compInstr);
+  functionsInstructionsVector.push_back(compInstr.scopedInstructions);
+  bool res=RecursiveASTVisitor::TraverseForStmt(f);
+  
+  for(auto& instr:compInstr.scopedInstructions){
+    if(instr.complexInstruction){
+      compInstr.scopedInstructionsNumber+=instr.scopedInstructions.size();
+    }
+    compInstr.scopedInstructionsNumber++;
+  }
+  functionsInstructionsVector.pop_back();
+  return res;
 }

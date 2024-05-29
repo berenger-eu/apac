@@ -24,10 +24,14 @@ struct Instruction {
     std::string instructionString; //Instruction string
     clang::Stmt* instruction;
     std::unordered_set<std::pair<Access, const clang::Decl*>,DependencyHash,DependencyEqual> dependencies;
-};
-struct ComplexInstruction : Instruction {
+    bool complexInstruction;
     std::vector<Instruction> scopedInstructions;
-    unsigned scopedInstructionsNumber;  //Also takes in account number of instructions in ComplexInstructions 
+    unsigned int scopedInstructionsNumber;  //Also takes in account number of instructions in ComplexInstructions 
 };
+/*
+struct ComplexInstruction : Instruction {
+    std::vector<std::unique_ptr<Instruction>> scopedInstructions;
+    unsigned int scopedInstructionsNumber;  //Also takes in account number of instructions in ComplexInstructions 
+};*/
 
 
