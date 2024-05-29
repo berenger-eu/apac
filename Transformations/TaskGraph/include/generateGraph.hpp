@@ -12,15 +12,17 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <set>
 #include <memory>
 #include <functional>
 #include "PotTaskGraphInterface.hpp"
+#include "clang/AST/Decl.h"
 
 struct Node {
     int id;
-    std::vector<std::shared_ptr<Node>> next;
-    std::vector<std::shared_ptr<Node>> prev;
+    std::unordered_set<std::shared_ptr<Node>> next;
+    std::unordered_set<std::shared_ptr<Node>> prev;
     std::string instruction;
 };
 

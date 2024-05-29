@@ -18,32 +18,36 @@ auto InstructionToGraph(const std::vector<Instruction>& inInstructions){
         graph.nodes.push_back(node);
     }
 
-    std::unordered_map<std::string, std::set<std::shared_ptr<Node>>> dataUsedInRead;
-    std::unordered_map<std::string, std::shared_ptr<Node>> dataUsedInWrite;
+    std::unordered_map<const clang::Decl*, std::set<std::shared_ptr<Node>>> dataUsedInRead;
+    std::unordered_map<const clang::Decl*, std::shared_ptr<Node>> dataUsedInWrite;
 
     for (int i = 0; i < inInstructions.size(); ++i){
         auto node = graph.nodes[i];
         for (const auto& dep : inInstructions[i].dependencies){
             if (dep.first == Access::READ){
-                if(dataUsedInWrite.find(dep.second) != dataUsedInWrite.end()){
+                if(dataUsedInWrite.find(dep.second) != dataUsedInWrite.end()&&dataUsedInWrite[dep.second]->id!=node->id){
                     auto depNode = dataUsedInWrite[dep.second];
-                    depNode->next.push_back(node);
-                    node->prev.push_back(depNode);
+                    depNode->next.insert(node);
+                    node->prev.insert(depNode);
                 }
                 dataUsedInRead[dep.second].insert(node);
             } 
             else {
                 if(dataUsedInRead.find(dep.second) != dataUsedInRead.end()){
                     for (const auto& depNode : dataUsedInRead[dep.second]){
-                        depNode->next.push_back(node);
-                        node->prev.push_back(depNode);
+                        if(depNode->id == node->id){
+                            continue;
+                        }
+                        depNode->next.insert(node);
+                        node->prev.insert(depNode);
                     }
+
                     dataUsedInRead[dep.second].clear();
                 }
-                else if(dataUsedInWrite.find(dep.second) != dataUsedInWrite.end()){
+                else if(dataUsedInWrite.find(dep.second) != dataUsedInWrite.end()&&dataUsedInWrite[dep.second]->id!=node->id){
                     auto depNode = dataUsedInWrite[dep.second];
-                    depNode->next.push_back(node);
-                    node->prev.push_back(depNode);
+                    depNode->next.insert(node);
+                    node->prev.insert(depNode);
                 }    
                 dataUsedInWrite[dep.second] = node;            
             }
@@ -79,6 +83,7 @@ void PrintGraph(const Graph& inGraph){
 void generateGraph(const std::vector<std::vector<Instruction>>& graphVector){
     for (auto& functionInstructions : graphVector)
     {
+
         auto graph = InstructionToGraph(functionInstructions);
         PrintGraph(graph);
     }
