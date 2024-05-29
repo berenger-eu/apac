@@ -7,17 +7,29 @@
  * Each node contain a single instruction
  */
 #include "generateGraph.hpp"
-
+#include <stack>
 
 auto InstructionToGraph(const std::vector<Instruction>& inInstructions){
     Graph graph;
-    for (const auto& instruction : inInstructions){
+    std::stack<const Instruction*> instructionStack;
+    for (auto it = inInstructions.rbegin(); it != inInstructions.rend(); ++it){
+        const Instruction* instr = &(*it);
+        instructionStack.push(instr);
+    }
+    while (!instructionStack.empty()){
+        const Instruction*& curInstruction =instructionStack.top();
+        instructionStack.pop();
         auto node = std::make_shared<Node>();
-        node->instruction = instruction.instructionString;//instruction.instruction;
+        node->instruction = curInstruction->instructionString;//instruction.instruction;
         node->id = graph.nodes.size();
         graph.nodes.push_back(node);
+        if(curInstruction->complexInstruction){
+            for (auto it = curInstruction->scopedInstructions.rbegin(); it != curInstruction->scopedInstructions.rend(); ++it){
+                const Instruction* instr = &(*it);
+                instructionStack.push(instr);
+            }
+        }
     }
-
     std::unordered_map<const clang::Decl*, std::set<std::shared_ptr<Node>>> dataUsedInRead;
     std::unordered_map<const clang::Decl*, std::shared_ptr<Node>> dataUsedInWrite;
 
@@ -77,6 +89,10 @@ void PrintGraph(const Graph& inGraph){
         }
         std::cout << std::endl;
     }
+    std::cout << "Roots: " << std::endl;
+    for(const auto& root : inGraph.roots)
+        std::cout << root->id <<" ";
+    std::cout << std::endl;
 }
 
 //Generate all of the graph for a file, (generate one for each function)
