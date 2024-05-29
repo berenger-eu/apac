@@ -21,8 +21,8 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instructi
       if(uop.isIncrementOp()||uop.isDecrementOp())
       {
         DeclRefExpr& d=cast<DeclRefExpr>(*subExpr);
-        curInstr.dependencies.insert({Access::WRITE, d.getDecl()->getNameAsString()});
-        curInstr.dependencies.insert({Access::READ, d.getDecl()->getNameAsString()});
+        curInstr.dependencies.emplace(Access::WRITE, d.getDecl()->getCanonicalDecl());
+        curInstr.dependencies.emplace(Access::READ, d.getDecl()->getCanonicalDecl());
       }
       //TODO: check if other cases are read and/or write
     //Otherwise, unary expression affects a temporary value so we ignore it but still look through the expression
@@ -39,10 +39,10 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator& bop,Instruc
       if(isa<DeclRefExpr>(bop.getLHS()))
       {
         DeclRefExpr& d=cast<DeclRefExpr>(*bop.getLHS());
-        curInstr.dependencies.insert({Access::WRITE, d.getDecl()->getNameAsString()});
+        curInstr.dependencies.emplace(Access::WRITE, d.getDecl()->getCanonicalDecl());
         //Also is a read if it is a compound assignment
         if(isa<CompoundAssignOperator>(bop))
-          curInstr.dependencies.insert({Access::READ, d.getDecl()->getNameAsString()});
+          curInstr.dependencies.emplace(Access::READ, d.getDecl()->getCanonicalDecl());
       }
       else
         handleExpr(*bop.getLHS(),curInstr);
@@ -69,11 +69,12 @@ void ASTTaskGraphVisitor::handleCallExpr(const CallExpr& c,Instruction& curInstr
     if(isa<DeclRefExpr>(b->IgnoreCasts()))
     {
       const DeclRefExpr& d=cast<DeclRefExpr>(*(b->IgnoreCasts()));
-      curInstr.dependencies.insert({Access::READ, d.getDecl()->getNameAsString()});
+      curInstr.dependencies.emplace(Access::READ, d.getDecl()->getCanonicalDecl());
+      
       //If the parameter can be modified (parameter is either a reference or a pointer AND it's not completely const)
       //  then there might be a write, so we assume there is one
       if( !(isFullConstType(p.getType())||!(isReferenceQualType(p.getType())||isPointerQualType(p.getType())) ))
-        curInstr.dependencies.insert({Access::WRITE, d.getDecl()->getNameAsString()});
+        curInstr.dependencies.emplace(Access::WRITE, d.getDecl()->getCanonicalDecl());
     }
     //Otherwise, we look through the expression since it is the same as looking through any expression
     else
@@ -100,7 +101,7 @@ void ASTTaskGraphVisitor::handleExpr(const Expr& exp,Instruction& instr)
   else if(isa<DeclRefExpr>(curExp))
   {
     const DeclRefExpr& d=cast<DeclRefExpr>(curExp);
-    instr.dependencies.insert({Access::READ, d.getDecl()->getNameAsString()});
+    instr.dependencies.emplace(Access::READ, d.getDecl()->getCanonicalDecl());
   }
   //Ignored expressions case
   else if(isa<IntegerLiteral>(curExp))

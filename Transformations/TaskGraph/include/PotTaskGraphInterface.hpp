@@ -8,22 +8,22 @@ enum class Access {
     WRITE
 };
 struct DependencyHash {
-    std::size_t operator()(const std::pair<Access,std::string>& mt) const {
-        std::hash<std::string> string_hash;
+    std::size_t operator()(const std::pair<Access,const clang::Decl*>& mt) const {
+        std::hash<const void*> address_hash;
         std::hash<int> int_hash;
-        return string_hash(mt.second) ^ int_hash(mt.first==Access::READ?1:0);
+        return address_hash(mt.second) ^ int_hash(mt.first==Access::READ?1:0);
     }
 };
 
 struct DependencyEqual {
-    bool operator()(const std::pair<Access,std::string>& lhs, const std::pair<Access,std::string>& rhs) const {
+    bool operator()(const std::pair<Access,const clang::Decl*>& lhs, const std::pair<Access,const clang::Decl*>& rhs) const {
         return lhs.first == rhs.first && lhs.second == rhs.second;
     }
 };
 struct Instruction {
     std::string instructionString; //Instruction string
     clang::Stmt* instruction;
-    std::unordered_set<std::pair<Access, std::string>,DependencyHash,DependencyEqual> dependencies;
+    std::unordered_set<std::pair<Access, const clang::Decl*>,DependencyHash,DependencyEqual> dependencies;
 };
 struct ComplexInstruction : Instruction {
     std::vector<Instruction> scopedInstructions;
