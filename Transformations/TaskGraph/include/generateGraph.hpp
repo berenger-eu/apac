@@ -23,6 +23,7 @@ struct Node {
     int id;
     std::unordered_set<std::shared_ptr<Node>> next;
     std::unordered_set<std::shared_ptr<Node>> prev;
+    std::shared_ptr<struct Graph> graph;
     std::string instruction;
 };
 
@@ -31,7 +32,7 @@ struct Graph {
     std::vector<std::shared_ptr<Node>> roots;
 };
 
-auto InstructionToGraph(const std::vector<Instruction>& );
+Graph InstructionToGraph(const std::vector<Instruction>& );
 
 void PrintGraph(const Graph& );
 

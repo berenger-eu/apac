@@ -9,25 +9,16 @@
 #include "generateGraph.hpp"
 #include <stack>
 
-auto InstructionToGraph(const std::vector<Instruction>& inInstructions){
+Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
     Graph graph;
-    std::stack<const Instruction*> instructionStack;
-    for (auto it = inInstructions.rbegin(); it != inInstructions.rend(); ++it){
-        const Instruction* instr = &(*it);
-        instructionStack.push(instr);
-    }
-    while (!instructionStack.empty()){
-        const Instruction* curInstruction =instructionStack.top();
-        instructionStack.pop();
+    for(const auto& curInstruction : inInstructions){
         auto node = std::make_shared<Node>();
-        node->instruction = curInstruction->instructionString;//instruction.instruction;
+        node->instruction = curInstruction.instructionString;//instruction.instruction;
         node->id = graph.nodes.size();
         graph.nodes.push_back(node);
-        if(curInstruction->complexInstruction){
-            for (auto it = curInstruction->scopedInstructions.rbegin(); it != curInstruction->scopedInstructions.rend(); ++it){
-                const Instruction* instr = &(*it);
-                instructionStack.push(instr);
-            }
+        if(curInstruction.complexInstruction){
+            node->graph = std::make_shared<Graph>();
+            *node->graph = InstructionToGraph(curInstruction.scopedInstructions);
         }
     }
     std::unordered_map<const clang::Decl*, std::set<std::shared_ptr<Node>>> dataUsedInRead;
@@ -35,6 +26,8 @@ auto InstructionToGraph(const std::vector<Instruction>& inInstructions){
 
     for (int i = 0; i < inInstructions.size(); ++i){
         auto node = graph.nodes[i];
+        std::cout << "Instruction: " << inInstructions[i].instructionString << std::endl;
+        std::cout<< "Dependencies: "<<inInstructions[i].dependencies.size()<<std::endl;
         for (const auto& dep : inInstructions[i].dependencies){
             if (dep.first == Access::READ){
                 if(dataUsedInWrite.find(dep.second) != dataUsedInWrite.end()&&dataUsedInWrite[dep.second]->id!=node->id){
@@ -88,6 +81,11 @@ void PrintGraph(const Graph& inGraph){
             std::cout << prev->id << " ";
         }
         std::cout << std::endl;
+        if(node->graph){
+            std::cout << "-- SubGraph: " << std::endl;
+            PrintGraph(*node->graph);
+        }
+
     }
     std::cout << "Roots: " << std::endl;
     for(const auto& root : inGraph.roots)
