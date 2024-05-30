@@ -42,7 +42,7 @@ Graph InstructionToGraph(const std::vector<Instruction>& );
 
 void PrintGraph(const Graph& );
 
-void GenerateDotGraphWrapper(const Graph& graph, const std::string& filename);
+void GenerateDotGraph(const std::vector<Graph>& graph, const std::string& filename);
 
 //Generate all of the graph for a file, (generate one for each function)
 void generateGraph(const std::vector<std::vector<Instruction>>& );
