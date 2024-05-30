@@ -167,7 +167,12 @@ bool ASTTaskGraphVisitor::TraverseForStmt(ForStmt* f)
 {
   Instruction compInstr;
   compInstr.instruction=f;
-  compInstr.instructionString=getStmtAsString(f,TheRewriter.getLangOpts());
+  std::stringstream ss;
+  ss<<"for("<<getStmtAsString(f->getInit(),TheRewriter.getLangOpts())<<";"
+  <<getExprAsString(f->getCond(),TheRewriter.getLangOpts())<<";"
+  <<getExprAsString(f->getInc(),TheRewriter.getLangOpts())<<")";
+  // compInstr.instructionString=getStmtAsString(f,TheRewriter.getLangOpts());
+  compInstr.instructionString=ss.str();
   compInstr.complexInstruction=true;
   compInstr.scopedInstructionsNumber=0;
   /*
