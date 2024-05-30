@@ -46,6 +46,8 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
         if(curInstruction.complexInstruction){
             node->graph = std::make_shared<Graph>();
             *node->graph = InstructionToGraph(curInstruction.scopedInstructions);
+            node->next.insert(node->graph->roots[0]);
+            node->graph->roots[0]->prev.insert(node);
         }
     }
     std::unordered_map<const clang::Decl*, std::set<std::shared_ptr<Node>>> dataUsedInRead;
