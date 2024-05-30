@@ -8,13 +8,30 @@
  */
 #include "generateGraph.hpp"
 #include <stack>
+#include <fstream>
+
+int Node::idCounter = 0;
+
+void GenerateDotGraph(const Graph& graph, const std::string& filename) {
+    std::ofstream file(filename);
+    file << "digraph G {\n";
+    for (const auto& node : graph.nodes) {
+        file << "    " << node->id << " [label=\"" << node->instruction << "\"];\n";
+        for (const auto& nextNode : node->next) {
+            file << "    " << node->id << " -> " << nextNode->id << ";\n";
+        }
+    }
+    file << "}\n";
+    file.close();
+}
 
 Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
     Graph graph;
+
     for(const auto& curInstruction : inInstructions){
         auto node = std::make_shared<Node>();
         node->instruction = curInstruction.instructionString;//instruction.instruction;
-        node->id = graph.nodes.size();
+        node->id = Node::idCounter++;
         graph.nodes.push_back(node);
         if(curInstruction.complexInstruction){
             node->graph = std::make_shared<Graph>();
@@ -95,10 +112,12 @@ void PrintGraph(const Graph& inGraph){
 
 //Generate all of the graph for a file, (generate one for each function)
 void generateGraph(const std::vector<std::vector<Instruction>>& graphVector){
+    
     for (auto& functionInstructions : graphVector)
     {
-
+        
         auto graph = InstructionToGraph(functionInstructions);
         PrintGraph(graph);
+        GenerateDotGraph(graph, "graph.dot");
     }
 }

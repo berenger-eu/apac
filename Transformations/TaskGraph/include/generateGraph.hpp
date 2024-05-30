@@ -18,9 +18,15 @@
 #include <functional>
 #include "PotTaskGraphInterface.hpp"
 #include "clang/AST/Decl.h"
+#include <fstream>
+
 
 struct Node {
+    
+    
+    static int idCounter;
     int id;
+    
     std::unordered_set<std::shared_ptr<Node>> next;
     std::unordered_set<std::shared_ptr<Node>> prev;
     std::shared_ptr<struct Graph> graph;
@@ -36,6 +42,7 @@ Graph InstructionToGraph(const std::vector<Instruction>& );
 
 void PrintGraph(const Graph& );
 
+void GenerateDotGraphWrapper(const Graph& graph, const std::string& filename);
 
 //Generate all of the graph for a file, (generate one for each function)
 void generateGraph(const std::vector<std::vector<Instruction>>& );
