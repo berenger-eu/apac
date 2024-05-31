@@ -26,12 +26,16 @@ void subGenerateDotGraph(const Graph& inGraph, std::ofstream& file){
 }
 void GenerateDotGraph(const std::vector<Graph>& graphs, const std::string& filename) {
     std::ofstream file(filename);
+    file << "digraph G {\n";
+    int i = 0;
     for(auto graph : graphs)
     {
-        file << "digraph G {\n";
+        file << "subgraph cluster_f"<<i <<" {\n";
         subGenerateDotGraph(graph, file);
         file << "}\n";
+        i++;
     }
+    file << "}\n";
     file.close();
 }
 
