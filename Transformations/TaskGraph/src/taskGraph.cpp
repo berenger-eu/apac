@@ -41,8 +41,6 @@ public:
     llvm::errs() << "** EndSourceFileAction for: "
                  << SM.getFileEntryRefForID(SM.getMainFileID())->getName() << "\n";
 
-    // Now emit the rewritten buffer.
-    TheRewriter.getEditBuffer(SM.getMainFileID()).write(llvm::outs());
   }
 
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
