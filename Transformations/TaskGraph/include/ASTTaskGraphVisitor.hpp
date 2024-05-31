@@ -24,6 +24,8 @@ public:
     bool TraverseCallExpr(CallExpr* c);
     bool TraverseUnaryOperator(UnaryOperator* uop);
     bool TraverseBinaryOperator(BinaryOperator* bop);
+    bool TraverseCompoundAssignOperator(CompoundAssignOperator* bop);
+
     bool TraverseReturnStmt(ReturnStmt* r);
     bool TraverseForStmt(ForStmt* f);
     bool TraverseIfStmt(IfStmt* i);

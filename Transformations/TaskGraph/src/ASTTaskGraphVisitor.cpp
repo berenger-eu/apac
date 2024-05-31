@@ -35,6 +35,7 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator& bop,Instruc
   //Special case for assignment operators, because it is a write
     if(bop.isAssignmentOp())
     {
+      llvm::errs()<<"Assignment\n";
         //Most likely unnecessary since left side has to be a lvalue because of the assignment operator
       if(isa<DeclRefExpr>(bop.getLHS()))
       {
@@ -138,6 +139,18 @@ bool ASTTaskGraphVisitor::TraverseBinaryOperator(BinaryOperator* bop)
   functionInstructions.push_back(instr);
   return true;
 }
+bool ASTTaskGraphVisitor::TraverseCompoundAssignOperator(CompoundAssignOperator* bop)
+{
+  Instruction instr;
+  instr.instruction=bop;
+  instr.instructionString=getStmtAsString(bop,TheRewriter.getLangOpts());
+  instr.complexInstruction=false;
+  handleBinaryOperator(*bop,instr);
+  std::vector<Instruction>& functionInstructions=functionsInstructionsVector.back();
+  functionInstructions.push_back(instr);
+  return true;
+}
+
 bool ASTTaskGraphVisitor::TraverseCallExpr(CallExpr* c)
 {
   Instruction instr;
@@ -200,7 +213,7 @@ bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt* i)
   compInstr.instruction=i;
   std::stringstream ss;
   ss<<"if("<<getExprAsString(i->getCond(),TheRewriter.getLangOpts())<<")";
-
+  llvm::errs()<<"Coucou \n";
   compInstr.instructionString=ss.str();
   compInstr.complexInstruction=true;
   compInstr.scopedInstructionsNumber=0;
@@ -234,33 +247,60 @@ bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt* i)
     functionsInstructionsVector.back().push_back(compInstr);
 
   }
-  if(i->getElse()&&isa<CompoundStmt>(i->getElse()))
+  if(i->getElse())
   {
-    
-    CompoundStmt* c=cast<CompoundStmt>(i->getElse());
-    Instruction compInstr;
-    compInstr.instruction=c;
-    std::stringstream ss;
-    ss<<"else";
+    llvm::errs()<<"Dans le else\n";
+    if(isa<CompoundStmt>(i->getElse()))
+    {
 
-    compInstr.instructionString=ss.str();
-    compInstr.complexInstruction=true;
-    compInstr.scopedInstructionsNumber=0;
+      CompoundStmt* c=cast<CompoundStmt>(i->getElse());
+      Instruction compInstr;
+      compInstr.instruction=c;
+      std::stringstream ss;
+      ss<<"else";
 
-    functionsInstructionsVector.push_back(std::vector<Instruction>());
-    res=RecursiveASTVisitor::TraverseCompoundStmt(c);
-    compInstr.scopedInstructions=functionsInstructionsVector.back();
-    for(auto& instr:compInstr.scopedInstructions){
-      for(auto& dep:instr.dependencies){
-        compInstr.dependencies.insert(dep);
+      compInstr.instructionString=ss.str();
+      compInstr.complexInstruction=true;
+      compInstr.scopedInstructionsNumber=0;
+
+      functionsInstructionsVector.push_back(std::vector<Instruction>());
+      res=RecursiveASTVisitor::TraverseCompoundStmt(c);
+      compInstr.scopedInstructions=functionsInstructionsVector.back();
+      for(auto& instr:compInstr.scopedInstructions){
+        for(auto& dep:instr.dependencies){
+          compInstr.dependencies.insert(dep);
+        }
+        if(instr.complexInstruction){
+          compInstr.scopedInstructionsNumber+=instr.scopedInstructions.size();
+        }
+        compInstr.scopedInstructionsNumber++;
       }
-      if(instr.complexInstruction){
-        compInstr.scopedInstructionsNumber+=instr.scopedInstructions.size();
-      }
-      compInstr.scopedInstructionsNumber++;
+      functionsInstructionsVector.pop_back();
+      functionsInstructionsVector.back().push_back(compInstr);
     }
-    functionsInstructionsVector.pop_back();
-    functionsInstructionsVector.back().push_back(compInstr);
+    else
+    {
+      llvm::errs()<<"Else\n";
+      Instruction instr;
+      instr.instruction=i->getElse();
+      instr.instructionString="else";
+      compInstr.complexInstruction=true;
+      compInstr.scopedInstructionsNumber=0;
+      functionsInstructionsVector.push_back(std::vector<Instruction>());
+      res=RecursiveASTVisitor::TraverseStmt(i->getElse());
+      compInstr.scopedInstructions=functionsInstructionsVector.back();
+      for(auto& instr:compInstr.scopedInstructions){
+        for(auto& dep:instr.dependencies){
+          compInstr.dependencies.insert(dep);
+        }
+        if(instr.complexInstruction){
+          compInstr.scopedInstructionsNumber+=instr.scopedInstructions.size();
+        }
+        compInstr.scopedInstructionsNumber++;
+      }
+      functionsInstructionsVector.pop_back();
+      functionsInstructionsVector.back().push_back(compInstr);
+    }
   }
   compInstr.scopedInstructions=functionsInstructionsVector.back();
   for(auto& instr:compInstr.scopedInstructions){
