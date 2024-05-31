@@ -192,3 +192,87 @@ bool ASTTaskGraphVisitor::TraverseForStmt(ForStmt* f)
   functionsInstructionsVector.back().push_back(compInstr);
   return res;
 }
+
+bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt* i)
+{
+  
+  Instruction compInstr;
+  compInstr.instruction=i;
+  std::stringstream ss;
+  ss<<"if("<<getExprAsString(i->getCond(),TheRewriter.getLangOpts())<<")";
+
+  compInstr.instructionString=ss.str();
+  compInstr.complexInstruction=true;
+  compInstr.scopedInstructionsNumber=0;
+  functionsInstructionsVector.push_back(std::vector<Instruction>());
+  // bool res=RecursiveASTVisitor::TraverseIfStmt(i);
+  bool res;
+  if(i->getThen()&&isa<CompoundStmt>(i->getThen()))
+  {
+    CompoundStmt* c=cast<CompoundStmt>(i->getThen());
+    Instruction compInstr;
+    compInstr.instruction=c;
+    std::stringstream ss;
+    ss<<"if";
+
+    compInstr.instructionString=ss.str();
+    compInstr.complexInstruction=true;
+    compInstr.scopedInstructionsNumber=0;
+    functionsInstructionsVector.push_back(std::vector<Instruction>());
+    res=RecursiveASTVisitor::TraverseCompoundStmt(c);
+    compInstr.scopedInstructions=functionsInstructionsVector.back();
+    for(auto& instr:compInstr.scopedInstructions){
+      for(auto& dep:instr.dependencies){
+        compInstr.dependencies.insert(dep);
+      }
+      if(instr.complexInstruction){
+        compInstr.scopedInstructionsNumber+=instr.scopedInstructions.size();
+      }
+      compInstr.scopedInstructionsNumber++;
+    }
+    functionsInstructionsVector.pop_back();
+    functionsInstructionsVector.back().push_back(compInstr);
+
+  }
+  if(i->getElse()&&isa<CompoundStmt>(i->getElse()))
+  {
+    
+    CompoundStmt* c=cast<CompoundStmt>(i->getElse());
+    Instruction compInstr;
+    compInstr.instruction=c;
+    std::stringstream ss;
+    ss<<"else";
+
+    compInstr.instructionString=ss.str();
+    compInstr.complexInstruction=true;
+    compInstr.scopedInstructionsNumber=0;
+
+    functionsInstructionsVector.push_back(std::vector<Instruction>());
+    res=RecursiveASTVisitor::TraverseCompoundStmt(c);
+    compInstr.scopedInstructions=functionsInstructionsVector.back();
+    for(auto& instr:compInstr.scopedInstructions){
+      for(auto& dep:instr.dependencies){
+        compInstr.dependencies.insert(dep);
+      }
+      if(instr.complexInstruction){
+        compInstr.scopedInstructionsNumber+=instr.scopedInstructions.size();
+      }
+      compInstr.scopedInstructionsNumber++;
+    }
+    functionsInstructionsVector.pop_back();
+    functionsInstructionsVector.back().push_back(compInstr);
+  }
+  compInstr.scopedInstructions=functionsInstructionsVector.back();
+  for(auto& instr:compInstr.scopedInstructions){
+    for(auto& dep:instr.dependencies){
+      compInstr.dependencies.insert(dep);
+    }
+    if(instr.complexInstruction){
+      compInstr.scopedInstructionsNumber+=instr.scopedInstructions.size();
+    }
+    compInstr.scopedInstructionsNumber++;
+  }
+  functionsInstructionsVector.pop_back();
+  functionsInstructionsVector.back().push_back(compInstr);
+  return res;
+}
