@@ -18,6 +18,7 @@ void subGenerateDotGraph(const Graph& inGraph, std::ofstream& file){
             file << "    " << node->id << " -> " << nextNode->id << ";\n";
         }
         if(node->graph){
+            file << "    " << node->id << " -> " << node->graph->nodes[0]->id << ";\n";
             file << "subgraph cluster_"<<node->id<<" {\n"<< "label = \"subGraph"<<node->id<<"\";\n";
             subGenerateDotGraph(*node->graph, file);
             file << "}\n";
@@ -50,8 +51,6 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
         if(curInstruction.complexInstruction){
             node->graph = std::make_shared<Graph>();
             *node->graph = InstructionToGraph(curInstruction.scopedInstructions);
-            node->next.insert(node->graph->roots[0]);
-            node->graph->roots[0]->prev.insert(node);
         }
     }
     std::unordered_map<const clang::Decl*, std::set<std::shared_ptr<Node>>> dataUsedInRead;
@@ -59,21 +58,7 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
 
     for (int i = 0; i < inInstructions.size(); ++i){
         auto node = graph.nodes[i];
-        std::cout<< "Node: "<<node->id<<std::endl;
-        std::cout << "Instruction: " << inInstructions[i].instructionString << std::endl;
-        std::cout<< "Dependencies: "<<inInstructions[i].dependencies.size()<<std::endl;
-        std::cout<< "Read: "<<dataUsedInRead.size()<<std::endl;
-        std::cout<< "Write: "<<dataUsedInWrite.size()<<std::endl;
-        /*
-        for (const auto& dep : inInstructions[i].dependencies){
-            std::cout << "Dep: " << dep.second << std::endl;
-        }
-        for (const auto& red: dataUsedInRead){
-            std::cout << "Read: " << red.first << std::endl;
-        }
-        for (const auto& red: dataUsedInWrite){
-            std::cout << "Write: " << red.first<<" "<<red.second->id << std::endl;
-        }*/
+        
         for (const auto& dep : inInstructions[i].dependencies){
             if (dep.first == Access::READ){
                  if(dataUsedInWrite.find(dep.second) != dataUsedInWrite.end()){
@@ -86,11 +71,8 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
                 dataUsedInRead[dep.second].insert(node);
             } 
             else {
-                std::cout <<"Coucou1"<<std::endl;
                 if( dataUsedInRead.find(dep.second) != dataUsedInRead.end()){
-                    std::cout <<"Coucou2"<<std::endl;
                     auto it = dataUsedInRead.find(dep.second);
-                    std::cout<< "Size: "<<it->first<<it->second.size()<<std::endl;
                     for (const auto& depNode : it->second){
                         if(depNode->id == node->id){
                             continue;
@@ -102,7 +84,6 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
                     dataUsedInRead.erase(dep.second);
                 }
                 else if(dataUsedInWrite.find(dep.second) != dataUsedInWrite.end()){
-                    std::cout <<"Coucou3"<<std::endl;
                     auto it= dataUsedInWrite.find(dep.second);
                     if(it->second->id!=node->id){
                         auto depNode = dataUsedInWrite[dep.second];

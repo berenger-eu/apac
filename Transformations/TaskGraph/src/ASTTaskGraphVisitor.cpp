@@ -171,18 +171,11 @@ bool ASTTaskGraphVisitor::TraverseForStmt(ForStmt* f)
   ss<<"for("<<getStmtAsString(f->getInit(),TheRewriter.getLangOpts())<<";"
   <<getExprAsString(f->getCond(),TheRewriter.getLangOpts())<<";"
   <<getExprAsString(f->getInc(),TheRewriter.getLangOpts())<<")";
-  // compInstr.instructionString=getStmtAsString(f,TheRewriter.getLangOpts());
+
   compInstr.instructionString=ss.str();
   compInstr.complexInstruction=true;
   compInstr.scopedInstructionsNumber=0;
-  /*
-  if(f->getInit())
-    handleExpr(*(f->getInit()),instr);
-  if(f->getCond())
-    handleExpr(*(f->getCond()),instr);
-  if(f->getInc())
-    handleExpr(*(f->getInc()),instr);
-  */
+
   functionsInstructionsVector.push_back(std::vector<Instruction>());
   bool res=RecursiveASTVisitor::TraverseForStmt(f);
   compInstr.scopedInstructions=functionsInstructionsVector.back();
