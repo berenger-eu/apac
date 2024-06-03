@@ -40,3 +40,5 @@ private:
 
     Rewriter &TheRewriter;
 };
+
+bool isInExceptionList(const ParmVarDecl& p);
