@@ -13,7 +13,18 @@ std::string getVarDeclDefStr(const VarDecl& v)
     {
         SSresult<<v.getNameAsString();
         //= initValue
-        SSresult<<" = "<<getInitString(v);
+        switch(v.getInitStyle())
+    {
+        case VarDecl::CallInit:
+            SSresult<<"("<<getInitString(v)<<")";
+            break;
+        case VarDecl::CInit:
+            SSresult<<" = "<<getInitString(v);
+            break;
+        default:
+            llvm::errs()<<"Unknown Initialization Style\n";
+            break;
+    }
         SSresult<<";\n";
     }
     return SSresult.str();
