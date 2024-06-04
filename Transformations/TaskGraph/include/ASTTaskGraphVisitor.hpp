@@ -18,9 +18,11 @@ public:
     inline bool VisitStmt(Stmt *s){return true;}
     //Traverse methods lets us stop visiting nodes that we don't need
 
-
+    bool TraverseCXXMethodDecl(CXXMethodDecl *m);
     bool TraverseFunctionDecl(FunctionDecl *f);
     //Calls respective handle method
+
+    bool TraverseCXXMemberCallExpr(CXXMemberCallExpr* c);
     bool TraverseCallExpr(CallExpr* c);
     bool TraverseUnaryOperator(UnaryOperator* uop);
     bool TraverseBinaryOperator(BinaryOperator* bop);
@@ -37,7 +39,7 @@ private:
     void handleBinaryOperator(const BinaryOperator& ,Instruction&);
     void handleCallExpr(const CallExpr& ,Instruction&);
     void handleExpr(const Expr& exp,Instruction&);
-
+    void handleMemberCallExpr(const CXXMemberCallExpr& ,Instruction&);
     Rewriter &TheRewriter;
 };
 

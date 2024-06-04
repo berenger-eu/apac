@@ -5,6 +5,18 @@ bool isInExceptionList(const ParmVarDecl& p)
   return p.getType().getAsString().find("std::shared_ptr") != std::string::npos;
 }
 
+bool ASTTaskGraphVisitor::TraverseCXXMethodDecl(CXXMethodDecl *m) {
+  if(isInHeaders(TheRewriter.getSourceMgr(),m->getBeginLoc())) 
+    return true;
+
+  //If function is not in headers and has a body and is a definition, then we traverse it recursively
+  //Using traverse we can avoid visiting nodes that we don't need
+  if(m->getBody()&&m->isThisDeclarationADefinition()){ 
+    functionsInstructionsVector.push_back(std::vector<Instruction>());
+    return RecursiveASTVisitor::TraverseCXXMethodDecl(m);
+  }
+  return true;
+}
 bool ASTTaskGraphVisitor::TraverseFunctionDecl(FunctionDecl *f) {
   if(isInHeaders(TheRewriter.getSourceMgr(),f->getBeginLoc())) 
     return true;
@@ -17,7 +29,6 @@ bool ASTTaskGraphVisitor::TraverseFunctionDecl(FunctionDecl *f) {
   }
   return true;
 }
-
 void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instruction& curInstr)
 {
     Expr* subExpr=uop.getSubExpr();
@@ -61,7 +72,20 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator& bop,Instruc
       handleExpr(*bop.getRHS(),curInstr);
     }
 }
-
+void ASTTaskGraphVisitor::handleMemberCallExpr(const CXXMemberCallExpr& c,Instruction& curInstr)
+{
+  Expr* obj=c.getImplicitObjectArgument();
+  if(isa<DeclRefExpr>(obj))
+  {
+    const DeclRefExpr& d=cast<DeclRefExpr>(*obj);
+    curInstr.dependencies.emplace(Access::READ, d.getDecl()->getCanonicalDecl());
+    if(!c.getMethodDecl()->isConst())
+      curInstr.dependencies.emplace(Access::WRITE, d.getDecl()->getCanonicalDecl());
+  }
+  else
+    handleExpr(*obj,curInstr);
+  handleCallExpr(c,curInstr);
+}
 void ASTTaskGraphVisitor::handleCallExpr(const CallExpr& c,Instruction& curInstr)
 {
   //TODO: Methods and read/write on object/data ?
@@ -127,6 +151,10 @@ void ASTTaskGraphVisitor::handleExpr(const Expr& exp,Instruction& instr)
   {
     handleBinaryOperator(cast<BinaryOperator>(curExp),instr);
   }
+  else if(isa<CXXMemberCallExpr>(curExp))
+  {
+    handleMemberCallExpr(cast<CXXMemberCallExpr>(curExp),instr);
+  }
   else if(isa<CallExpr>(curExp))
   {
     handleCallExpr(cast<CallExpr>(curExp),instr);
@@ -151,6 +179,7 @@ void ASTTaskGraphVisitor::handleExpr(const Expr& exp,Instruction& instr)
 
 bool ASTTaskGraphVisitor::TraverseUnaryOperator(UnaryOperator* uop)
 {
+
   if(isInHeaders(TheRewriter.getSourceMgr(),uop->getBeginLoc())) 
     return true;
   Instruction instr;
@@ -192,7 +221,22 @@ bool ASTTaskGraphVisitor::TraverseCompoundAssignOperator(CompoundAssignOperator*
   
   return true;
 }
-
+bool ASTTaskGraphVisitor::TraverseCXXMemberCallExpr(CXXMemberCallExpr* c)
+{
+  if(isInHeaders(TheRewriter.getSourceMgr(),c->getBeginLoc())) 
+    return true;
+  c->dump();
+  llvm::outs()<<"Method\n";
+  Instruction instr;
+  instr.instruction=c;
+  instr.instructionString=getStmtAsString(c,TheRewriter.getLangOpts());
+  instr.complexInstruction=false;
+  handleMemberCallExpr(*c,instr); 
+  std::vector<Instruction>& functionInstructions=functionsInstructionsVector.back();
+  functionInstructions.push_back(instr);
+  
+  return true;
+}
 bool ASTTaskGraphVisitor::TraverseCallExpr(CallExpr* c)
 {
   if(isInHeaders(TheRewriter.getSourceMgr(),c->getBeginLoc())) 
