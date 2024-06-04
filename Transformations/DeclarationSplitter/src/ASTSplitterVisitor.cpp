@@ -1,6 +1,22 @@
 #include "ASTSplitterVisitor.hpp"
 using namespace clang;
 
+bool ASTSplitterVisitor::isValidSeparation(const VarDecl& v1)
+{   
+    bool result=true;
+    if(v1.getType()->isStructureOrClassType())
+    {
+        const CXXRecordDecl* cxxRecordDecl=v1.getType()->getAsCXXRecordDecl();
+        auto it = cxxRecordDecl->ctor_begin();
+        while (it != cxxRecordDecl->ctor_end() &&result) {
+            if(it->isDefaultConstructor()&&it->isDeleted())
+                result=false;
+            it++;
+        }
+    }
+    return result;
+}
+
 bool ASTSplitterVisitor::VisitDeclStmt(DeclStmt* declSt){
      if(isInHeaders(TheRewriter.getSourceMgr(),declSt->getBeginLoc()))
         return true;
@@ -48,7 +64,11 @@ bool ASTSplitterVisitor::VisitDeclStmt(DeclStmt* declSt){
 }
 void ASTSplitterVisitor::stringVarDecl(const VarDecl& v,std::stringstream& SSprintDecl, std::stringstream& SSprintInit){
     std::stringstream SSprint;
-    if(isReferenceQualType(v.getType()))
+    if(!isValidSeparation(v))
+    {
+        SSprintDecl<<getCompleteVarDeclStr(v);
+    }
+    else if(isReferenceQualType(v.getType()))
     {
         const QualType& qType=getUnreferencedQType(v.getType(),v.getASTContext());
         const Expr* init=(v.getInit()->IgnoreCasts()); 

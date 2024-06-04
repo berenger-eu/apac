@@ -19,6 +19,7 @@ public:
     bool VisitDeclStmt(DeclStmt*);
 
 private:
+    bool isValidSeparation(const VarDecl& );
     void stringVarDecl(const VarDecl&,std::stringstream& , std::stringstream& );
     Rewriter &TheRewriter;
 };
