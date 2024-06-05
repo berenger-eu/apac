@@ -15,10 +15,16 @@ void subGenerateDotGraph(const Graph& inGraph, std::ofstream& file){
     for(const auto& node : inGraph.nodes){
         file << "    " << node->id << " [label=\"" << node->instruction << "\"];\n";
         for (const auto& nextNode : node->next) {
-            file << "    " << node->id << " -> " << nextNode->id << ";\n";
+            std::stringstream ss;
+            for(auto iterBegin = nextNode.second.begin(); iterBegin != nextNode.second.end(); iterBegin++){
+                if(iterBegin != nextNode.second.begin())
+                    ss << ",";
+                ss << *iterBegin;
+            }
+            file << "    " << node->id << " -> " << nextNode.first->id << "[label=\"  "<<ss.str()<<"\"];\n";
         }
         if(node->graph){
-            file << "    " << node->id << " -> " << node->graph->nodes[0]->id << ";\n";
+            file << "    " << node->id << " -> " << node->graph->nodes[0]->id << "[label=\"innerScope\"];\n";
             file << "subgraph cluster_"<<node->id<<" {\n"<< "label = \"subGraph"<<node->id<<"\";\n";
             subGenerateDotGraph(*node->graph, file);
             file << "}\n";
@@ -64,7 +70,9 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
                  if(dataUsedInWrite.find(dep.second) != dataUsedInWrite.end()){
                       if((*dataUsedInWrite.find(dep.second)).second->id!=node->id){
                         auto depNode = dataUsedInWrite[dep.second];
-                        depNode->next.insert(node);
+                        if(depNode->next.count(node)==0)
+                            depNode->next.insert({node,std::unordered_set<std::string>()});
+                        depNode->next.at(node).insert(dep.second->getNameAsString());
                         node->prev.insert(depNode);
                     }
                 }
@@ -77,7 +85,9 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
                         if(depNode->id == node->id){
                             continue;
                         }
-                        depNode->next.insert(node);
+                        if(depNode->next.count(node)==0)
+                            depNode->next.insert({node,std::unordered_set<std::string>()});
+                        depNode->next.at(node).insert(dep.second->getNameAsString());
                         node->prev.insert(depNode);
                     }
 
@@ -87,7 +97,9 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
                     auto it= dataUsedInWrite.find(dep.second);
                     if(it->second->id!=node->id){
                         auto depNode = dataUsedInWrite[dep.second];
-                        depNode->next.insert(node);
+                        if(depNode->next.count(node)==0)
+                            depNode->next.insert({node,std::unordered_set<std::string>()});
+                        depNode->next.at(node).insert(dep.second->getNameAsString());
                         node->prev.insert(depNode);
                     }    
                 }
@@ -110,7 +122,7 @@ void PrintGraph(const Graph& inGraph){
         std::cout << "Node: " << node->id << " Instruction: " << node->instruction << std::endl;
         std::cout << "-- Next: ";
         for (const auto& next : node->next){
-            std::cout << next->id << " ";
+            std::cout << next.first->id << " ";
         }
         std::cout << std::endl;
         std::cout << "-- Prev: ";

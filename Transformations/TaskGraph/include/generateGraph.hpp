@@ -26,8 +26,7 @@ struct Node {
     
     static int idCounter;
     int id;
-    
-    std::unordered_set<std::shared_ptr<Node>> next;
+    std::unordered_map<std::shared_ptr<Node>,std::unordered_set<std::string>> next;
     std::unordered_set<std::shared_ptr<Node>> prev;
     std::shared_ptr<struct Graph> graph;
     std::string instruction;
