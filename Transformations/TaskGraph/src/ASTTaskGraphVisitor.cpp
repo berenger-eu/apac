@@ -37,9 +37,9 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instructi
     //and we increment or decrement it, then it's a read and a write 
       if(uop.isIncrementOp()||uop.isDecrementOp())
       {
-        DeclRefExpr& d=cast<DeclRefExpr>(*subExpr);
-        curInstr.dependencies.emplace(Access::WRITE, d.getDecl()->getCanonicalDecl());
-        curInstr.dependencies.emplace(Access::READ, d.getDecl()->getCanonicalDecl());
+        VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(*subExpr).getDecl());
+        curInstr.dependencies.emplace(Access::WRITE, v->getCanonicalDecl());
+        curInstr.dependencies.emplace(Access::READ, v->getCanonicalDecl());
       }
       //TODO: check if other cases are read and/or write
     //Otherwise, unary expression affects a temporary value so we ignore it but still look through the expression
@@ -55,11 +55,11 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator& bop,Instruc
         //Most likely unnecessary since left side has to be a lvalue because of the assignment operator
       if(isa<DeclRefExpr>(bop.getLHS()))
       {
-        DeclRefExpr& d=cast<DeclRefExpr>(*bop.getLHS());
-        curInstr.dependencies.emplace(Access::WRITE, d.getDecl()->getCanonicalDecl());
+        VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(bop.getLHS())->getDecl());
+        curInstr.dependencies.emplace(Access::WRITE, v->getCanonicalDecl());
         //Also is a read if it is a compound assignment
         if(isa<CompoundAssignOperator>(bop))
-          curInstr.dependencies.emplace(Access::READ, d.getDecl()->getCanonicalDecl());
+          curInstr.dependencies.emplace(Access::READ, v->getCanonicalDecl());
       }
       else
         handleExpr(*bop.getLHS(),curInstr);
@@ -77,10 +77,10 @@ void ASTTaskGraphVisitor::handleMemberCallExpr(const CXXMemberCallExpr& c,Instru
   Expr* obj=c.getImplicitObjectArgument();
   if(isa<DeclRefExpr>(obj))
   {
-    const DeclRefExpr& d=cast<DeclRefExpr>(*obj);
-    curInstr.dependencies.emplace(Access::READ, d.getDecl()->getCanonicalDecl());
+    VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(obj)->getDecl());
+    curInstr.dependencies.emplace(Access::READ, v->getCanonicalDecl());
     if(!c.getMethodDecl()->isConst())
-      curInstr.dependencies.emplace(Access::WRITE, d.getDecl()->getCanonicalDecl());
+      curInstr.dependencies.emplace(Access::WRITE, v->getCanonicalDecl());
   }
   else
     handleExpr(*obj,curInstr);
@@ -107,9 +107,9 @@ void ASTTaskGraphVisitor::handleCallExpr(const CallExpr& c,Instruction& curInstr
         d=cast<CXXConstructExpr>(d)->getArg(0);
       if(isa<DeclRefExpr>(d->IgnoreParenImpCasts()))
       {
-        const DeclRefExpr& dec=*cast<DeclRefExpr>(d->IgnoreParenImpCasts()); 
-        curInstr.dependencies.emplace(Access::READ, dec.getDecl()->getCanonicalDecl());
-        curInstr.dependencies.emplace(Access::WRITE, dec.getDecl()->getCanonicalDecl());
+        const VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(d->IgnoreParenImpCasts())->getDecl()); 
+        curInstr.dependencies.emplace(Access::READ, v->getCanonicalDecl());
+        curInstr.dependencies.emplace(Access::WRITE, v->getCanonicalDecl());
       }
     }
     else if( !(isFullConstType(p.getType())&&isReferenceQualType(p.getType()))
@@ -126,9 +126,9 @@ void ASTTaskGraphVisitor::handleCallExpr(const CallExpr& c,Instruction& curInstr
       //  then there might be a write, so we assume there is one
       if(isa<DeclRefExpr>(curExpr))
       {
-        const DeclRefExpr& d=*cast<DeclRefExpr>(curExpr);
-        curInstr.dependencies.emplace(Access::READ, d.getDecl()->getCanonicalDecl());
-        curInstr.dependencies.emplace(Access::WRITE, d.getDecl()->getCanonicalDecl());
+        const VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(curExpr)->getDecl());
+        curInstr.dependencies.emplace(Access::READ, v->getCanonicalDecl());
+        curInstr.dependencies.emplace(Access::WRITE, v->getCanonicalDecl());
       }
       else{
         llvm::errs()<<"Failed to find DeclRefExpr\n";
@@ -161,8 +161,8 @@ void ASTTaskGraphVisitor::handleExpr(const Expr& exp,Instruction& instr)
   }
   else if(isa<DeclRefExpr>(curExp))
   {
-    const DeclRefExpr& d=cast<DeclRefExpr>(curExp);
-    instr.dependencies.emplace(Access::READ, d.getDecl()->getCanonicalDecl());
+    const VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(curExp).getDecl());
+    instr.dependencies.emplace(Access::READ, v->getCanonicalDecl());
   }
   //Ignored expressions case
   else if(isa<IntegerLiteral>(curExp))
