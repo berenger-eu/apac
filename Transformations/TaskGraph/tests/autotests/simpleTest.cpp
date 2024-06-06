@@ -1,5 +1,12 @@
 //   #include <memory>
 //  #include <vector> 
+#include <functional>
+#include <optional>
+template <class T> T &invalid_ref() {
+  T *ptr = nullptr;
+  return (*ptr);
+}
+
 class Point{
 public:
     Point() =default;
@@ -62,8 +69,10 @@ int main()
 {
     int i;
     i=4;
-    
+    int a;
     int j;
+      std::reference_wrapper<int> ref = invalid_ref<int>();
+  ref = a;
   //  std::shared_ptr<int> ptr;
    // ptr = std::make_shared<int>(i);
    // ptr.get();
