@@ -11,8 +11,26 @@ void AliasTable::addAliasReference(const VarDecl* var,const VarDecl* ref)
             varAliasTable.insert({var,aliasArg{*var}});
         referenceAliasArg* tableValueRef = &refAliasTable.at(ref);
         aliasArg* tableValueVar = &varAliasTable.at(var);
-        tableValueVar->references.push_back(tableValueRef);
-        tableValueRef->aliased.push_back(tableValueVar);
+        tableValueVar->references.insert(tableValueRef);
+        tableValueRef->aliased.insert(tableValueVar);
+    }
+}
+void AliasTable::removeDependencyPtr(const VarDecl* ptr)
+{
+    if(ptr!=nullptr)
+    {
+        if(ptrAliasTable.count(ptr)==0)
+            llvm::errs()<<"Error: Trying to remove dependency from non existing element\n";
+        else
+        {
+            pointersAliasArg* tableValuePtr = &ptrAliasTable.at(ptr);
+            for (const auto& varAliased:tableValuePtr->aliased)
+            {
+                aliasArg* tableValueVar = getAliasArg(&varAliased->declaration);
+                tableValueVar->pointers.erase(tableValuePtr);
+            }
+            tableValuePtr->aliased.clear();
+        }
     }
 }
 const std::unordered_set<const VarDecl*> AliasTable::getAliases(const VarDecl* v ) const{

@@ -17,22 +17,22 @@ struct aliasArg {
     //Type of Alias arg
     AliasType type;
     //Elements that point to current element
-    std::vector<pointersAliasArg*> pointers;
+    std::unordered_set<pointersAliasArg*> pointers;
     //Elements that references current element
-    std::vector<referenceAliasArg*> references;
+    std::unordered_set<referenceAliasArg*> references;
 };
 
 struct pointersAliasArg : public aliasArg
 {
     pointersAliasArg(const clang::VarDecl& decl):aliasArg{decl,Pointer}{}
     //Element referenced
-    std::vector<aliasArg*> aliased;
+    std::unordered_set<aliasArg*> aliased;
 };
 struct referenceAliasArg : public aliasArg
 {
     referenceAliasArg(const clang::VarDecl& decl):aliasArg{decl,Reference}{}
     //Element referenced
-    std::vector<aliasArg*> aliased;
+    std::unordered_set<aliasArg*> aliased;
 };
 
 typedef std::unordered_map<const clang::NamedDecl*, struct aliasArg> VariableAliasTable;
@@ -54,13 +54,15 @@ class AliasTable {
                 //   ptrAliasTable.insert({getKey(v),ptr});
             }
         }
-        
+        void removeDependencyPtr(const VarDecl* ptr);
         void addAliasReference(const VarDecl* var,const VarDecl* ref);
     private:
         inline const NamedDecl* getKey(const VarDecl* v) const{
             return v->getCanonicalDecl();
         }
-        
+        inline const aliasArg* getAliasArg(const VarDecl* v) const{
+            return &varAliasTable.at(getKey(v));
+        }
         void getReferencesAliases(const VarDecl*,std::unordered_set<const VarDecl*>&) const;
         void getPointersAliases(const VarDecl*,std::unordered_set<const VarDecl*>&) const;
         
