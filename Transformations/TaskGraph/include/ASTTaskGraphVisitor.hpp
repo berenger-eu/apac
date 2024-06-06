@@ -9,12 +9,13 @@
 
 #include "PotTaskGraphInterface.hpp"
 #include "common.hpp"
+#include "AliasTable.hpp"
 
 using namespace clang;
 class ASTTaskGraphVisitor : public RecursiveASTVisitor<ASTTaskGraphVisitor>
 {
 public:
-    ASTTaskGraphVisitor(Rewriter &R) : TheRewriter(R) {};
+    ASTTaskGraphVisitor(Rewriter &R) : TheRewriter(R),aliasTable(R) {};
     inline bool VisitStmt(Stmt *s){return true;}
     //Traverse methods lets us stop visiting nodes that we don't need
 
@@ -27,6 +28,7 @@ public:
     bool TraverseUnaryOperator(UnaryOperator* uop);
     bool TraverseBinaryOperator(BinaryOperator* bop);
     bool TraverseCompoundAssignOperator(CompoundAssignOperator* bop);
+    bool TraverseCXXOperatorCallExpr(CXXOperatorCallExpr* c);
 
     bool TraverseReturnStmt(ReturnStmt* r);
     bool TraverseForStmt(ForStmt* f);
@@ -41,6 +43,7 @@ private:
     void handleExpr(const Expr& exp,Instruction&);
     void handleMemberCallExpr(const CXXMemberCallExpr& ,Instruction&);
     Rewriter &TheRewriter;
+    AliasTable aliasTable;
 };
 
 bool isInExceptionList(const ParmVarDecl& p);

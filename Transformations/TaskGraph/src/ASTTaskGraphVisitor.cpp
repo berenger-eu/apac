@@ -29,6 +29,32 @@ bool ASTTaskGraphVisitor::TraverseFunctionDecl(FunctionDecl *f) {
   }
   return true;
 }
+bool ASTTaskGraphVisitor::TraverseCXXOperatorCallExpr(CXXOperatorCallExpr* c)
+{
+  if(isInHeaders(TheRewriter.getSourceMgr(),c->getBeginLoc())) 
+    return true;
+  //Most likely is the definition of a reference
+  if(c->isAssignmentOp()&&c->getNumArgs()==2)
+    if(isa<DeclRefExpr>(c->getArg(0))&&isReferenceQualType(c->getArg(0)->getType()))
+    {
+      const VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(c->getArg(0))->getDecl());
+      const DeclRefExpr* d;
+      if((d=getDeclRefExprInsideExpr(c->getArg(1)))!=nullptr )
+      {
+        const VarDecl* v2=cast<VarDecl>(d->getDecl());
+        if(v2)
+        {
+          aliasTable.addAliasReference(v2,v);
+        }
+      }
+    }
+  for(int i=0;i<c->getNumArgs();i++)
+  {
+    c->getArg(i)->dump();
+  }
+  
+  return true;
+}
 void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instruction& curInstr)
 {
     Expr* subExpr=uop.getSubExpr();
