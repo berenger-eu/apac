@@ -5,11 +5,17 @@
 #include "clang/AST/Decl.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 using namespace clang;
-
+enum AliasType{
+        Reference,
+        Pointer,
+        Variable
+    };
 struct pointersAliasArg;
 struct referenceAliasArg;
 struct aliasArg {
     const clang::VarDecl& declaration;
+    //Type of Alias arg
+    AliasType type;
     //Elements that point to current element
     std::vector<pointersAliasArg*> pointers;
     //Elements that references current element
@@ -18,13 +24,15 @@ struct aliasArg {
 
 struct pointersAliasArg : public aliasArg
 {
+    pointersAliasArg(const clang::VarDecl& decl):aliasArg{decl,Pointer}{}
     //Element referenced
-    std::vector<aliasArg> aliased;
+    std::vector<aliasArg*> aliased;
 };
 struct referenceAliasArg : public aliasArg
 {
+    referenceAliasArg(const clang::VarDecl& decl):aliasArg{decl,Reference}{}
     //Element referenced
-    std::vector<aliasArg> aliased;
+    std::vector<aliasArg*> aliased;
 };
 
 typedef std::unordered_map<const clang::NamedDecl*, struct aliasArg> VariableAliasTable;
@@ -34,7 +42,7 @@ typedef std::unordered_map<const clang::NamedDecl*, struct pointersAliasArg> Poi
 class AliasTable {
     public:
         AliasTable(Rewriter& R) : TheRewriter(R){}
-        inline const std::unordered_set<const VarDecl*> getAliases(const VarDecl& v ) const{
+        inline const std::unordered_set<const VarDecl*> getAliases(const VarDecl* v ) const{
             std::unordered_set<const VarDecl*> aliases;
             getReferencesAliases(v,aliases);
             getPointersAliases(v,aliases);
@@ -53,14 +61,14 @@ class AliasTable {
             }
         }
         
-        void addAliasReference(VarDecl* var,VarDecl* ref);
+        void addAliasReference(const VarDecl* var,const VarDecl* ref);
     private:
         inline const NamedDecl* getKey(const VarDecl* v) const{
             return v->getCanonicalDecl();
         }
         
-        void getReferencesAliases(const VarDecl&,std::unordered_set<const VarDecl*>&) const;
-        void getPointersAliases(const VarDecl&,std::unordered_set<const VarDecl*>&) const;
+        void getReferencesAliases(const VarDecl*,std::unordered_set<const VarDecl*>&) const;
+        void getPointersAliases(const VarDecl*,std::unordered_set<const VarDecl*>&) const;
         
         VariableAliasTable varAliasTable;
         ReferenceAliasTable refAliasTable;
