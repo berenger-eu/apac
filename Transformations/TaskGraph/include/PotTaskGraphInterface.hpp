@@ -22,12 +22,12 @@ struct DependencyEqual {
     }
 };
 struct Instruction {
-    std::string instructionString; //Instruction string
     clang::Stmt* instruction;
-    std::unordered_set<std::pair<Access, const clang::NamedDecl*>,DependencyHash,DependencyEqual> dependencies;
+    std::string instructionString; //Instruction string
     bool complexInstruction;
-    std::vector<Instruction> scopedInstructions;
     unsigned int scopedInstructionsNumber;  //Also takes in account number of instructions in ComplexInstructions 
+    std::unordered_set<std::pair<Access, const clang::NamedDecl*>,DependencyHash,DependencyEqual> dependencies;
+    std::vector<Instruction> scopedInstructions;
 };
 /*
 struct ComplexInstruction : Instruction {
