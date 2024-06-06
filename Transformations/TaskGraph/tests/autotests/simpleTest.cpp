@@ -73,6 +73,8 @@ int main()
     int j;
       std::reference_wrapper<int> ref = invalid_ref<int>();
   ref = a;
+  a++;
+  ref++;
   //  std::shared_ptr<int> ptr;
    // ptr = std::make_shared<int>(i);
    // ptr.get();
