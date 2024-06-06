@@ -5,6 +5,21 @@ bool isInExceptionList(const ParmVarDecl& p)
   return p.getType().getAsString().find("std::shared_ptr") != std::string::npos;
 }
 
+void addDependency(Instruction& instr,Access a,const NamedDecl* d)
+{
+  instr.dependencies.emplace(a,d);
+  std::unordered_set<const VarDecl*> aliases;
+  aliases.insert(d);
+  for (auto dep : aliasTable.getAliases(d))
+  {
+    if(aliases.count(dep)==0)
+    {
+      instr.dependencies.emplace(a,dep);
+      aliases.insert(dep);
+    }
+  }
+}
+
 bool ASTTaskGraphVisitor::TraverseCXXMethodDecl(CXXMethodDecl *m) {
   if(isInHeaders(TheRewriter.getSourceMgr(),m->getBeginLoc())) 
     return true;
@@ -48,10 +63,7 @@ bool ASTTaskGraphVisitor::TraverseCXXOperatorCallExpr(CXXOperatorCallExpr* c)
         }
       }
     }
-  for(int i=0;i<c->getNumArgs();i++)
-  {
-    c->getArg(i)->dump();
-  }
+  
   
   return true;
 }

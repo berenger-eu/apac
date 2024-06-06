@@ -37,6 +37,8 @@ public:
     std::vector<std::vector<Instruction>> functionsInstructionsVector;
 private:
     bool isEmptyInstruction(const Instruction& instr){return instr.dependencies.size()==0;};
+    void addDependency(Instruction& instr,Access a,const NamedDecl* d);
+
     void handleUnaryOperator(const UnaryOperator& ,Instruction&);
     void handleBinaryOperator(const BinaryOperator& ,Instruction&);
     void handleCallExpr(const CallExpr& ,Instruction&);
