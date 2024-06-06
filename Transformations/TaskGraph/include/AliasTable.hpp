@@ -42,14 +42,8 @@ typedef std::unordered_map<const clang::NamedDecl*, struct pointersAliasArg> Poi
 class AliasTable {
     public:
         AliasTable(Rewriter& R) : TheRewriter(R){}
-        inline const std::unordered_set<const VarDecl*> getAliases(const VarDecl* v ) const{
-            std::unordered_set<const VarDecl*> aliases;
-            getReferencesAliases(v,aliases);
-            getPointersAliases(v,aliases);
-            return aliases;
-        };
+        const std::unordered_set<const VarDecl*> getAliases(const VarDecl* v ) const;
 
-        
         inline void addVariableToTables(const VarDecl* v){
             if(v!=nullptr)
             {
