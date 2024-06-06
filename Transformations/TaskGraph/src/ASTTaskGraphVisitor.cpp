@@ -5,19 +5,13 @@ bool isInExceptionList(const ParmVarDecl& p)
   return p.getType().getAsString().find("std::shared_ptr") != std::string::npos;
 }
 
-void addDependency(Instruction& instr,Access a,const NamedDecl* d)
+void ASTTaskGraphVisitor::addDependency(Instruction& instr,Access a,const VarDecl* d)
 {
-  instr.dependencies.emplace(a,d);
-  std::unordered_set<const VarDecl*> aliases;
-  aliases.insert(d);
-  for (auto dep : aliasTable.getAliases(d))
-  {
-    if(aliases.count(dep)==0)
-    {
-      instr.dependencies.emplace(a,dep);
-      aliases.insert(dep);
-    }
-  }
+  for (auto alias : aliasTable.getAliases(d))
+    instr.dependencies.emplace(a,alias->getCanonicalDecl());
+  llvm::errs()<<"Added dependency\n";
+  if(aliasTable.getAliases(d).size()==1)
+    llvm::errs()<<"No aliases found\n";
 }
 
 bool ASTTaskGraphVisitor::TraverseCXXMethodDecl(CXXMethodDecl *m) {
@@ -49,6 +43,7 @@ bool ASTTaskGraphVisitor::TraverseCXXOperatorCallExpr(CXXOperatorCallExpr* c)
   if(isInHeaders(TheRewriter.getSourceMgr(),c->getBeginLoc())) 
     return true;
   //Most likely is the definition of a reference
+  Instruction instr{c,getStmtAsString(c,TheRewriter.getLangOpts()),false};
   if(c->isAssignmentOp()&&c->getNumArgs()==2)
     if(isa<DeclRefExpr>(c->getArg(0))&&isReferenceQualType(c->getArg(0)->getType()))
     {
@@ -60,24 +55,33 @@ bool ASTTaskGraphVisitor::TraverseCXXOperatorCallExpr(CXXOperatorCallExpr* c)
         if(v2)
         {
           aliasTable.addAliasReference(v2,v);
+          addDependency(instr,Access::READ,v2);
+          addDependency(instr,Access::WRITE,v);
         }
       }
     }
   
-  
+  functionsInstructionsVector.back().push_back(instr); 
+  for (auto dep:instr.dependencies)
+  {
+    llvm::errs()<<dep.second->getNameAsString()<<"\n";
+  }
   return true;
 }
 void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instruction& curInstr)
 {
     Expr* subExpr=uop.getSubExpr();
     //If we have a variable
-    if(isa<DeclRefExpr>(subExpr))
+    DeclRefExpr* d;
+    if((d=getDeclRefExprInsideExpr(subExpr))!=nullptr)
     //and we increment or decrement it, then it's a read and a write 
       if(uop.isIncrementOp()||uop.isDecrementOp())
       {
-        VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(*subExpr).getDecl());
-        curInstr.dependencies.emplace(Access::WRITE, v->getCanonicalDecl());
-        curInstr.dependencies.emplace(Access::READ, v->getCanonicalDecl());
+        VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(d)->getDecl());
+        llvm::errs()<<"Adding dep for"<<v->getNameAsString()<<"\n";
+        addDependency(curInstr,Access::READ,v);
+        addDependency(curInstr,Access::WRITE,v);
+        llvm::errs()<<"done\n";
       }
       //TODO: check if other cases are read and/or write
     //Otherwise, unary expression affects a temporary value so we ignore it but still look through the expression
@@ -94,10 +98,10 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator& bop,Instruc
       if(isa<DeclRefExpr>(bop.getLHS()))
       {
         VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(bop.getLHS())->getDecl());
-        curInstr.dependencies.emplace(Access::WRITE, v->getCanonicalDecl());
+        addDependency(curInstr,Access::WRITE,v);
         //Also is a read if it is a compound assignment
         if(isa<CompoundAssignOperator>(bop))
-          curInstr.dependencies.emplace(Access::READ, v->getCanonicalDecl());
+          addDependency(curInstr,Access::READ,v);
       }
       else
         handleExpr(*bop.getLHS(),curInstr);
@@ -116,9 +120,9 @@ void ASTTaskGraphVisitor::handleMemberCallExpr(const CXXMemberCallExpr& c,Instru
   if(isa<DeclRefExpr>(obj))
   {
     VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(obj)->getDecl());
-    curInstr.dependencies.emplace(Access::READ, v->getCanonicalDecl());
+    addDependency(curInstr,Access::READ,v);
     if(!c.getMethodDecl()->isConst())
-      curInstr.dependencies.emplace(Access::WRITE, v->getCanonicalDecl());
+      addDependency(curInstr,Access::WRITE,v);
   }
   else
     handleExpr(*obj,curInstr);
@@ -146,8 +150,8 @@ void ASTTaskGraphVisitor::handleCallExpr(const CallExpr& c,Instruction& curInstr
       if(isa<DeclRefExpr>(d->IgnoreParenImpCasts()))
       {
         const VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(d->IgnoreParenImpCasts())->getDecl()); 
-        curInstr.dependencies.emplace(Access::READ, v->getCanonicalDecl());
-        curInstr.dependencies.emplace(Access::WRITE, v->getCanonicalDecl());
+        addDependency(curInstr,Access::READ,v);
+        addDependency(curInstr,Access::WRITE,v);
       }
     }
     else if( !(isFullConstType(p.getType())&&isReferenceQualType(p.getType()))
@@ -165,8 +169,8 @@ void ASTTaskGraphVisitor::handleCallExpr(const CallExpr& c,Instruction& curInstr
       if(isa<DeclRefExpr>(curExpr))
       {
         const VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(curExpr)->getDecl());
-        curInstr.dependencies.emplace(Access::READ, v->getCanonicalDecl());
-        curInstr.dependencies.emplace(Access::WRITE, v->getCanonicalDecl());
+        addDependency(curInstr,Access::READ,v);
+        addDependency(curInstr,Access::WRITE,v);
       }
       else{
         llvm::errs()<<"Failed to find DeclRefExpr\n";
@@ -200,7 +204,7 @@ void ASTTaskGraphVisitor::handleExpr(const Expr& exp,Instruction& instr)
   else if(isa<DeclRefExpr>(curExp))
   {
     const VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(curExp).getDecl());
-    instr.dependencies.emplace(Access::READ, v->getCanonicalDecl());
+    addDependency(instr,Access::READ,v);
   }
   //Ignored expressions case
   else if(isa<IntegerLiteral>(curExp))
@@ -223,6 +227,11 @@ bool ASTTaskGraphVisitor::TraverseUnaryOperator(UnaryOperator* uop)
   Instruction instr{uop,getStmtAsString(uop,TheRewriter.getLangOpts()),false};
   handleUnaryOperator(*uop,instr);
   functionsInstructionsVector.back().push_back(instr);
+  llvm::errs()<<instr.instructionString<<"\n";
+  for (auto dep:instr.dependencies)
+  {
+    llvm::errs()<<dep.second->getNameAsString()<<"\n";
+  }
   return true;
 }
 
