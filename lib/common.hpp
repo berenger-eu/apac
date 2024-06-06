@@ -40,6 +40,9 @@ bool isReferenceQualType(clang::QualType );
 //Returns the leafs (CallExpr,DeclRefExpr,...) of a given statement
 void getLeafs( clang::Stmt* s,std::vector< clang::Stmt*>& leafs);
 
+//Returns the DeclRefExpr (single) of a given Expr
+DeclRefExpr* getDeclRefExprInsideExpr(Expr* e);
+
 //True when the input is a completely constant type (exemple, const int *const )
 bool isFullConstType(const QualType& qType);
 

@@ -66,12 +66,12 @@ bool isPointerQualType(QualType qType)
 }
 bool isReferenceQualType(QualType qType)
 {
-    const Type* typeTemp;
     bool returnValue=false;
-    if((typeTemp=qType.getTypePtrOrNull()))
-    {
-        returnValue=typeTemp->isReferenceType();
-    }
+
+    returnValue=qType->isReferenceType();
+    if(!returnValue)
+        returnValue=qType.getAsString().find("reference_wrapper")!=std::string::npos;
+
     return returnValue;
 }
 
@@ -98,7 +98,24 @@ void getLeafs(Stmt* st,std::vector< Stmt*>& leafs)
         vectNodes.pop();
     }
 }
-
+DeclRefExpr* getDeclRefExprInsideExpr(Expr* e)
+{
+    DeclRefExpr* returnValue=NULL;
+    std::queue<Expr*> vectNodes;
+    vectNodes.push(e);
+    while(returnValue==NULL&&!vectNodes.empty())
+    {
+        Expr* s=vectNodes.front();
+        if (isa<DeclRefExpr>(s))
+            returnValue=cast<DeclRefExpr>(s);
+        else
+            for (auto it = s->child_begin(); it != s->child_end(); ++it)
+                if(isa<Expr>(*it))
+                    vectNodes.push(cast<Expr>(*it));
+        vectNodes.pop();
+    }
+    return returnValue;
+}
 bool isFullConstType(const QualType& qType)
 {
     const Type* typeTemp;
