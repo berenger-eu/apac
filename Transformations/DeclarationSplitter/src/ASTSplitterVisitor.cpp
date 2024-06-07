@@ -79,9 +79,9 @@ void ASTSplitterVisitor::stringVarDecl(const VarDecl& v,std::stringstream& SSpri
         }
         //When the initialization is a value and not a variable or reference for a const reference
         //A temporary value is created to store the value, so the transformation is different
-        if(qType.isConstQualified()
+        if( (qType.isConstQualified()
         //If it's a call to a function returning a value
-        &&(childrenSize==1&&isa<CallExpr>(init)&&!isReferenceQualType(init->getType()))
+        &&(childrenSize==1&&isa<CallExpr>(init)&&!isReferenceQualType(init->getType()) ))
         //Or if there is more than one child, then it must be a value and not a variable
         || childrenSize>1
         //Or if it's not a variable

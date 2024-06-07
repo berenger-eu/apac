@@ -17,7 +17,7 @@ message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 # you will need to enable C++11 support
 # for your compiler.
 SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
-add_compile_options(-std=c++17)
+add_compile_options(-std=c++17 -Wall)
 set (CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 add_subdirectory(lib)
