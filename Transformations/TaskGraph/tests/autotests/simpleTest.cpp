@@ -75,6 +75,14 @@ int main()
   ref = a;
   a++;
   ref++;
+  int *p,*p1;
+  p=&i;
+  p1=p;
+  p=&j;
+  (*p1)=4;
+    j++;
+    i++;
+    *p=4;
   //  std::shared_ptr<int> ptr;
    // ptr = std::make_shared<int>(i);
    // ptr.get();
