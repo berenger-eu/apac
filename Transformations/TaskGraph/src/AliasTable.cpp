@@ -74,8 +74,8 @@ void AliasTable::getReferencesAliases(const VarDecl* v,std::unordered_set<const 
         aliases.insert(&alias->declaration);
 }
 void AliasTable::getPointersAliases(const VarDecl* v,std::unordered_set<const VarDecl*>& aliases) const{
-    if(ptrAliasTable.count(v)==0)
+    if(varAliasTable.count(v)==0)
         return;
-    for(const auto& alias:ptrAliasTable.at(v).pointers)
+    for(const auto& alias:varAliasTable.at(v).pointers)
         aliases.insert(&alias->declaration);
 }

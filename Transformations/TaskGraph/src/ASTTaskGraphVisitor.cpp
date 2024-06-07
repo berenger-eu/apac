@@ -9,9 +9,6 @@ void ASTTaskGraphVisitor::addDependency(Instruction& instr,Access a,const VarDec
 {
   for (auto alias : aliasTable.getAliases(d))
     instr.dependencies.emplace(a,alias->getCanonicalDecl());
-  llvm::errs()<<"Added dependency\n";
-  if(aliasTable.getAliases(d).size()==1)
-    llvm::errs()<<"No aliases found\n";
 }
 
 bool ASTTaskGraphVisitor::TraverseCXXMethodDecl(CXXMethodDecl *m) {
@@ -62,10 +59,6 @@ bool ASTTaskGraphVisitor::TraverseCXXOperatorCallExpr(CXXOperatorCallExpr* c)
     }
   
   functionsInstructionsVector.back().push_back(instr); 
-  for (auto dep:instr.dependencies)
-  {
-    llvm::errs()<<dep.second->getNameAsString()<<"\n";
-  }
   return true;
 }
 void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instruction& curInstr)
@@ -78,10 +71,8 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instructi
       if(uop.isIncrementOp()||uop.isDecrementOp())
       {
         VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(d)->getDecl());
-        llvm::errs()<<"Adding dep for"<<v->getNameAsString()<<"\n";
         addDependency(curInstr,Access::READ,v);
         addDependency(curInstr,Access::WRITE,v);
-        llvm::errs()<<"done\n";
       }
       //TODO: check if other cases are read and/or write
     //Otherwise, unary expression affects a temporary value so we ignore it but still look through the expression
@@ -95,9 +86,16 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator& bop,Instruc
     if(bop.isAssignmentOp())
     {
         //Most likely unnecessary since left side has to be a lvalue because of the assignment operator
-      if(isa<DeclRefExpr>(bop.getLHS()))
+      DeclRefExpr* d=getDeclRefExprInsideExpr(bop.getLHS());
+      if(d)
       {
-        VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(bop.getLHS())->getDecl());
+        
+        VarDecl* v=cast<VarDecl>((d)->getDecl());
+        if(isPointerQualType(bop.getLHS()->getType()))
+        {
+          aliasTable.removeDependencyPtr(v);
+          aliasTable.addAliasPtr(cast<VarDecl>(getDeclRefExprInsideExpr(bop.getRHS())->getDecl()),v);
+        }
         addDependency(curInstr,Access::WRITE,v);
         //Also is a read if it is a compound assignment
         if(isa<CompoundAssignOperator>(bop))
@@ -227,11 +225,6 @@ bool ASTTaskGraphVisitor::TraverseUnaryOperator(UnaryOperator* uop)
   Instruction instr{uop,getStmtAsString(uop,TheRewriter.getLangOpts()),false};
   handleUnaryOperator(*uop,instr);
   functionsInstructionsVector.back().push_back(instr);
-  llvm::errs()<<instr.instructionString<<"\n";
-  for (auto dep:instr.dependencies)
-  {
-    llvm::errs()<<dep.second->getNameAsString()<<"\n";
-  }
   return true;
 }
 
