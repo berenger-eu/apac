@@ -39,8 +39,8 @@ private:
     //Will continue to Visit the compoundStmt 
     void handleSubStmt(Stmt*);
     //Used to give a unique number for the exit section of each function
-    unsigned int functionsCounter;  
     Rewriter &TheRewriter;
+    unsigned int functionsCounter;  
 };
 
 //Returns string : __result=<returnValue>;goto __exitX;\n

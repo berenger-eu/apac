@@ -16,7 +16,7 @@ bool ASTHeapifyVisitor::VisitFunctionDecl(FunctionDecl* fDecl)
 bool ASTHeapifyVisitor::subVisitCompoundStmt(CompoundStmt* coSt)
 {
   bool deleteEnd=true; //If we have to delete at the end of the scope (so if there is no return)
-  bool curState=variableHeap.found; //If variable is found, we're in a subLoop, so no delete (unless there is a return) 
+  // bool curState=variableHeap.found; //If variable is found, we're in a subLoop, so no delete (unless there is a return) 
   std::vector<item_found> currentVarsInScope;
   for (CompoundStmt::body_iterator b = coSt->body_begin(), e = coSt->body_end(); b != e; ++b)
   {
@@ -48,7 +48,7 @@ bool ASTHeapifyVisitor::subVisitCompoundStmt(CompoundStmt* coSt)
   if(deleteEnd)
       TheRewriter.InsertTextAfter(coSt->getEndLoc(),createDeleteSegment(currentVarsInScope)); 
   //We remove variables declared in the scope at the end of it (since they no longer exist)
-  for(int i=0;i<currentVarsInScope.size();i++)
+  for(long unsigned int i=0;i<currentVarsInScope.size();i++)
     currentVarsEncountered.pop_back();
   return true;
 }
@@ -114,7 +114,7 @@ void ASTHeapifyVisitor::deleteSectionAfterCreatedScope(const SourceLocation& del
   std::stringstream SSprint;
   SSprint<<";\n"<<createDeleteSegment(currentVarsInScope)<<"}";
   TheRewriter.InsertTextAfterToken(deleteLoc,SSprint.str()); 
-  for(int i=0;i<currentVarsInScope.size();i++)
+  for(long unsigned int i=0;i<currentVarsInScope.size();i++)
       currentVarsEncountered.pop_back();
 }
 void ASTHeapifyVisitor::subVisitWhileStmt(WhileStmt* whileSt)
@@ -159,7 +159,7 @@ void ASTHeapifyVisitor::handleSubStmt(Stmt* st)
     handleDeclStmt(cast<DeclStmt>(st),currentVarsInScope);
     TheRewriter.InsertTextAfterToken(st->getEndLoc(),createDeleteSegment(currentVarsInScope)); 
     //We remove variables seen in the scope at the end of it
-    for(int i=0;i<currentVarsInScope.size();i++)
+    for(long unsigned int i=0;i<currentVarsInScope.size();i++)
       currentVarsEncountered.pop_back();
     TheRewriter.InsertTextAfterToken(st->getEndLoc(),"}");
   }

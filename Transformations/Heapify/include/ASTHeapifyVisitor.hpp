@@ -24,8 +24,8 @@ private:
     void deleteSectionAfterCreatedScope(const SourceLocation& ,const std::vector<struct item_found>& );
 
     Rewriter &TheRewriter;
-    struct item_found variableHeap;
     struct item_found functionHeap;
+    struct item_found variableHeap;
     std::unordered_map<std::string,int> varCounter;
     std::vector<struct item_found> currentVarsEncountered; //TODO implement in cleaner manner
 

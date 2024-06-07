@@ -68,10 +68,10 @@ private:
     //Transforms a single Expr
     //Will write its modified version at the given SourceLocation
     void tranfoExpr(Expr* ,const SourceLocation&  );
-    //Count the number of callExpr to ignore (because they are inside a call that has been parsed already)
-    unsigned int callsToIgnore;
-    //Used to name temp variables used to store the result of function calls
-    int tempVarsCounter;  
     //Like Visit functions, but called by VisitCompoundStmt and not by default when encountering specific nodes
     Rewriter &TheRewriter;
+    //Used to name temp variables used to store the result of function calls
+    int tempVarsCounter;  
+    //Count the number of callExpr to ignore (because they are inside a call that has been parsed already)
+    unsigned int callsToIgnore;
 };

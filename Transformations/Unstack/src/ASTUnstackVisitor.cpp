@@ -183,7 +183,6 @@ std::string ASTUnstackVisitor::createTempVarString(CallExpr* calExp,int currentC
     SSresult<<functionType<<" __tempVar_"<<currentCounterNumber
     //= functionName ( 
     <<" = " <<calExp->getDirectCallee()->getNameAsString()<<"(";
-    int currentArg=0;
     bool firstArg=true;
     //Prints all of its arguments 
     for(auto b=calExp->arg_begin(),e=calExp->arg_end();b!=e;b++){
