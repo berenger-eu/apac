@@ -62,7 +62,7 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
     std::unordered_map<const clang::Decl*, std::set<std::shared_ptr<Node>>> dataUsedInRead;
     std::unordered_map<const clang::Decl*, std::shared_ptr<Node>> dataUsedInWrite;
 
-    for (int i = 0; i < inInstructions.size(); ++i){
+    for (long unsigned int i = 0; i < inInstructions.size(); ++i){
         auto node = graph.nodes[i];
         
         for (const auto& dep : inInstructions[i].dependencies){

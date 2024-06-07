@@ -95,7 +95,7 @@ void getLeafs(Stmt* st,std::vector< Stmt*>& leafs)
     {
         temp++;
         Stmt* s=vectNodes.front();
-        int lastSize=vectNodes.size();
+        auto lastSize=vectNodes.size();
         if (isa<CallExpr>(s))
             leafs.push_back(s);
         else

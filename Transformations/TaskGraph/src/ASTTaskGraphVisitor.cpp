@@ -67,6 +67,7 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instructi
     //If we have a variable
     DeclRefExpr* d;
     if((d=getDeclRefExprInsideExpr(subExpr))!=nullptr)
+    {
     //and we increment or decrement it, then it's a read and a write 
       if(uop.isIncrementOp()||uop.isDecrementOp())
       {
@@ -75,6 +76,7 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instructi
         addDependency(curInstr,Access::WRITE,v);
       }
       //TODO: check if other cases are read and/or write
+    }
     //Otherwise, unary expression affects a temporary value so we ignore it but still look through the expression
     else
       handleExpr(*subExpr,curInstr);
@@ -94,7 +96,12 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator& bop,Instruc
         if(isPointerQualType(bop.getLHS()->getType()))
         {
           aliasTable.removeDependencyPtr(v);
-          aliasTable.addAliasPtr(cast<VarDecl>(getDeclRefExprInsideExpr(bop.getRHS())->getDecl()),v);
+          VarDecl * v2=cast<VarDecl>(getDeclRefExprInsideExpr(bop.getRHS())->getDecl());
+          if(isPointerQualType(v2->getType()))
+            for(auto alias:aliasTable.getAliases(v2))
+              aliasTable.addAliasPtr(alias,v);
+          else
+            aliasTable.addAliasPtr(cast<VarDecl>(getDeclRefExprInsideExpr(bop.getRHS())->getDecl()),v);
         }
         addDependency(curInstr,Access::WRITE,v);
         //Also is a read if it is a compound assignment
@@ -131,7 +138,7 @@ void ASTTaskGraphVisitor::handleCallExpr(const CallExpr& c,Instruction& curInstr
   //TODO: Methods and read/write on object/data ?
   const FunctionDecl& f=*(c.getDirectCallee());
   //We look though each parameter of the function
-  for(int i=0;i<f.getNumParams();i++)
+  for(unsigned int i=0;i<f.getNumParams();i++)
   {
     const ParmVarDecl& p=*(f.getParamDecl(i));
     const Expr* b=c.getArg(i);
