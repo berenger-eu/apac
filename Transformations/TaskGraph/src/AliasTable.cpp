@@ -15,6 +15,20 @@ void AliasTable::addAliasReference(const VarDecl* var,const VarDecl* ref)
         tableValueRef->aliased.insert(tableValueVar);
     }
 }
+void AliasTable::addAliasPtr(const VarDecl* var,const VarDecl* ptr)
+{
+    if(var!=nullptr && ptr!=nullptr)
+    {
+        if(ptrAliasTable.count(ptr)==0)
+            ptrAliasTable.insert({ptr,pointersAliasArg{*ptr}});
+        if(varAliasTable.count(var)==0)
+            varAliasTable.insert({var,aliasArg{*var}});
+        pointersAliasArg* tableValuePtr = &ptrAliasTable.at(ptr);
+        aliasArg* tableValueVar = &varAliasTable.at(var);
+        tableValueVar->pointers.insert(tableValuePtr);
+        tableValuePtr->aliased.insert(tableValueVar);
+    }
+}
 void AliasTable::removeDependencyPtr(const VarDecl* ptr)
 {
     if(ptr!=nullptr)
@@ -38,10 +52,6 @@ const std::unordered_set<const VarDecl*> AliasTable::getAliases(const VarDecl* v
     aliases.insert(v);
     int oldSize=1;
     int newsize=1;
-    if(refAliasTable.count(v)!=0)
-        llvm::errs()<<v->getName()<<"Found reference alias\n";
-    else
-        llvm::errs()<<v->getName()<<"Not found reference alias\n";
     do{
         oldSize=aliases.size();
         for(const auto& alias:aliases)

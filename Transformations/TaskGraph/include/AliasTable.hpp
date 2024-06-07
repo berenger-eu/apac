@@ -56,11 +56,12 @@ class AliasTable {
         }
         void removeDependencyPtr(const VarDecl* ptr);
         void addAliasReference(const VarDecl* var,const VarDecl* ref);
+        void addAliasPtr(const VarDecl* var,const VarDecl* ptr);
     private:
         inline const NamedDecl* getKey(const VarDecl* v) const{
             return v->getCanonicalDecl();
         }
-        inline const aliasArg* getAliasArg(const VarDecl* v) const{
+        inline aliasArg* getAliasArg(const VarDecl* v) {
             return &varAliasTable.at(getKey(v));
         }
         void getReferencesAliases(const VarDecl*,std::unordered_set<const VarDecl*>&) const;
