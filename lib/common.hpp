@@ -46,6 +46,10 @@ DeclRefExpr* getDeclRefExprInsideExpr(Expr* e);
 //True when the input is a completely constant type (exemple, const int *const )
 bool isFullConstType(const QualType& qType);
 
+//Get the depth of the pointer access 
+//(-1 when getting the addres of v,0 when getting v, 1 when getting *v, 2 when getting **v, ...)
+int getPtrDepthAccess(const clang::VarDecl& v,const clang::Expr& e);
+
 //Inline Function 
 
 //True if v is an Array, false otherwise

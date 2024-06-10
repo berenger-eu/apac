@@ -148,3 +148,25 @@ bool isFullConstType(const QualType& qType)
     while ((typeTemp=qTypeTemp.getTypePtrOrNull())&&!workDone);
     return returnValue;
 }
+
+int getPtrDepthAccess(const clang::VarDecl& v,const clang::Expr& e)
+{
+    int returnValue=0;
+    const clang::Expr* tempExpr=&e;
+    while(tempExpr!=NULL)
+    {
+        //TODO: Handle more cases, like array access or more complex accesses (ex: *(p+2))
+        if(isa<UnaryOperator>(*tempExpr))
+        {
+            const UnaryOperator* uOp=cast<UnaryOperator>(tempExpr);
+            if(uOp->getOpcode()==UO_Deref)
+                returnValue++;
+            else if(uOp->getOpcode()==UO_AddrOf)
+                returnValue--;
+            tempExpr=cast<Expr>(uOp->getSubExpr());
+        }
+        else
+            tempExpr=NULL;
+    }
+    return returnValue;
+}
