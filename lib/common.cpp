@@ -153,20 +153,21 @@ int getPtrDepthAccess(const clang::VarDecl& v,const clang::Expr& e)
 {
     int returnValue=0;
     const clang::Expr* tempExpr=&e;
-    while(tempExpr!=NULL)
+    QualType qt1=v.getType();
+    QualType qt2=tempExpr->getType();
+    if(qt1!=qt2)
     {
-        //TODO: Handle more cases, like array access or more complex accesses (ex: *(p+2))
-        if(isa<UnaryOperator>(*tempExpr))
-        {
-            const UnaryOperator* uOp=cast<UnaryOperator>(tempExpr);
-            if(uOp->getOpcode()==UO_Deref)
-                returnValue++;
-            else if(uOp->getOpcode()==UO_AddrOf)
-                returnValue--;
-            tempExpr=cast<Expr>(uOp->getSubExpr());
-        }
+        if(getPointerToQType(qt1,v.getASTContext())==qt2)
+            returnValue=-1;
         else
-            tempExpr=NULL;
+            while(qt1!=qt2&&qt1.getTypePtrOrNull()&&qt2.getTypePtrOrNull()&&qt1->getPointeeType()!=qt2->getPointeeType())
+            {
+                if(isPointerQualType(qt1))
+                {
+                    returnValue++;
+                    qt1=qt1->getPointeeType();
+                }
+            }
     }
     return returnValue;
 }
