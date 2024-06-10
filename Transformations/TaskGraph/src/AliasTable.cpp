@@ -33,9 +33,7 @@ void AliasTable::removeDependencyPtr(const VarDecl* ptr)
 {
     if(ptr!=nullptr)
     {
-        if(ptrAliasTable.count(ptr)==0)
-            llvm::errs()<<"Error: Trying to remove dependency from non existing element\n";
-        else
+        if(ptrAliasTable.count(ptr)!=0)
         {
             pointersAliasArg* tableValuePtr = &ptrAliasTable.at(ptr);
             for (const auto& varAliased:tableValuePtr->aliased)
