@@ -20,6 +20,8 @@ struct aliasArg {
     std::unordered_set<pointersAliasArg*> pointers;
     //Elements that references current element
     std::unordered_set<referenceAliasArg*> references;
+    void dump() const;
+
 };
 
 struct pointersAliasArg : public aliasArg

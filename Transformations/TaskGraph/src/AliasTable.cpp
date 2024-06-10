@@ -1,6 +1,32 @@
 #include "AliasTable.hpp"
 
 using namespace clang;
+
+void aliasArg::dump() const{
+        llvm::errs()<<"AliasArg: "<<declaration.getNameAsString()<<"\n";
+        switch(type){
+            case Reference:
+                llvm::errs()<<"Type: Reference\n";
+                break;
+            case Pointer:
+                llvm::errs()<<"Type: Pointer\n";
+                break;
+            case Variable:
+                llvm::errs()<<"Type: Variable\n";
+                break;
+        }
+        llvm::errs()<<"Pointers: ";
+        for(const auto& ptr:pointers)
+            llvm::errs()<<ptr->declaration.getNameAsString()<<" ";
+        llvm::errs()<<"\n";
+        llvm::errs()<<"References: ";
+        for(const auto& ref:references)
+            llvm::errs()<<ref->declaration.getNameAsString()<<" ";
+        llvm::errs()<<"\n";
+    
+    }
+
+
 void AliasTable::addAliasReference(const VarDecl* var,const VarDecl* ref)
 {
     if(var!=nullptr && ref!=nullptr)
