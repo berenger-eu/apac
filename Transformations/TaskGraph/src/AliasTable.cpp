@@ -104,8 +104,9 @@ void AliasTable::getPointersAliases(const VarDecl* v,std::unordered_set<const Va
         aliases.insert(&alias->declaration);
 }
 
-void AliasTable::getAliased(std::unordered_set<VarDecl*>& setResults,const int& depth) 
+void AliasTable::getAliased(std::unordered_set<const VarDecl*>& setResults,const int& depth) 
 {
+    llvm::errs()<<"Depth: "<<depth<<"\n";
     if(depth>0)
     {
         llvm::errs()<<"VarTable size: "<<varAliasTable.size()<<"\n";
@@ -168,7 +169,11 @@ void AliasTable::getAliased(std::unordered_set<VarDecl*>& setResults,const int& 
             
             curDepth++;
         }
-        llvm::errs()<<"Done\n";
-
+        setResults.clear();
+        for(auto& dep:curSet)
+        {
+            llvm::errs()<<dep->declaration.getNameAsString()<<" dep\n";
+            setResults.insert(&dep->declaration);
+        }
     } 
 }
