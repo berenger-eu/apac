@@ -64,7 +64,22 @@ class AliasTable {
             return v->getCanonicalDecl();
         }
         inline aliasArg* getAliasArg(const VarDecl* v) {
+            const NamedDecl* result=getKey(v);
+            if(varAliasTable.count(result)==0)
+                return nullptr;
             return &varAliasTable.at(getKey(v));
+        }
+        inline pointersAliasArg* getPtrAliasArg(const VarDecl* v) {
+            const NamedDecl* result=getKey(v);
+            if(ptrAliasTable.count(result)==0)
+                return nullptr;
+            return &ptrAliasTable.at(getKey(v));
+        }
+        inline referenceAliasArg* getRefAliasArg(const VarDecl* v) {
+            const NamedDecl* result=getKey(v);
+            if(refAliasTable.count(result)==0)
+                return nullptr;
+            return &refAliasTable.at(getKey(v));
         }
         void getReferencesAliases(const VarDecl*,std::unordered_set<const VarDecl*>&) const;
         void getPointersAliases(const VarDecl*,std::unordered_set<const VarDecl*>&) const;
