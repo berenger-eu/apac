@@ -71,9 +71,15 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instructi
     //and we increment or decrement it, then it's a read and a write 
       if(uop.isIncrementOp()||uop.isDecrementOp())
       {
-        VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(d)->getDecl());
-        addDependency(curInstr,Access::READ,v);
-        addDependency(curInstr,Access::WRITE,v);
+        std::unordered_set<const VarDecl*> setVarDecl;
+        setVarDecl.insert(cast<VarDecl>(cast<DeclRefExpr>(d)->getDecl()));
+        aliasTable.getAliased(setVarDecl,getPtrDepthAccess(**setVarDecl.begin(),*subExpr));
+        for(auto& v:setVarDecl)
+        {
+          v->dump();
+          addDependency(curInstr,Access::READ,v);
+          addDependency(curInstr,Access::WRITE,v);
+        }
       }
       //TODO: check if other cases are read and/or write
     }
@@ -92,21 +98,30 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator& bop,Instruc
       if(d)
       {
         
-        VarDecl* v=cast<VarDecl>((d)->getDecl());
+        std::unordered_set<const VarDecl*> setLeftVars;
+        setLeftVars.insert(cast<VarDecl>(d->getDecl()));
+        aliasTable.getAliased(setLeftVars,getPtrDepthAccess(**setLeftVars.begin(),*bop.getLHS()));
         if(isPointerQualType(bop.getLHS()->getType()))
         {
-          aliasTable.removeDependencyPtr(v);
+          if(setLeftVars.size()==1)
+            aliasTable.removeDependencyPtr(*setLeftVars.begin());
           VarDecl * v2=cast<VarDecl>(getDeclRefExprInsideExpr(bop.getRHS())->getDecl());
-          if(isPointerQualType(v2->getType()))
-            for(auto alias:aliasTable.getAliases(v2))
-              aliasTable.addAliasPtr(alias,v);
-          else
-            aliasTable.addAliasPtr(cast<VarDecl>(getDeclRefExprInsideExpr(bop.getRHS())->getDecl()),v);
+          for(auto ptrV:setLeftVars)
+          {
+            if(isPointerQualType(v2->getType()))
+              for(auto alias:aliasTable.getAliases(v2))
+                  aliasTable.addAliasPtr(alias,ptrV);
+                // aliasTable.addAliasPtr(alias,v);
+            else
+              aliasTable.addAliasPtr(cast<VarDecl>(getDeclRefExprInsideExpr(bop.getRHS())->getDecl()),ptrV);
+          }
         }
-        addDependency(curInstr,Access::WRITE,v);
-        //Also is a read if it is a compound assignment
-        if(isa<CompoundAssignOperator>(bop))
-          addDependency(curInstr,Access::READ,v);
+        for(auto& v:setLeftVars)
+        {
+          addDependency(curInstr,Access::WRITE,v);
+          if(isa<CompoundAssignOperator>(bop))
+            addDependency(curInstr,Access::READ,v);
+        }
       }
       else
         handleExpr(*bop.getLHS(),curInstr);
