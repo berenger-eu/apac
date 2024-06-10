@@ -149,7 +149,7 @@ void generateGraph(const std::vector<std::vector<Instruction>>& graphVector){
     {
         
         auto graph = InstructionToGraph(functionInstructions);
-        PrintGraph(graph);
+        //PrintGraph(graph);
         graphs.push_back(graph);
     }
     GenerateDotGraph(graphs, "graph.dot");
