@@ -59,6 +59,8 @@ class AliasTable {
         void removeDependencyPtr(const VarDecl* ptr);
         void addAliasReference(const VarDecl* var,const VarDecl* ref);
         void addAliasPtr(const VarDecl* var,const VarDecl* ptr);
+        void getAliased(std::unordered_set<VarDecl*>& setResults,const int& depth); 
+
     private:
         inline const NamedDecl* getKey(const VarDecl* v) const{
             return v->getCanonicalDecl();
