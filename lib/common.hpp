@@ -68,6 +68,10 @@ inline QualType getReferenceToQType(QualType qt,const ASTContext& aContext){
   return aContext.getLValueReferenceType(qt);
 }
 
+inline QualType getPointerToQType(QualType qt,const ASTContext& aContext){
+  return aContext.getPointerType(qt);
+}
+
 //Returns the initialization part of a variable declaration as a string
 inline std::string getInitString(const VarDecl& v)
 {
