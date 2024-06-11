@@ -106,11 +106,17 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator& bop,Instruc
           if(setLeftVars.size()==1)
             aliasTable.removeDependencyPtr(*setLeftVars.begin());
           VarDecl * v2=cast<VarDecl>(getDeclRefExprInsideExpr(bop.getRHS())->getDecl());
+          int depth=getPtrDepthAccess(*v2,*bop.getRHS());
           for(auto ptrV:setLeftVars)
           {
-            if(isPointerQualType(v2->getType()))
-              for(auto alias:aliasTable.getAliases(v2))
-                  aliasTable.addAliasPtr(alias,ptrV);
+            if(depth==0)
+            {
+              std::unordered_set<const VarDecl*> aliasVariable;
+              aliasVariable.insert(v2);
+              aliasTable.getAliased(aliasVariable,1);
+              for(auto& alias:aliasVariable)
+                aliasTable.addAliasPtr(alias,ptrV);
+            }
                 // aliasTable.addAliasPtr(alias,v);
             else
               aliasTable.addAliasPtr(cast<VarDecl>(getDeclRefExprInsideExpr(bop.getRHS())->getDecl()),ptrV);
