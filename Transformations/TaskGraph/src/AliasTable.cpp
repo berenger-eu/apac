@@ -57,8 +57,8 @@ void AliasTable::addAliasPtr(const VarDecl* var,const VarDecl* ptr)
             tableValueVar= &ptrAliasTable.at(var);
         }
         else{
-        if(varAliasTable.count(var)==0)
-            varAliasTable.insert({var,aliasArg{*var}});
+            if(varAliasTable.count(var)==0)
+                varAliasTable.insert({var,aliasArg{*var}});
             tableValueVar= &varAliasTable.at(var);
         }
         tableValueVar->pointers.insert(tableValuePtr);
@@ -114,7 +114,7 @@ void AliasTable::getPointersAliases(const VarDecl* v,std::unordered_set<const Va
         aliases.insert(&alias->declaration);
 }
 
-void AliasTable::getAliased(std::unordered_set<const VarDecl*>& setResults,const int& depth) 
+void AliasTable::getModifiedVariables(std::unordered_set<const VarDecl*>& setResults,const int& depth) 
 {
     llvm::errs()<<"Depth: "<<depth<<"\n";
     if(depth>0)

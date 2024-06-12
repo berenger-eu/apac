@@ -73,7 +73,7 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instructi
       {
         std::unordered_set<const VarDecl*> setVarDecl;
         setVarDecl.insert(cast<VarDecl>(cast<DeclRefExpr>(d)->getDecl()));
-        aliasTable.getAliased(setVarDecl,getPtrDepthAccess(**setVarDecl.begin(),*subExpr));
+        aliasTable.getModifiedVariables(setVarDecl,getPtrDepthAccess(**setVarDecl.begin(),*subExpr));
         for(auto& v:setVarDecl)
         {
           v->dump();
@@ -100,7 +100,8 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator& bop,Instruc
         
         std::unordered_set<const VarDecl*> setLeftVars;
         setLeftVars.insert(cast<VarDecl>(d->getDecl()));
-        aliasTable.getAliased(setLeftVars,getPtrDepthAccess(**setLeftVars.begin(),*bop.getLHS()));
+        int depth=getPtrDepthAccess(**setLeftVars.begin(),*bop.getLHS());
+        aliasTable.getModifiedVariables(setLeftVars,depth);
         if(isPointerQualType(bop.getLHS()->getType()))
         {
           if(setLeftVars.size()==1)
@@ -109,17 +110,14 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator& bop,Instruc
           int depth=getPtrDepthAccess(*v2,*bop.getRHS());
           for(auto ptrV:setLeftVars)
           {
-            if(depth==0)
-            {
-              std::unordered_set<const VarDecl*> aliasVariable;
-              aliasVariable.insert(v2);
-              aliasTable.getAliased(aliasVariable,1);
-              for(auto& alias:aliasVariable)
-                aliasTable.addAliasPtr(alias,ptrV);
-            }
+            std::unordered_set<const VarDecl*> aliasVariable;
+            aliasVariable.insert(v2);
+            aliasTable.getModifiedVariables(aliasVariable,depth+1);
+            for(auto& alias:aliasVariable)
+              aliasTable.addAliasPtr(alias,ptrV);
                 // aliasTable.addAliasPtr(alias,v);
-            else
-              aliasTable.addAliasPtr(cast<VarDecl>(getDeclRefExprInsideExpr(bop.getRHS())->getDecl()),ptrV);
+            // else
+              // aliasTable.addAliasPtr(cast<VarDecl>(getDeclRefExprInsideExpr(bop.getRHS())->getDecl()),ptrV);
           }
         }
         for(auto& v:setLeftVars)
