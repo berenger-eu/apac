@@ -69,6 +69,7 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instructi
     if((d=getDeclRefExprInsideExpr(subExpr))!=nullptr)
     {
     //and we increment or decrement it, then it's a read and a write 
+      int depth;
       if(uop.isIncrementOp()||uop.isDecrementOp())
       {
         std::unordered_set<const VarDecl*> setVarDecl;
@@ -84,8 +85,9 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instructi
 
       }
       //If we access the pointer , then we read the variables it may point to
-      else if(getPtrDepthAccess(*cast<VarDecl>(d->getDecl()),uop)>0)
+      else if((depth=getPtrDepthAccess(*cast<VarDecl>(d->getDecl()),uop))>0)
       {
+        llvm::errs()<<curInstr.instructionString<<"\n";
         std::unordered_set<const VarDecl*> setVarDecl;
         VarDecl* v=cast<VarDecl>(d->getDecl());
         setVarDecl.insert(v);
@@ -96,8 +98,9 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instructi
         addDependency(curInstr,Access::READ,v);
 
       }
-      else
-        addDependency(curInstr,Access::READ,cast<VarDecl>(d->getDecl()));
+      //If it's not the address of the variable that is read, then it's a read of the variable
+      else if(depth!=-1)
+        addDependency(curInstr,Access::READ,cast<VarDecl>(d->getDecl()));        
       //TODO: check if other cases are read and/or write
     }
     //Otherwise, unary expression affects a temporary value so we ignore it but still look through the expression
