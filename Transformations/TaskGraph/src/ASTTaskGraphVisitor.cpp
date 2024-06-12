@@ -80,7 +80,24 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instructi
           addDependency(curInstr,Access::READ,v);
           addDependency(curInstr,Access::WRITE,v);
         }
+        addDependency(curInstr,Access::READ,cast<VarDecl>(cast<DeclRefExpr>(d)->getDecl()));
+
       }
+      //If we access the pointer , then we read the variables it may point to
+      else if(getPtrDepthAccess(*cast<VarDecl>(d->getDecl()),uop)>0)
+      {
+        std::unordered_set<const VarDecl*> setVarDecl;
+        VarDecl* v=cast<VarDecl>(d->getDecl());
+        setVarDecl.insert(v);
+        int depth=getPtrDepthAccess(*v,uop);
+        aliasTable.getModifiedVariables(setVarDecl,depth);
+        for(auto& curV:setVarDecl)
+          addDependency(curInstr,Access::READ,curV);
+        addDependency(curInstr,Access::READ,v);
+
+      }
+      else
+        addDependency(curInstr,Access::READ,cast<VarDecl>(d->getDecl()));
       //TODO: check if other cases are read and/or write
     }
     //Otherwise, unary expression affects a temporary value so we ignore it but still look through the expression
@@ -210,7 +227,7 @@ void ASTTaskGraphVisitor::handleCallExpr(const CallExpr& c,Instruction& curInstr
 void ASTTaskGraphVisitor::handleExpr(const Expr& exp,Instruction& instr)
 {
   // Simple switch case to call the respective handle method, except for DeclRefExpr which is a variable so it is a read
-  const Expr& curExp=*exp.IgnoreCasts(); 
+  const Expr& curExp=*(exp.IgnoreParenImpCasts()); 
   if(isa<UnaryOperator>(curExp))
   {
     handleUnaryOperator(cast<UnaryOperator>(curExp),instr);
