@@ -5,6 +5,28 @@ bool isInExceptionList(const ParmVarDecl& p)
   return p.getType().getAsString().find("std::shared_ptr") != std::string::npos;
 }
 
+void ASTTaskGraphVisitor::computeAliasesForRHS(const BinaryOperator& bop,std::unordered_set<const VarDecl*>& aliases, Instruction& instr)
+{
+  int depth;
+  Expr* rhs=bop.getRHS();
+          
+  if(isa<DeclRefExpr>(rhs->IgnoreParenImpCasts()))
+  {
+    const VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(e).getDecl());
+    aliases.insert(v);
+    int depth=getPtrDepthAccess(*v,*rhs);
+    aliasTable.getModifiedVariables(aliases,depth+1);
+  }
+  //Handle CallExpr ( int * p=min(&a,&b) , p might point to a or b or something new)
+  else if(isa<CallExpr>(rhs->IgnoreParenImpCasts()))
+  {
+    const CallExpr* c=cast<CallExpr>(rhs->IgnoreParenImpCasts());
+    //TODO: Handle CallExpr
+  }
+  else
+    handleExpr(e,instr);
+}
+
 void ASTTaskGraphVisitor::addDependency(Instruction& instr,Access a,const VarDecl* d)
 {
   for (auto alias : aliasTable.getAliases(d))
@@ -126,19 +148,13 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator& bop,Instruc
         {
           if(setLeftVars.size()==1)
             aliasTable.removeDependencyPtr(*setLeftVars.begin());
-          VarDecl * v2=cast<VarDecl>(getDeclRefExprInsideExpr(bop.getRHS())->getDecl());
-          int depth=getPtrDepthAccess(*v2,*bop.getRHS());
-          for(auto ptrV:setLeftVars)
-          {
-            std::unordered_set<const VarDecl*> aliasVariable;
-            aliasVariable.insert(v2);
-            aliasTable.getModifiedVariables(aliasVariable,depth+1);
+
+          std::unordered_set<const VarDecl*> aliasesRHS;
+          computeAliasesForRHS(bop,aliasesRHS,curInstr);
+          
+          for(auto& ptrV:setLeftVars)
             for(auto& alias:aliasVariable)
               aliasTable.addAliasPtr(alias,ptrV);
-                // aliasTable.addAliasPtr(alias,v);
-            // else
-              // aliasTable.addAliasPtr(cast<VarDecl>(getDeclRefExprInsideExpr(bop.getRHS())->getDecl()),ptrV);
-          }
         }
         for(auto& v:setLeftVars)
         {
