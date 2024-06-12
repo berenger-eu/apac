@@ -126,6 +126,8 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator& bop,Instruc
           if(isa<CompoundAssignOperator>(bop))
             addDependency(curInstr,Access::READ,v);
         }
+        addDependency(curInstr,Access::READ,cast<VarDecl>(d->getDecl()));
+        
       }
       else
         handleExpr(*bop.getLHS(),curInstr);

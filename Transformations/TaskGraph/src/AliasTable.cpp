@@ -91,7 +91,7 @@ const std::unordered_set<const VarDecl*> AliasTable::getAliases(const VarDecl* v
         for(const auto& alias:aliases)
         {
             getReferencesAliases(alias,aliases);
-            getPointersAliases(alias,aliases);
+            // getPointersAliases(alias,aliases);
             if(refAliasTable.count(alias)!=0)
                 for(const auto& ref:refAliasTable.at(alias).aliased)
                     aliases.insert(&ref->declaration);
