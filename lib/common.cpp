@@ -149,15 +149,11 @@ bool isFullConstType(const QualType& qType)
     return returnValue;
 }
 
-int getPtrDepthAccess(const clang::VarDecl& v,const clang::Expr& e)
-{
+int getPtrDepthAccess(QualType qt1, QualType qt2,const ASTContext& aContext){
     int returnValue=0;
-    const clang::Expr* tempExpr=&e;
-    QualType qt1=v.getType();
-    QualType qt2=tempExpr->getType();
     if(qt1!=qt2)
     {
-        if(getPointerToQType(qt1,v.getASTContext())==qt2)
+        if(getPointerToQType(qt1,aContext)==qt2)
             returnValue=-1;
         else
             while(qt1!=qt2&&qt1.getTypePtrOrNull()&&qt2.getTypePtrOrNull()&&qt1->getPointeeType()!=qt2->getPointeeType())
@@ -170,4 +166,11 @@ int getPtrDepthAccess(const clang::VarDecl& v,const clang::Expr& e)
             }
     }
     return returnValue;
+}
+
+int getPtrDepthAccess(const clang::VarDecl& v,const clang::Expr& e)
+{
+    const QualType& qt1=v.getType();
+    const QualType& qt2=e.getType();
+    return getPtrDepthAccess(qt1,qt2,v.getASTContext());
 }
