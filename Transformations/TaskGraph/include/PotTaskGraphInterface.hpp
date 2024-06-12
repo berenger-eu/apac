@@ -28,7 +28,16 @@ struct Instruction {
     unsigned int scopedInstructionsNumber;  //Also takes in account number of instructions in ComplexInstructions 
     std::unordered_set<std::pair<Access, const clang::NamedDecl*>,DependencyHash,DependencyEqual> dependencies;
     std::vector<Instruction> scopedInstructions;
+    void dumpDep() const{
+        llvm::errs()<<"Dependencies for instruction: "<<instructionString<<"\n";
+        for(const auto& dep:dependencies){
+            std::stringstream ss;
+            ss << (dep.first==Access::READ?"READ":"WRITE") << " " << dep.second->getNameAsString();
+            llvm::errs()<<ss.str()<<"\n";
+        }
+    }
 };
+
 /*
 struct ComplexInstruction : Instruction {
     std::vector<std::unique_ptr<Instruction>> scopedInstructions;
