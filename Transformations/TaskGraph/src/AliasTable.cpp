@@ -45,12 +45,22 @@ void AliasTable::addAliasPtr(const VarDecl* var,const VarDecl* ptr)
 {
     if(var!=nullptr && ptr!=nullptr)
     {
+        pointersAliasArg* tableValuePtr;
+        aliasArg* tableValueVar;
         if(ptrAliasTable.count(ptr)==0)
             ptrAliasTable.insert({ptr,pointersAliasArg{*ptr}});
+        tableValuePtr = &ptrAliasTable.at(ptr);    
+        if(isPointerQualType(var->getType()))
+        {
+            if(ptrAliasTable.count(var)==0)
+                ptrAliasTable.insert({var,pointersAliasArg{*var}});
+            tableValueVar= &ptrAliasTable.at(var);
+        }
+        else{
         if(varAliasTable.count(var)==0)
             varAliasTable.insert({var,aliasArg{*var}});
-        pointersAliasArg* tableValuePtr = &ptrAliasTable.at(ptr);
-        aliasArg* tableValueVar = &varAliasTable.at(var);
+            tableValueVar= &varAliasTable.at(var);
+        }
         tableValueVar->pointers.insert(tableValuePtr);
         tableValuePtr->aliased.insert(tableValueVar);
     }

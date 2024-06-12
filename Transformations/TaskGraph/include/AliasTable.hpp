@@ -4,6 +4,7 @@
 #include <vector>
 #include "clang/AST/Decl.h"
 #include "clang/Rewrite/Core/Rewriter.h"
+#include "common.hpp"
 using namespace clang;
 enum AliasType{
         Reference,
