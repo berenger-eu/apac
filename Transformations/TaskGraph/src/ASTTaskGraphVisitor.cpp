@@ -9,10 +9,10 @@ void ASTTaskGraphVisitor::computeAliasesForRHS(const BinaryOperator& bop,std::un
 {
   int depth;
   Expr* rhs=bop.getRHS()->IgnoreParenImpCasts();
-          
-  if(isa<DeclRefExpr>(rhs))
+  DeclRefExpr* d=getSingleDeclRefExprInsideExpr(rhs);        
+  if(d)
   {
-    const VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(rhs)->getDecl());
+    const VarDecl* v=cast<VarDecl>(d->getDecl());
     aliases.insert(v);
     int depth=getPtrDepthAccess(*v,*rhs);
     aliasTable.getModifiedVariables(aliases,depth+1);
@@ -68,7 +68,7 @@ bool ASTTaskGraphVisitor::TraverseCXXOperatorCallExpr(CXXOperatorCallExpr* c)
     {
       const VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(c->getArg(0))->getDecl());
       const DeclRefExpr* d;
-      if((d=getDeclRefExprInsideExpr(c->getArg(1)))!=nullptr )
+      if((d=getSingleDeclRefExprInsideExpr(c->getArg(1)))!=nullptr )
       {
         const VarDecl* v2=cast<VarDecl>(d->getDecl());
         if(v2)
@@ -88,7 +88,7 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instructi
     Expr* subExpr=uop.getSubExpr();
     //If we have a variable
     DeclRefExpr* d;
-    if((d=getDeclRefExprInsideExpr(subExpr))!=nullptr)
+    if((d=getSingleDeclRefExprInsideExpr(subExpr))!=nullptr)
     {
     //and we increment or decrement it, then it's a read and a write 
       int depth;
@@ -136,7 +136,7 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator& bop,Instruc
     if(bop.isAssignmentOp())
     {
         //Most likely unnecessary since left side has to be a lvalue because of the assignment operator
-      DeclRefExpr* d=getDeclRefExprInsideExpr(bop.getLHS());
+      DeclRefExpr* d=getSingleDeclRefExprInsideExpr(bop.getLHS());
       if(d)
       {
         

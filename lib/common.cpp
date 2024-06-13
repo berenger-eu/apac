@@ -109,22 +109,32 @@ void getLeafs(Stmt* st,std::vector< Stmt*>& leafs)
         vectNodes.pop();
     }
 }
-DeclRefExpr* getDeclRefExprInsideExpr(Expr* e)
+std::vector<DeclRefExpr*> getAllDeclRefExprInsideExpr(Expr* e)
 {
-    DeclRefExpr* returnValue=NULL;
+    if(!e)
+        return std::vector<DeclRefExpr*>();
+    std::vector<DeclRefExpr*> vectDeclRefExpr;
     std::queue<Expr*> vectNodes;
     vectNodes.push(e);
-    while(returnValue==NULL&&!vectNodes.empty())
+    while(!vectNodes.empty())
     {
         Expr* s=vectNodes.front();
         if (isa<DeclRefExpr>(s))
-            returnValue=cast<DeclRefExpr>(s);
+            vectDeclRefExpr.push_back(cast<DeclRefExpr>(s));
         else
             for (auto it = s->child_begin(); it != s->child_end(); ++it)
                 if(isa<Expr>(*it))
                     vectNodes.push(cast<Expr>(*it));
         vectNodes.pop();
     }
+    return vectDeclRefExpr;
+}
+DeclRefExpr* getSingleDeclRefExprInsideExpr(Expr* e)
+{
+    DeclRefExpr* returnValue=NULL;
+    std::vector<DeclRefExpr*> vectDeclRefExpr=getAllDeclRefExprInsideExpr(e);
+    if(vectDeclRefExpr.size()==1)
+        returnValue=vectDeclRefExpr.front();
     return returnValue;
 }
 bool isFullConstType(const QualType& qType)
