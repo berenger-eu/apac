@@ -8,23 +8,23 @@ bool isInExceptionList(const ParmVarDecl& p)
 void ASTTaskGraphVisitor::computeAliasesForRHS(const BinaryOperator& bop,std::unordered_set<const VarDecl*>& aliases, Instruction& instr)
 {
   int depth;
-  Expr* rhs=bop.getRHS();
+  Expr* rhs=bop.getRHS()->IgnoreParenImpCasts();
           
-  if(isa<DeclRefExpr>(rhs->IgnoreParenImpCasts()))
+  if(isa<DeclRefExpr>(rhs))
   {
-    const VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(e).getDecl());
+    const VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(rhs)->getDecl());
     aliases.insert(v);
     int depth=getPtrDepthAccess(*v,*rhs);
     aliasTable.getModifiedVariables(aliases,depth+1);
   }
   //Handle CallExpr ( int * p=min(&a,&b) , p might point to a or b or something new)
-  else if(isa<CallExpr>(rhs->IgnoreParenImpCasts()))
+  else if(isa<CallExpr>(rhs))
   {
-    const CallExpr* c=cast<CallExpr>(rhs->IgnoreParenImpCasts());
+    const CallExpr* c=cast<CallExpr>(rhs);
     //TODO: Handle CallExpr
   }
   else
-    handleExpr(e,instr);
+    handleExpr(*rhs,instr);
 }
 
 void ASTTaskGraphVisitor::addDependency(Instruction& instr,Access a,const VarDecl* d)
@@ -153,7 +153,7 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator& bop,Instruc
           computeAliasesForRHS(bop,aliasesRHS,curInstr);
           
           for(auto& ptrV:setLeftVars)
-            for(auto& alias:aliasVariable)
+            for(auto& alias:aliasesRHS)
               aliasTable.addAliasPtr(alias,ptrV);
         }
         for(auto& v:setLeftVars)
