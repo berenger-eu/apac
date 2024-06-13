@@ -16,7 +16,7 @@ struct referenceAliasArg;
 struct aliasArg {
     const clang::VarDecl& declaration;
     //Type of Alias arg
-    AliasType type;
+    const AliasType type;
     //Elements that point to current element
     std::unordered_set<pointersAliasArg*> pointers;
     //Elements that references current element

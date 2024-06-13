@@ -45,7 +45,7 @@ void AliasTable::addAliasReference(const VarDecl* var,const VarDecl* ref)
         if(refAliasTable.count(ref)==0)
             refAliasTable.insert({ref,referenceAliasArg{*ref}});
         if(varAliasTable.count(var)==0)
-            varAliasTable.insert({var,aliasArg{*var}});
+            varAliasTable.insert({var,aliasArg{*var,AliasType::Variable}});
         referenceAliasArg* tableValueRef = &refAliasTable.at(ref);
         aliasArg* tableValueVar = &varAliasTable.at(var);
         tableValueVar->references.insert(tableValueRef);
@@ -69,7 +69,7 @@ void AliasTable::addAliasPtr(const VarDecl* var,const VarDecl* ptr)
         }
         else{
             if(varAliasTable.count(var)==0)
-                varAliasTable.insert({var,aliasArg{*var}});
+                varAliasTable.insert({var,aliasArg{*var,AliasType::Variable}});
             tableValueVar= &varAliasTable.at(var);
         }
         tableValueVar->pointers.insert(tableValuePtr);
