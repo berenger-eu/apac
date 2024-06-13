@@ -61,6 +61,12 @@ class AliasTable {
         void addAliasReference(const VarDecl* var,const VarDecl* ref);
         void addAliasPtr(const VarDecl* var,const VarDecl* ptr);
         void getModifiedVariables(std::unordered_set<const VarDecl*>& setResults,const int& depth); 
+        void inline dump() const
+        {
+            dumpVarTable();
+            dumpRefTable();
+            dumpPtrTable();
+        };
 
     private:
         inline const NamedDecl* getKey(const VarDecl* v) const{
@@ -86,7 +92,9 @@ class AliasTable {
         }
         void getReferencesAliases(const VarDecl*,std::unordered_set<const VarDecl*>&) const;
         void getPointersAliases(const VarDecl*,std::unordered_set<const VarDecl*>&) const;
-        
+        void dumpPtrTable() const;
+        void dumpRefTable() const;
+        void dumpVarTable() const;
         VariableAliasTable varAliasTable;
         ReferenceAliasTable refAliasTable;
         PointersAliasTable ptrAliasTable;

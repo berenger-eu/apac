@@ -7,12 +7,23 @@ void aliasArg::dump() const{
         switch(type){
             case Reference:
                 llvm::errs()<<"Type: Reference\n";
+                llvm::errs()<<"Aliases: ";
+                for(const auto& ref:references)
+                    llvm::errs()<<ref->declaration.getNameAsString()<<" ";
+                llvm::errs()<<"\n";
                 break;
             case Pointer:
                 llvm::errs()<<"Type: Pointer\n";
+                llvm::errs()<<"Aliases: ";
+                for(const auto& ptr:pointers)
+                    llvm::errs()<<ptr->declaration.getNameAsString()<<" ";
+                llvm::errs()<<"\n";
                 break;
             case Variable:
                 llvm::errs()<<"Type: Variable\n";
+                break;
+            default:
+                llvm::errs()<<"Type: Unknown\n";
                 break;
         }
         llvm::errs()<<"Pointers: ";
@@ -186,4 +197,37 @@ void AliasTable::getModifiedVariables(std::unordered_set<const VarDecl*>& setRes
             setResults.insert(&dep->declaration);
         }
     } 
+}
+
+void AliasTable::dumpVarTable() const
+{
+    llvm::errs()<<"Variable Table\n\n";
+    for(auto& var:varAliasTable)
+    {
+        llvm::errs()<<var.first->getNameAsString()<<" var\n";
+        var.second.dump();
+    }
+    llvm::errs()<<"\n";
+
+}
+void AliasTable::dumpRefTable() const
+{
+    llvm::errs()<<"Reference Table\n\n";
+    for(auto& ref:refAliasTable)
+    {
+        llvm::errs()<<ref.first->getNameAsString()<<" ref\n";
+        ref.second.dump();
+    }
+    llvm::errs()<<"\n";
+}
+void AliasTable::dumpPtrTable() const
+{
+    llvm::errs()<<"Pointer Table\n\n";
+    for(auto& ptr:ptrAliasTable)
+    {
+        llvm::errs()<<ptr.first->getNameAsString()<<" ptr\n";
+        ptr.second.dump();
+    }
+    llvm::errs()<<"\n";
+
 }
