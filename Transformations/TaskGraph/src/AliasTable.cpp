@@ -7,17 +7,9 @@ void aliasArg::dump() const{
         switch(type){
             case Reference:
                 llvm::errs()<<"Type: Reference\n";
-                llvm::errs()<<"Aliases: ";
-                for(const auto& ref:references)
-                    llvm::errs()<<ref->declaration.getNameAsString()<<" ";
-                llvm::errs()<<"\n";
                 break;
             case Pointer:
                 llvm::errs()<<"Type: Pointer\n";
-                llvm::errs()<<"Aliases: ";
-                for(const auto& ptr:pointers)
-                    llvm::errs()<<ptr->declaration.getNameAsString()<<" ";
-                llvm::errs()<<"\n";
                 break;
             case Variable:
                 llvm::errs()<<"Type: Variable\n";
@@ -34,10 +26,21 @@ void aliasArg::dump() const{
         for(const auto& ref:references)
             llvm::errs()<<ref->declaration.getNameAsString()<<" ";
         llvm::errs()<<"\n";
-    
     }
-
-
+void pointersAliasArg::dump() const{
+        aliasArg::dump();
+        llvm::errs()<<"Aliased: ";
+        for(const auto& aliased:aliased)
+            llvm::errs()<<aliased->declaration.getNameAsString()<<" ";
+        llvm::errs()<<"\n";
+    }
+void referenceAliasArg::dump() const{
+        aliasArg::dump();
+        llvm::errs()<<"Aliased: ";
+        for(const auto& aliased:aliased)
+            llvm::errs()<<aliased->declaration.getNameAsString()<<" ";
+        llvm::errs()<<"\n";
+}
 void AliasTable::addAliasReference(const VarDecl* var,const VarDecl* ref)
 {
     if(var!=nullptr && ref!=nullptr)

@@ -21,7 +21,8 @@ struct aliasArg {
     std::unordered_set<pointersAliasArg*> pointers;
     //Elements that references current element
     std::unordered_set<referenceAliasArg*> references;
-    void dump() const;
+    aliasArg(const clang::VarDecl& decl, AliasType t):declaration(decl),type(t){}
+    virtual void dump() const;
 
 };
 
@@ -30,12 +31,14 @@ struct pointersAliasArg : public aliasArg
     pointersAliasArg(const clang::VarDecl& decl):aliasArg{decl,Pointer}{}
     //Element referenced
     std::unordered_set<aliasArg*> aliased;
+    void dump() const override;
 };
 struct referenceAliasArg : public aliasArg
 {
     referenceAliasArg(const clang::VarDecl& decl):aliasArg{decl,Reference}{}
     //Element referenced
     std::unordered_set<aliasArg*> aliased;
+    void dump() const override;
 };
 
 typedef std::unordered_map<const clang::NamedDecl*, struct aliasArg> VariableAliasTable;
