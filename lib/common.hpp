@@ -41,9 +41,9 @@ bool isReferenceQualType(clang::QualType );
 void getLeafs( clang::Stmt* s,std::vector< clang::Stmt*>& leafs);
 
 //Returns the DeclRefExpr (single) of a given Expr, none if there are multiple
-DeclRefExpr* getSingleDeclRefExprInsideExpr(Expr* e);
+const DeclRefExpr* getSingleDeclRefExprInsideExpr(const Expr* e);
 //Returns all DeclRefExpr inside a given Expr
-std::vector<DeclRefExpr*> getAllDeclRefExprInsideExpr(Expr* e);
+std::vector<const DeclRefExpr*> getAllDeclRefExprInsideExpr(const Expr* e);
 
 //True when the input is a completely constant type (exemple, const int *const )
 bool isFullConstType(const QualType& qType);

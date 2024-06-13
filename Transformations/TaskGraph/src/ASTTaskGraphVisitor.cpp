@@ -101,7 +101,7 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instructi
 {
     Expr* subExpr=uop.getSubExpr();
     //If we have a variable
-    DeclRefExpr* d;
+    const DeclRefExpr* d;
     if((d=getSingleDeclRefExprInsideExpr(subExpr))!=nullptr)
     {
     //and we increment or decrement it, then it's a read and a write 
@@ -125,7 +125,7 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instructi
       {
         llvm::errs()<<curInstr.instructionString<<"\n";
         std::unordered_set<const VarDecl*> setVarDecl;
-        VarDecl* v=cast<VarDecl>(d->getDecl());
+        const VarDecl* v=cast<VarDecl>(d->getDecl());
         setVarDecl.insert(v);
         int depth=getPtrDepthAccess(*v,uop);
         aliasTable.getModifiedVariables(setVarDecl,depth);
@@ -150,7 +150,7 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator& bop,Instruc
     if(bop.isAssignmentOp())
     {
         //Most likely unnecessary since left side has to be a lvalue because of the assignment operator
-      DeclRefExpr* d=getSingleDeclRefExprInsideExpr(bop.getLHS());
+      const DeclRefExpr* d=getSingleDeclRefExprInsideExpr(bop.getLHS());
       if(d)
       {
         
@@ -164,7 +164,7 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator& bop,Instruc
             aliasTable.removeDependencyPtr(*setLeftVars.begin());
 
           std::unordered_set<const VarDecl*> aliasesRHS;
-          computeAliasesForRHS(bop,aliasesRHS,curInstr);
+          computeAliasesForRHS(bop.getRHS(),aliasesRHS,curInstr);
           
           for(auto& ptrV:setLeftVars)
             for(auto& alias:aliasesRHS)

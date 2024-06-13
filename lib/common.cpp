@@ -109,16 +109,16 @@ void getLeafs(Stmt* st,std::vector< Stmt*>& leafs)
         vectNodes.pop();
     }
 }
-std::vector<DeclRefExpr*> getAllDeclRefExprInsideExpr(Expr* e)
+std::vector<const DeclRefExpr*> getAllDeclRefExprInsideExpr(const Expr* e)
 {
     if(!e)
-        return std::vector<DeclRefExpr*>();
-    std::vector<DeclRefExpr*> vectDeclRefExpr;
-    std::queue<Expr*> vectNodes;
+        return std::vector<const DeclRefExpr*>();
+    std::vector<const DeclRefExpr*> vectDeclRefExpr;
+    std::queue<const Expr*> vectNodes;
     vectNodes.push(e);
     while(!vectNodes.empty())
     {
-        Expr* s=vectNodes.front();
+        const Expr* s=vectNodes.front();
         if (isa<DeclRefExpr>(s))
             vectDeclRefExpr.push_back(cast<DeclRefExpr>(s));
         else
@@ -129,10 +129,10 @@ std::vector<DeclRefExpr*> getAllDeclRefExprInsideExpr(Expr* e)
     }
     return vectDeclRefExpr;
 }
-DeclRefExpr* getSingleDeclRefExprInsideExpr(Expr* e)
+const DeclRefExpr* getSingleDeclRefExprInsideExpr(const Expr* e)
 {
-    DeclRefExpr* returnValue=NULL;
-    std::vector<DeclRefExpr*> vectDeclRefExpr=getAllDeclRefExprInsideExpr(e);
+    const DeclRefExpr* returnValue=NULL;
+    std::vector<const DeclRefExpr*> vectDeclRefExpr=getAllDeclRefExprInsideExpr(e);
     if(vectDeclRefExpr.size()==1)
         returnValue=vectDeclRefExpr.front();
     return returnValue;
