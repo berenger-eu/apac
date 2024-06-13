@@ -5,11 +5,11 @@ bool isInExceptionList(const ParmVarDecl& p)
   return p.getType().getAsString().find("std::shared_ptr") != std::string::npos;
 }
 
-void ASTTaskGraphVisitor::computeAliasesForRHS(const BinaryOperator& bop,std::unordered_set<const VarDecl*>& aliases, Instruction& instr)
+void ASTTaskGraphVisitor::computeAliasesForRHS(const Expr* expression,std::unordered_set<const VarDecl*>& aliases, Instruction& instr)
 {
   int depth;
-  Expr* rhs=bop.getRHS()->IgnoreParenImpCasts();
-  DeclRefExpr* d=getSingleDeclRefExprInsideExpr(rhs);        
+  const Expr* rhs=expression->IgnoreParenImpCasts();
+  const DeclRefExpr* d=getSingleDeclRefExprInsideExpr(rhs);        
   if(d)
   {
     const VarDecl* v=cast<VarDecl>(d->getDecl());

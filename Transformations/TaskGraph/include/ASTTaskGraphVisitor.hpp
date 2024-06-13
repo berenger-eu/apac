@@ -46,7 +46,7 @@ private:
     void handleCallExpr(const CallExpr& ,Instruction&);
     void handleExpr(const Expr& exp,Instruction&);
     void handleMemberCallExpr(const CXXMemberCallExpr& ,Instruction&);
-    void computeAliasesForRHS(const BinaryOperator& bop,std::unordered_set<const VarDecl*>&, Instruction& instr);
+    void computeAliasesForRHS(const Expr* bop,std::unordered_set<const VarDecl*>&, Instruction& instr);
     Rewriter &TheRewriter;
     AliasTable aliasTable;
 };
