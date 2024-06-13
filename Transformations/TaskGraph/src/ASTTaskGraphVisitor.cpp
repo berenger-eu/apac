@@ -21,6 +21,20 @@ void ASTTaskGraphVisitor::computeAliasesForRHS(const Expr* expression,std::unord
   else if(isa<CallExpr>(rhs))
   {
     const CallExpr* c=cast<CallExpr>(rhs);
+    const FunctionDecl* f=c->getDirectCallee();
+    for(unsigned int i=0;i<c->getNumArgs();i++)
+    {
+      const ParmVarDecl* curParam=f->getParamDecl(i);
+      if( (isPointerQualType(curParam->getType())||isReferenceQualType(curParam->getType())) 
+        && !isFullConstType(curParam->getType()))
+      {
+        const Expr* arg=c->getArg(i);
+        std::unordered_set<const VarDecl*> subAliases;
+        computeAliasesForRHS(arg,subAliases,instr);
+        for(auto& v:subAliases)
+          aliases.insert(v);
+      }
+    }
     //TODO: Handle CallExpr
   }
   else
