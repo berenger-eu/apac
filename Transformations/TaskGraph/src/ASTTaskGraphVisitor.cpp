@@ -1,10 +1,5 @@
 #include "ASTTaskGraphVisitor.hpp"
 
-bool isInExceptionList(const ParmVarDecl& p)
-{
-  return p.getType().getAsString().find("std::shared_ptr") != std::string::npos;
-}
-
 void ASTTaskGraphVisitor::computeAliasesForRHS(const Expr* expression,std::unordered_set<const VarDecl*>& aliases, Instruction& instr)
 {
   int depth;

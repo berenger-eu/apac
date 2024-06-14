@@ -51,4 +51,6 @@ private:
     AliasTable aliasTable;
 };
 
-bool isInExceptionList(const ParmVarDecl& p);
+inline bool isInExceptionList(const ParmVarDecl& p){
+    return p.getType().getAsString().find("std::shared_ptr") != std::string::npos;
+}
