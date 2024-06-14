@@ -225,7 +225,7 @@ void ASTTaskGraphVisitor::handleStmt(const Stmt& st,Instruction& instr)
     if(cast<ReturnStmt>(st).getRetValue())
       handleStmt(*(cast<ReturnStmt>(st).getRetValue()),instr);
   }
-  if(isa<Expr>(st))
+  else if(isa<Expr>(st))
   {
     const Expr& curExp=*(cast<Expr>(st).IgnoreParenImpCasts()); 
     if(isa<CXXOperatorCallExpr>(curExp))
