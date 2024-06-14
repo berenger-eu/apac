@@ -19,17 +19,29 @@ public:
     inline bool VisitStmt(Stmt *s){return true;}
     //Traverse methods lets us stop visiting nodes that we don't need
 
-    bool TraverseCXXMethodDecl(CXXMethodDecl *m);
+    inline bool TraverseCXXMethodDecl(CXXMethodDecl *m){
+        return TraverseFunctionDecl(m);
+    }
     bool TraverseFunctionDecl(FunctionDecl *f);
     //Calls respective handle method
 
-    bool TraverseCXXMemberCallExpr(CXXMemberCallExpr* c);
-    bool TraverseCallExpr(CallExpr* c);
-    bool TraverseUnaryOperator(UnaryOperator* uop);
-    bool TraverseBinaryOperator(BinaryOperator* bop);
-    bool TraverseCompoundAssignOperator(CompoundAssignOperator* bop);
-    bool TraverseCXXOperatorCallExpr(CXXOperatorCallExpr* c);
+    inline bool TraverseCXXMemberCallExpr(CXXMemberCallExpr* c){
+        return traverseSimpleElements(c);
+    }
+    inline bool TraverseCallExpr(CallExpr* c){
+        return traverseSimpleElements(c);
+    }
+    inline bool TraverseUnaryOperator(UnaryOperator* uop){
+        return traverseSimpleElements(uop);
+    }
+    inline bool TraverseBinaryOperator(BinaryOperator* bop){
+        return traverseSimpleElements(bop);
+    }
+    inline bool TraverseCompoundAssignOperator(CompoundAssignOperator* bop){
+        return traverseSimpleElements(bop);
+    }
 
+    bool TraverseCXXOperatorCallExpr(CXXOperatorCallExpr* c);
     bool TraverseReturnStmt(ReturnStmt* r);
     bool TraverseForStmt(ForStmt* f);
     bool TraverseIfStmt(IfStmt* i);
@@ -39,12 +51,24 @@ public:
     const AliasTable& getAliasTable() const{return aliasTable;}
 private:
     bool isEmptyInstruction(const Instruction& instr){return instr.dependencies.size()==0;};
-    void addDependency(Instruction& instr,Access a,const VarDecl* d);
+    inline void addDependency(Instruction& instr,Access a,const VarDecl* d){
+        for (auto alias : aliasTable.getAliases(d))
+            instr.dependencies.emplace(a,alias->getCanonicalDecl());    
+    }
+    bool traverseSimpleElements(Stmt* s){
+        if(isInHeaders(TheRewriter.getSourceMgr(),s->getBeginLoc())) 
+            return true;
+        
+        Instruction instr{s,getStmtAsString(s,TheRewriter.getLangOpts()),false};
+        handleStmt(*s,instr);
+        functionsInstructionsVector.back().push_back(instr);
+        return true;
+    }
 
     void handleUnaryOperator(const UnaryOperator& ,Instruction&);
     void handleBinaryOperator(const BinaryOperator& ,Instruction&);
     void handleCallExpr(const CallExpr& ,Instruction&);
-    void handleExpr(const Expr& exp,Instruction&);
+    void handleStmt(const Stmt& st,Instruction&);
     void handleMemberCallExpr(const CXXMemberCallExpr& ,Instruction&);
     void computeAliasesForRHS(const Expr* bop,std::unordered_set<const VarDecl*>&, Instruction& instr);
     Rewriter &TheRewriter;
