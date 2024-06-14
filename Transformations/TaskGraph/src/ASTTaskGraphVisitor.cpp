@@ -176,6 +176,7 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator& bop,Instruc
           if(isa<CompoundAssignOperator>(bop))
             addDependency(curInstr,Access::READ,v);
         }
+        if(depth>0)
         addDependency(curInstr,Access::READ,cast<VarDecl>(d->getDecl()));
         
       }
