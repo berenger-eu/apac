@@ -356,11 +356,7 @@ bool ASTTaskGraphVisitor::TraverseForStmt(ForStmt* f)
   if(isInHeaders(TheRewriter.getSourceMgr(),f->getBeginLoc())) 
     return true;
   bool res=true;
-  std::stringstream ss;
-  ss<<"for("<<getStmtAsString(f->getInit(),TheRewriter.getLangOpts())<<";"
-  <<getExprAsString(f->getCond(),TheRewriter.getLangOpts())<<";"
-  <<getExprAsString(f->getInc(),TheRewriter.getLangOpts())<<")";
-  Instruction compInstr{f,ss.str(),true,0};
+  Instruction compInstr{f,getStmtAsString(f,TheRewriter.getLangOpts()),true,0};
   functionsInstructionsVector.push_back(std::vector<Instruction>());
   res=RecursiveASTVisitor::TraverseForStmt(f);
   compInstr.scopedInstructions=functionsInstructionsVector.back();
@@ -384,9 +380,7 @@ bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt* i)
   if(isInHeaders(TheRewriter.getSourceMgr(),i->getBeginLoc())) 
     return true;
   bool res =true;
-  std::stringstream ss;
-  ss<<"if("<<getExprAsString(i->getCond(),TheRewriter.getLangOpts())<<")";
-  Instruction compInstr{i,ss.str(),true,0};
+  Instruction compInstr{i,getStmtAsString(i,TheRewriter.getLangOpts()),true,0};
   functionsInstructionsVector.push_back(std::vector<Instruction>());
   // res=RecursiveASTVisitor::TraverseIfStmt(i);
   if(i->getThen()&&isa<CompoundStmt>(i->getThen()))

@@ -13,8 +13,11 @@
 using namespace clang;
 
 //Contains functions used by multiple transformations
+
 //Returns the given Stmt as a String
 std::string getStmtAsString(const Stmt*,const LangOptions&);
+std::string getStmtAsString(const ForStmt*,const LangOptions&);
+std::string getStmtAsString(const IfStmt* i,const LangOptions& langOpt);
 //Returns the given Expr as a String
 std::string getExprAsString(const Expr*,const LangOptions&);
 

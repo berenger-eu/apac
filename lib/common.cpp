@@ -49,6 +49,20 @@ std::string getStmtAsString(const Stmt* statement,const LangOptions& langOpt)
     }
     return stmtString;
 }
+std::string getStmtAsString(const ForStmt* f,const LangOptions& langOpt)
+{
+    std::stringstream ss;
+    ss<<"for("<<getStmtAsString(f->getInit(),langOpt)<<";"
+    <<getExprAsString(f->getCond(),langOpt)<<";"
+    <<getExprAsString(f->getInc(),langOpt)<<")";
+    return ss.str();
+}
+std::string getStmtAsString(const IfStmt* i,const LangOptions& langOpt)
+{
+    std::stringstream ss;
+    ss<<"if("<<getExprAsString(i->getCond(),langOpt)<<")";
+    return ss.str();
+}
 std::string getExprAsString(const Expr* expression,const LangOptions& langOpt)
 {
     std::string exprString;
