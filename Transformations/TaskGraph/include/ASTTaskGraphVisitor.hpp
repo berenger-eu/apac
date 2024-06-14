@@ -40,9 +40,13 @@ public:
     inline bool TraverseCompoundAssignOperator(CompoundAssignOperator* bop){
         return traverseSimpleElements(bop);
     }
+    inline bool TraverseReturnStmt(ReturnStmt* r){
+        return traverseSimpleElements(r);
+    }
+    inline bool TraverseCXXOperatorCallExpr(CXXOperatorCallExpr* c){
+        return traverseSimpleElements(c);
+    }
 
-    bool TraverseCXXOperatorCallExpr(CXXOperatorCallExpr* c);
-    bool TraverseReturnStmt(ReturnStmt* r);
     bool TraverseForStmt(ForStmt* f);
     bool TraverseIfStmt(IfStmt* i);
     const auto& getTaskGraphs(){return functionsInstructionsVector;}
@@ -64,7 +68,7 @@ private:
         functionsInstructionsVector.back().push_back(instr);
         return true;
     }
-
+    void handleCXXOperatorCallExpr(const CXXOperatorCallExpr& ,Instruction&);
     void handleUnaryOperator(const UnaryOperator& ,Instruction&);
     void handleBinaryOperator(const BinaryOperator& ,Instruction&);
     void handleCallExpr(const CallExpr& ,Instruction&);

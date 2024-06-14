@@ -36,6 +36,25 @@ void ASTTaskGraphVisitor::computeAliasesForRHS(const Expr* expression,std::unord
     handleStmt(*rhs,instr);
 }
 
+void ASTTaskGraphVisitor::handleCXXOperatorCallExpr(const CXXOperatorCallExpr& c,Instruction& instr)
+{
+  if(c.isAssignmentOp()&&c.getNumArgs()==2)
+    if(isa<DeclRefExpr>(c.getArg(0))&&isReferenceQualType(c.getArg(0)->getType()))
+    {
+      const VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(c.getArg(0))->getDecl());
+      const DeclRefExpr* d;
+      if((d=getSingleDeclRefExprInsideExpr(c.getArg(1)))!=nullptr )
+      {
+        const VarDecl* v2=cast<VarDecl>(d->getDecl());
+        if(v2)
+        {
+          aliasTable.addAliasReference(v2,v);
+          addDependency(instr,Access::READ,v2);
+          addDependency(instr,Access::WRITE,v);
+        }
+      }
+    }
+}
 
 void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instruction& curInstr)
 {
@@ -201,10 +220,19 @@ void ASTTaskGraphVisitor::handleCallExpr(const CallExpr& c,Instruction& curInstr
 void ASTTaskGraphVisitor::handleStmt(const Stmt& st,Instruction& instr)
 {
   // Simple switch case to call the respective handle method, except for DeclRefExpr which is a variable so it is a read
+  if(isa<ReturnStmt>(st))
+  {
+    if(cast<ReturnStmt>(st).getRetValue())
+      handleStmt(*(cast<ReturnStmt>(st).getRetValue()),instr);
+  }
   if(isa<Expr>(st))
   {
     const Expr& curExp=*(cast<Expr>(st).IgnoreParenImpCasts()); 
-    if(isa<UnaryOperator>(curExp))
+    if(isa<CXXOperatorCallExpr>(curExp))
+    {
+      handleCXXOperatorCallExpr(cast<CXXOperatorCallExpr>(curExp),instr);
+    }
+    else if(isa<UnaryOperator>(curExp))
     {
       handleUnaryOperator(cast<UnaryOperator>(curExp),instr);
     }
@@ -252,43 +280,7 @@ bool ASTTaskGraphVisitor::TraverseFunctionDecl(FunctionDecl *f) {
   }
   return true;
 }
-bool ASTTaskGraphVisitor::TraverseCXXOperatorCallExpr(CXXOperatorCallExpr* c)
-{
-  if(isInHeaders(TheRewriter.getSourceMgr(),c->getBeginLoc())) 
-    return true;
-  //Most likely is the definition of a reference
-  Instruction instr{c,getStmtAsString(c,TheRewriter.getLangOpts()),false};
-  if(c->isAssignmentOp()&&c->getNumArgs()==2)
-    if(isa<DeclRefExpr>(c->getArg(0))&&isReferenceQualType(c->getArg(0)->getType()))
-    {
-      const VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(c->getArg(0))->getDecl());
-      const DeclRefExpr* d;
-      if((d=getSingleDeclRefExprInsideExpr(c->getArg(1)))!=nullptr )
-      {
-        const VarDecl* v2=cast<VarDecl>(d->getDecl());
-        if(v2)
-        {
-          aliasTable.addAliasReference(v2,v);
-          addDependency(instr,Access::READ,v2);
-          addDependency(instr,Access::WRITE,v);
-        }
-      }
-    }
-  
-  functionsInstructionsVector.back().push_back(instr); 
-  return true;
-}
 
-bool ASTTaskGraphVisitor::TraverseReturnStmt(ReturnStmt* r)
-{
-  if(isInHeaders(TheRewriter.getSourceMgr(),r->getBeginLoc())) 
-    return true;
-  Instruction instr{r,getStmtAsString(r,TheRewriter.getLangOpts()),false};
-  if(r->getRetValue())
-    handleStmt(*(r->getRetValue()),instr);
-  functionsInstructionsVector.back().push_back(instr);
-  return true;
-}
 bool ASTTaskGraphVisitor::TraverseForStmt(ForStmt* f)
 {
   if(isInHeaders(TheRewriter.getSourceMgr(),f->getBeginLoc())) 
