@@ -69,11 +69,12 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
         auto node = graph.nodes[i];
         llvm::errs()<<"Instruction: "<<node->instruction<<"\n";
         for (const auto& dep : inInstructions[i].dependencies){
-            if (dep.first == Access::READ){
-                 if(dataUsedInWrite.find(dep.second) != dataUsedInWrite.end()){
-                      if((*dataUsedInWrite.find(dep.second)).second->id!=node->id){
-                        auto depNode = dataUsedInWrite[dep.second];
-                        depNode->addReadLink(node,dep.second);
+            bool readFound = false;
+            if (dep.second.isRead){
+                 if(dataUsedInWrite.find(dep.first) != dataUsedInWrite.end()){
+                      if((*dataUsedInWrite.find(dep.first)).second->id!=node->id){
+                        auto depNode = dataUsedInWrite[dep.first];
+                        depNode->addReadLink(node,dep.first);
                         llvm::errs()<<"Adding read link from "<<depNode->instruction<<" to "<<node->instruction<<"\n";
                         /*
                         if(depNode->next.count(node)==0)
@@ -83,16 +84,17 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
                         */
                     }
                 }
-                dataUsedInRead[dep.second].insert(node);
+                readFound = true;
+                
             } 
-            else {
-                if( dataUsedInRead.find(dep.second) != dataUsedInRead.end()){
-                    auto it = dataUsedInRead.find(dep.second);
+            if (dep.second.isWrite){
+                if( dataUsedInRead.find(dep.first) != dataUsedInRead.end()){
+                    auto it = dataUsedInRead.find(dep.first);
                     for (const auto& depNode : it->second){
                         if(depNode->id == node->id){
                             continue;
                         }
-                        depNode->addWriteLink(node,dep.second);
+                        depNode->addWriteLink(node,dep.first);
                         llvm::errs()<<"1Adding write link from "<<depNode->instruction<<" to "<<node->instruction<<"\n";
                         /*
                         if(depNode->next.count(node)==0)
@@ -102,13 +104,13 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
                         */
                     }
 
-                    dataUsedInRead.erase(dep.second);
+                    dataUsedInRead.erase(dep.first);
                 }
-                else if(dataUsedInWrite.find(dep.second) != dataUsedInWrite.end()){
-                    auto it= dataUsedInWrite.find(dep.second);
+                else if(dataUsedInWrite.find(dep.first) != dataUsedInWrite.end()){
+                    auto it= dataUsedInWrite.find(dep.first);
                     if(it->second->id!=node->id){
-                        auto depNode = dataUsedInWrite[dep.second];
-                        depNode->addWriteLink(node,dep.second);
+                        auto depNode = dataUsedInWrite[dep.first];
+                        depNode->addWriteLink(node,dep.first);
                         llvm::errs()<<"2Adding write link from "<<depNode->instruction<<" to "<<node->instruction<<"\n";
                         /*  
                         if(depNode->next.count(node)==0)
@@ -118,7 +120,9 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
                         */
                     }    
                 }
-                dataUsedInWrite[dep.second] = node;            
+                if(readFound)
+                    dataUsedInRead[dep.first].insert(node);
+                dataUsedInWrite[dep.first] = node;            
             }
         }
     }

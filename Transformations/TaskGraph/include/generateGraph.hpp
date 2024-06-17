@@ -21,10 +21,7 @@
 #include "clang/AST/Decl.h"
 #include <fstream>
 
-struct NodeDependency {
-    bool isRead;
-    bool isWrite;
-};
+
 
 
 
