@@ -36,19 +36,18 @@ struct Node {
     std::shared_ptr<struct Graph> graph;
     std::string instruction;
     void addLink(std::shared_ptr<Node> n, bool isRead, bool isWrite, const NamedDecl* arg){
-        if(this->next.count(n) == 0){
-            this->next.insert({n,std::unordered_map<const NamedDecl*,NodeDependency>()}); 
+        if(arg == nullptr)
+            return;   
+        if(this->next.count(n) == 0)
+            this->next.insert({n,std::unordered_map<const NamedDecl*,NodeDependency>()});       
+        if (this->next.at(n).count(arg) == 0){
             this->next.at(n).insert({arg,{isRead,isWrite}});
             n->prev.insert(std::make_shared<Node>(*this));
-        }       
-        else{
-            this->next.at(n).find(arg)->second.isRead = this->next.at(n).find(arg)->second.isRead || isRead;
-            this->next.at(n).find(arg)->second.isWrite = this->next.at(n).find(arg)->second.isWrite || isWrite;
-            // this->next.at(n).find(arg).isRead = this->next.at(n).find(arg).isRead || isRead;
-            // this->next.at(n).second.find(arg).isWrite = this->next.at(n).find(arg).isWrite || isWrite;
         }
-        // this->next.at(n).insert({isRead,isWrite,arg});
-        // n->prev.insert(shared_from_this());
+        else{
+            this->next.at(n).at(arg).isRead = this->next.at(n).at(arg).isRead || isRead;
+            this->next.at(n).at(arg).isWrite = this->next.at(n).at(arg).isWrite || isWrite;
+        }
     }
     inline void addReadLink(std::shared_ptr<Node> n, const NamedDecl* arg){
         addLink(n,true,false,arg);

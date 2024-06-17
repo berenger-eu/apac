@@ -67,7 +67,6 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
 
     for (long unsigned int i = 0; i < inInstructions.size(); ++i){
         auto node = graph.nodes[i];
-        llvm::errs()<<"Instruction: "<<node->instruction<<"\n";
         for (const auto& dep : inInstructions[i].dependencies){
             bool readFound = false;
             if (dep.second.isRead){
@@ -75,13 +74,6 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
                       if((*dataUsedInWrite.find(dep.first)).second->id!=node->id){
                         auto depNode = dataUsedInWrite[dep.first];
                         depNode->addReadLink(node,dep.first);
-                        llvm::errs()<<"Adding read link from "<<depNode->instruction<<" to "<<node->instruction<<"\n";
-                        /*
-                        if(depNode->next.count(node)==0)
-                            depNode->next.insert({node,std::unordered_set<NodeDependency>()});
-                        depNode->next.at(node).insert(N);
-                        node->prev.insert(depNode);
-                        */
                     }
                 }
                 readFound = true;
@@ -95,13 +87,6 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
                             continue;
                         }
                         depNode->addWriteLink(node,dep.first);
-                        llvm::errs()<<"1Adding write link from "<<depNode->instruction<<" to "<<node->instruction<<"\n";
-                        /*
-                        if(depNode->next.count(node)==0)
-                            depNode->next.insert({node,std::unordered_set<std::string>()});
-                        depNode->next.at(node).insert(dep.second->getNameAsString());
-                        node->prev.insert(depNode);
-                        */
                     }
 
                     dataUsedInRead.erase(dep.first);
@@ -111,13 +96,6 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
                     if(it->second->id!=node->id){
                         auto depNode = dataUsedInWrite[dep.first];
                         depNode->addWriteLink(node,dep.first);
-                        llvm::errs()<<"2Adding write link from "<<depNode->instruction<<" to "<<node->instruction<<"\n";
-                        /*  
-                        if(depNode->next.count(node)==0)
-                            depNode->next.insert({node,std::unordered_set<std::string>()});
-                        depNode->next.at(node).insert(dep.second->getNameAsString());
-                        node->prev.insert(depNode);
-                        */
                     }    
                 }
                 if(readFound)

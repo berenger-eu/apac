@@ -9,7 +9,7 @@ void ASTTaskGraphVisitor::computeAliasesForRHS(const Expr* expression,std::unord
   {
     const VarDecl* v=cast<VarDecl>(d->getDecl());
     aliases.insert(v);
-    int depth=getPtrDepthAccess(*v,*rhs);
+    depth=getPtrDepthAccess(*v,*rhs);
     aliasTable.getModifiedVariables(aliases,depth+1);
   }
   //Handle CallExpr ( int * p=min(&a,&b) , p might point to a or b or something new)
@@ -82,7 +82,6 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instructi
       //If we access the pointer , then we read the variables it may point to
       else if((depth=getPtrDepthAccess(*cast<VarDecl>(d->getDecl()),uop))>0)
       {
-        llvm::errs()<<curInstr.instructionString<<"\n";
         std::unordered_set<const VarDecl*> setVarDecl;
         const VarDecl* v=cast<VarDecl>(d->getDecl());
         setVarDecl.insert(v);

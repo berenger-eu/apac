@@ -130,60 +130,23 @@ void AliasTable::getPointersAliases(const VarDecl* v,std::unordered_set<const Va
 
 void AliasTable::getModifiedVariables(std::unordered_set<const VarDecl*>& setResults,const int& depth) 
 {
-    llvm::errs()<<"Depth: "<<depth<<"\n";
+    
     if(depth>0)
     {
-        llvm::errs()<<"VarTable size: "<<varAliasTable.size()<<"\n";
-        for(auto& var:varAliasTable)
-        {
-            llvm::errs()<<var.first->getNameAsString()<<" var iazvarpp\n";
-            llvm::errs()<<(var.second.references.size())<<"\n";
-            llvm::errs()<<(var.second.pointers.size())<<"\n";
-        }
-        llvm::errs()<<"PtrTable size: "<<ptrAliasTable.size()<<"\n";
-        for(auto& ptr:ptrAliasTable)
-        {
-            llvm::errs()<<ptr.first->getNameAsString()<<" ptr iazvarpp\n";
-            llvm::errs()<<(ptr.second.type==Pointer)<<"\n";
-        }
-        llvm::errs()<<"RefTable size: "<<refAliasTable.size()<<"\n";
-        for(auto& ref:refAliasTable)
-        {
-            llvm::errs()<<ref.first->getNameAsString()<<" ref iazvarpp\n";
-            llvm::errs()<<(ref.second.type==Reference)<<"\n";
-        }
-
         int curDepth=0;
         std::unordered_set<aliasArg*> curSet,precSet;
         for(auto& dep:setResults)
-        {
-             curSet.insert(getPtrAliasArg(dep));
-            llvm::errs()<<(getAliasArg(dep)==nullptr)<<"\n";
-            llvm::errs()<<(getPtrAliasArg(dep)==nullptr)<<"\n";
-            llvm::errs()<<(getRefAliasArg(dep)==nullptr)<<"\n";
-        }
-        llvm::errs()<<"Error: Depth must be greater than 0\n";
+            curSet.insert(getPtrAliasArg(dep));
 
 
         while(curDepth<depth)
         {
             precSet=curSet;
             curSet.clear();
-            llvm::errs()<<"precSetSize"<<precSet.size()<<"\n";
-            
             for(auto& dep:precSet)
             {
-            llvm::errs()<<(dep->type==Pointer)<<"\n";
                 if(dep->type==Reference)
-                {
-                    referenceAliasArg* ref = static_cast<referenceAliasArg*>(dep);
-                    llvm::errs()<<ref->declaration.getName()<<"isRef\n";
-                    /*for (auto aliasedVar:ref->aliased)
-                    {
-                        llvm::errs()<<"test"<<"\n";  
-                        curSet.insert(aliasedVar);
-                    }*/
-                }    
+                    referenceAliasArg* ref = static_cast<referenceAliasArg*>(dep);   
                 else if(dep->type==Pointer)
                 {
                     pointersAliasArg* dep2 = static_cast<pointersAliasArg*>(dep);
@@ -195,10 +158,7 @@ void AliasTable::getModifiedVariables(std::unordered_set<const VarDecl*>& setRes
         }
         setResults.clear();
         for(auto& dep:curSet)
-        {
-            llvm::errs()<<dep->declaration.getNameAsString()<<" dep\n";
             setResults.insert(&dep->declaration);
-        }
     } 
 }
 
