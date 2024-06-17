@@ -49,8 +49,8 @@ void ASTTaskGraphVisitor::handleCXXOperatorCallExpr(const CXXOperatorCallExpr& c
         if(v2)
         {
           aliasTable.addAliasReference(v2,v);
-          addDependency(instr,Access::READ,v2);
-          addDependency(instr,Access::WRITE,v);
+          addDependencyRead(instr,v2);
+          addDependencyWrite(instr,v);
         }
       }
     }
@@ -73,10 +73,10 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instructi
         for(auto& v:setVarDecl)
         {
           v->dump();
-          addDependency(curInstr,Access::READ,v);
-          addDependency(curInstr,Access::WRITE,v);
+          addDependencyRead(curInstr,v);
+          addDependencyWrite(curInstr,v);
         }
-        addDependency(curInstr,Access::READ,cast<VarDecl>(cast<DeclRefExpr>(d)->getDecl()));
+        addDependencyRead(curInstr,cast<VarDecl>(cast<DeclRefExpr>(d)->getDecl()));
 
       }
       //If we access the pointer , then we read the variables it may point to
@@ -89,13 +89,13 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instructi
         int depth=getPtrDepthAccess(*v,uop);
         aliasTable.getModifiedVariables(setVarDecl,depth);
         for(auto& curV:setVarDecl)
-          addDependency(curInstr,Access::READ,curV);
-        addDependency(curInstr,Access::READ,v);
+          addDependencyRead(curInstr,curV);
+        addDependencyRead(curInstr,v);
 
       }
       //If it's not the address of the variable that is read, then it's a read of the variable
       else if(depth!=-1)
-        addDependency(curInstr,Access::READ,cast<VarDecl>(d->getDecl()));        
+        addDependencyRead(curInstr,cast<VarDecl>(d->getDecl()));        
       //TODO: check if other cases are read and/or write
     }
     //Otherwise, unary expression affects a temporary value so we ignore it but still look through the expression
@@ -131,12 +131,12 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator& bop,Instruc
         }
         for(auto& v:setLeftVars)
         {
-          addDependency(curInstr,Access::WRITE,v);
+          addDependencyWrite(curInstr,v);
           if(isa<CompoundAssignOperator>(bop))
-            addDependency(curInstr,Access::READ,v);
+            addDependencyRead(curInstr,v);
         }
         if(depth>0)
-        addDependency(curInstr,Access::READ,cast<VarDecl>(d->getDecl()));
+        addDependencyRead(curInstr,cast<VarDecl>(d->getDecl()));
         
       }
       else
@@ -156,9 +156,9 @@ void ASTTaskGraphVisitor::handleMemberCallExpr(const CXXMemberCallExpr& c,Instru
   if(isa<DeclRefExpr>(obj))
   {
     VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(obj)->getDecl());
-    addDependency(curInstr,Access::READ,v);
+    addDependencyRead(curInstr,v);
     if(!c.getMethodDecl()->isConst())
-      addDependency(curInstr,Access::WRITE,v);
+      addDependencyWrite(curInstr,v);
   }
   else
     handleStmt(*obj,curInstr);
@@ -186,8 +186,8 @@ void ASTTaskGraphVisitor::handleCallExpr(const CallExpr& c,Instruction& curInstr
       if(isa<DeclRefExpr>(d->IgnoreParenImpCasts()))
       {
         const VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(d->IgnoreParenImpCasts())->getDecl()); 
-        addDependency(curInstr,Access::READ,v);
-        addDependency(curInstr,Access::WRITE,v);
+        addDependencyRead(curInstr,v);
+        addDependencyWrite(curInstr,v);
       }
     }
     else if( !(isFullConstType(p.getType())&&isReferenceQualType(p.getType()))
@@ -205,8 +205,8 @@ void ASTTaskGraphVisitor::handleCallExpr(const CallExpr& c,Instruction& curInstr
       if(isa<DeclRefExpr>(curExpr))
       {
         const VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(curExpr)->getDecl());
-        addDependency(curInstr,Access::READ,v);
-        addDependency(curInstr,Access::WRITE,v);
+        addDependencyRead(curInstr,v);
+        addDependencyWrite(curInstr,v);
       }
       else{
         llvm::errs()<<"Failed to find DeclRefExpr\n";
@@ -251,7 +251,7 @@ void ASTTaskGraphVisitor::handleStmt(const Stmt& st,Instruction& instr)
     else if(isa<DeclRefExpr>(curExp))
     {
       const VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(curExp).getDecl());
-      addDependency(instr,Access::READ,v);
+      addDependencyRead(instr,v);
     }
     //Ignored expressions case
     else if(isa<IntegerLiteral>(curExp))

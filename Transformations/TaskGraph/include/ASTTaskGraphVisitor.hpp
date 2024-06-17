@@ -55,9 +55,23 @@ public:
     const AliasTable& getAliasTable() const{return aliasTable;}
 private:
     bool isEmptyInstruction(const Instruction& instr){return instr.dependencies.size()==0;};
-    inline void addDependency(Instruction& instr,Access a,const VarDecl* d){
-        for (auto alias : aliasTable.getAliases(d))
-            instr.dependencies.emplace(a,alias->getCanonicalDecl());    
+    inline void addDependencyRead(Instruction& instr,const VarDecl* d){
+        for (auto& alias : aliasTable.getAliases(d))
+        { 
+            if(instr.dependencies.count(alias) == 0)
+                instr.dependencies.insert({alias->getCanonicalDecl(),NodeDependency{true,false}});
+            else
+                instr.dependencies.find(alias->getCanonicalDecl())->second.isRead=true;  
+        }
+    }
+    inline void addDependencyWrite(Instruction& instr,const VarDecl* d){
+        for (auto& alias : aliasTable.getAliases(d))
+        {
+            if(instr.dependencies.count(alias) == 0)
+                instr.dependencies.insert({alias->getCanonicalDecl(),NodeDependency{false,true}});
+            else
+                instr.dependencies.find(alias->getCanonicalDecl())->second.isWrite=true;  
+        }
     }
     bool traverseSimpleElements(Stmt* s){
         if(isInHeaders(TheRewriter.getSourceMgr(),s->getBeginLoc())) 
