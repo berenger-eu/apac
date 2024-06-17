@@ -22,7 +22,7 @@ void subGenerateDotGraph(const Graph& inGraph, std::ofstream& file){
             for(auto iterBegin = nextNode.second.begin(); iterBegin != nextNode.second.end(); iterBegin++){
                 if(iterBegin != nextNode.second.begin())
                     ss << ",";
-                ss << *iterBegin;
+                ss << iterBegin->first->getNameAsString()<< (iterBegin->second.isRead?"R":"")<<(iterBegin->second.isWrite?"W":"");
             }
             file << "    " << node->id << " -> " << nextNode.first->id << "[label=\"  "<<ss.str()<<"\"];\n";
         }
@@ -67,16 +67,20 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
 
     for (long unsigned int i = 0; i < inInstructions.size(); ++i){
         auto node = graph.nodes[i];
-        
+        llvm::errs()<<"Instruction: "<<node->instruction<<"\n";
         for (const auto& dep : inInstructions[i].dependencies){
             if (dep.first == Access::READ){
                  if(dataUsedInWrite.find(dep.second) != dataUsedInWrite.end()){
                       if((*dataUsedInWrite.find(dep.second)).second->id!=node->id){
                         auto depNode = dataUsedInWrite[dep.second];
+                        depNode->addReadLink(node,dep.second);
+                        llvm::errs()<<"Adding read link from "<<depNode->instruction<<" to "<<node->instruction<<"\n";
+                        /*
                         if(depNode->next.count(node)==0)
-                            depNode->next.insert({node,std::unordered_set<std::string>()});
-                        depNode->next.at(node).insert(dep.second->getNameAsString());
+                            depNode->next.insert({node,std::unordered_set<NodeDependency>()});
+                        depNode->next.at(node).insert(N);
                         node->prev.insert(depNode);
+                        */
                     }
                 }
                 dataUsedInRead[dep.second].insert(node);
@@ -88,10 +92,14 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
                         if(depNode->id == node->id){
                             continue;
                         }
+                        depNode->addWriteLink(node,dep.second);
+                        llvm::errs()<<"1Adding write link from "<<depNode->instruction<<" to "<<node->instruction<<"\n";
+                        /*
                         if(depNode->next.count(node)==0)
                             depNode->next.insert({node,std::unordered_set<std::string>()});
                         depNode->next.at(node).insert(dep.second->getNameAsString());
                         node->prev.insert(depNode);
+                        */
                     }
 
                     dataUsedInRead.erase(dep.second);
@@ -100,10 +108,14 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
                     auto it= dataUsedInWrite.find(dep.second);
                     if(it->second->id!=node->id){
                         auto depNode = dataUsedInWrite[dep.second];
+                        depNode->addWriteLink(node,dep.second);
+                        llvm::errs()<<"2Adding write link from "<<depNode->instruction<<" to "<<node->instruction<<"\n";
+                        /*  
                         if(depNode->next.count(node)==0)
                             depNode->next.insert({node,std::unordered_set<std::string>()});
                         depNode->next.at(node).insert(dep.second->getNameAsString());
                         node->prev.insert(depNode);
+                        */
                     }    
                 }
                 dataUsedInWrite[dep.second] = node;            
