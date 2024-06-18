@@ -45,7 +45,6 @@ std::unordered_set<const VarDecl*> AliasTable::getAliased(const VarDecl* v){
     std::unordered_set<const VarDecl*> aliases;
     std::stack<aliasArg*> stack;
     auto alias=getAliasArg(v);
-    llvm::errs()<<"bull"<<(alias==nullptr)<<"\n";
     if(alias!=nullptr)
         stack.push(alias);
     while(!stack.empty())
