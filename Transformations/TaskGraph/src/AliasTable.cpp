@@ -166,7 +166,7 @@ void AliasTable::getModifiedVariables(std::unordered_set<const VarDecl*>& setRes
         int curDepth=0;
         std::unordered_set<aliasArg*> curSet,precSet;
         for(auto& dep:setResults)
-            curSet.insert(getPtrAliasArg(dep));
+            curSet.insert(getAliasArg(dep));
         while(curDepth<depth)
         {
             precSet=curSet;
