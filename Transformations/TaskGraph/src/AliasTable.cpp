@@ -41,6 +41,37 @@ void referenceAliasArg::dump() const{
             llvm::errs()<<aliased->declaration.getNameAsString()<<" ";
         llvm::errs()<<"\n";
 }
+std::unordered_set<const VarDecl*> AliasTable::getAliased(const VarDecl* v){
+    std::unordered_set<const VarDecl*> aliases;
+    std::stack<aliasArg*> stack;
+    auto alias=getAliasArg(v);
+    llvm::errs()<<"bull"<<(alias==nullptr)<<"\n";
+    if(alias!=nullptr)
+        stack.push(alias);
+    while(!stack.empty())
+    {
+        const aliasArg* cur = stack.top();
+        stack.pop();
+        if(aliases.count(&cur->declaration)!=0)
+            continue;
+         aliases.insert(&cur->declaration);
+        if(cur->type==Reference)
+        {
+            const referenceAliasArg* ref = static_cast<const referenceAliasArg*>(cur);
+            for(const auto& alias:ref->aliased)
+                stack.push(alias);
+        }
+        else if(cur->type==Pointer)
+        {
+            const pointersAliasArg* ptr = static_cast<const pointersAliasArg*>(cur);
+            for(const auto& alias:ptr->aliased)
+                stack.push(alias);
+        }
+        
+    }
+    
+    return aliases;
+}
 void AliasTable::addAliasReference(const VarDecl* var,const VarDecl* ref)
 {
     if(var!=nullptr && ref!=nullptr)

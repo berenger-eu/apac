@@ -49,7 +49,7 @@ class AliasTable {
     public:
         AliasTable(Rewriter& R) : TheRewriter(R){}
         const std::unordered_set<const VarDecl*> getAliases(const VarDecl* v ) const;
-
+        std::unordered_set<const VarDecl*> getAliased(const VarDecl* v) ;
         inline void addVariableToTables(const VarDecl* v){
             if(v!=nullptr)
             {
@@ -75,7 +75,18 @@ class AliasTable {
         inline const NamedDecl* getKey(const VarDecl* v) const{
             return v->getCanonicalDecl();
         }
-        inline aliasArg* getAliasArg(const VarDecl* v) {
+        inline aliasArg* getAliasArg(const VarDecl* v)
+        {
+            aliasArg* result=nullptr;
+            if(getVarAliasArg(v)!=nullptr)
+                result= getVarAliasArg(v);
+            else if(getPtrAliasArg(v)!=nullptr)
+                result= getPtrAliasArg(v);
+            else if(getRefAliasArg(v)!=nullptr)
+                result= getRefAliasArg(v);
+            return result;
+        }
+        inline aliasArg* getVarAliasArg(const VarDecl* v) {
             const NamedDecl* result=getKey(v);
             if(varAliasTable.count(result)==0)
                 return nullptr;
