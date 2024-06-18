@@ -16,7 +16,11 @@ int invisibleNodeCounter = 1;
 void subGenerateDotGraph(const Graph& inGraph, std::ofstream& file){
     file << "    invisibleNodeScope_" << invisibleNodeCounter << " [style=invis];\n";
     for(const auto& node : inGraph.nodes){
-        file << "    " << node->id << " [label=\"" << node->instruction << "\"];\n";
+        file << "    " << node->id << " [label=\"" << node->instruction; 
+        for(auto alias:node->instructionPtr->curAliases){
+            file << "\n" << alias.first->getNameAsString() << " : " << alias.second->getNameAsString();
+        }
+        file<<"\"];\n";
         for (const auto& nextNode : node->next) {
             std::stringstream ss;
             for(auto iterBegin = nextNode.second.begin(); iterBegin != nextNode.second.end(); iterBegin++){
@@ -55,6 +59,7 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
     for(const auto& curInstruction : inInstructions){
         auto node = std::make_shared<Node>();
         node->instruction = curInstruction.instructionString;//instruction.instruction;
+        node->instructionPtr = &curInstruction;
         node->id = Node::idCounter++;
         graph.nodes.push_back(node);
         if(curInstruction.complexInstruction){

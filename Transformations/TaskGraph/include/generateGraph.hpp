@@ -35,6 +35,7 @@ struct Node {
     std::unordered_set<std::shared_ptr<Node>> prev;
     std::shared_ptr<struct Graph> graph;
     std::string instruction;
+    const Instruction* instructionPtr;
     void addLink(std::shared_ptr<Node> n, bool isRead, bool isWrite, const NamedDecl* arg){
         if(arg == nullptr)
             return;   

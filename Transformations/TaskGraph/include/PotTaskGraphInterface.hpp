@@ -20,6 +20,9 @@ struct Instruction {
     unsigned int scopedInstructionsNumber;  //Also takes in account number of instructions in ComplexInstructions 
     std::unordered_map<const clang::NamedDecl*,NodeDependency> dependencies;
     std::vector<Instruction> scopedInstructions;
+    //Contains pairs of variables
+    //first element is the alias used in the instruction, second is the variable that is aliased
+    std::vector<std::pair<const clang::VarDecl*,const clang::VarDecl*>> curAliases;
     void dumpDep() const{
         llvm::errs()<<"Dependencies for instruction: "<<instructionString<<"\n";
         for(const auto& dep:dependencies){

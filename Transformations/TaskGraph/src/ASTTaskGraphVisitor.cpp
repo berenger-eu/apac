@@ -7,10 +7,14 @@ void ASTTaskGraphVisitor::computeAliasesForRHS(const Expr* expression,std::unord
   const DeclRefExpr* d=getSingleDeclRefExprInsideExpr(rhs);        
   if(d)
   {
+    //TODO:Modif ici pour ajout alias aux nodes
     const VarDecl* v=cast<VarDecl>(d->getDecl());
     aliases.insert(v);
     depth=getPtrDepthAccess(*v,*rhs);
     aliasTable.getModifiedVariables(aliases,depth+1);
+    for(auto& ali:aliases)
+      if(v!=ali)
+        instr.curAliases.push_back({v,ali});
   }
   //Handle CallExpr ( int * p=min(&a,&b) , p might point to a or b or something new)
   else if(isa<CallExpr>(rhs))
@@ -206,6 +210,12 @@ void ASTTaskGraphVisitor::handleCallExpr(const CallExpr& c,Instruction& curInstr
         const VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(curExpr)->getDecl());
         addDependencyRead(curInstr,v);
         addDependencyWrite(curInstr,v);
+        std::unordered_set<const VarDecl*> aliases(aliasTable.getAliased(v));
+        for(auto& ali:aliases)
+        {
+          addDependencyRead(curInstr,ali);
+          addDependencyWrite(curInstr,ali);
+        }
       }
       else{
         llvm::errs()<<"Failed to find DeclRefExpr\n";
