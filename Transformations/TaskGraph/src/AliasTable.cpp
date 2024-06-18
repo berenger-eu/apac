@@ -168,23 +168,24 @@ void AliasTable::getModifiedVariables(std::unordered_set<const VarDecl*>& setRes
         std::unordered_set<aliasArg*> curSet,precSet;
         for(auto& dep:setResults)
             curSet.insert(getPtrAliasArg(dep));
-
-
         while(curDepth<depth)
         {
             precSet=curSet;
             curSet.clear();
             for(auto& dep:precSet)
             {
+                if(dep==nullptr)
+                    continue;
                 if(dep->type==Reference)
                     referenceAliasArg* ref = static_cast<referenceAliasArg*>(dep);   
                 else if(dep->type==Pointer)
                 {
                     pointersAliasArg* dep2 = static_cast<pointersAliasArg*>(dep);
-                    curSet.insert(dep2->aliased.begin(),dep2->aliased.end());
+                    if(dep2->aliased.size())
+                        for(auto& ptr:dep2->aliased)
+                            curSet.insert(ptr);
                 }
             }
-            
             curDepth++;
         }
         setResults.clear();
