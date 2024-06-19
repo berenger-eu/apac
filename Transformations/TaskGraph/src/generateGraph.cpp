@@ -81,7 +81,7 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
                         depNode->addReadLink(node,dep.first);
                     }
                 }
-                readFound = true;
+                readFound = true;    
                 
             } 
             if (dep.second.isWrite){
@@ -102,11 +102,12 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
                         auto depNode = dataUsedInWrite[dep.first];
                         depNode->addWriteLink(node,dep.first);
                     }    
-                }
-                if(readFound)
-                    dataUsedInRead[dep.first].insert(node);
+                }       
                 dataUsedInWrite[dep.first] = node;            
             }
+            if(readFound)
+                dataUsedInRead[dep.first].insert(node);
+            
         }
     }
 
