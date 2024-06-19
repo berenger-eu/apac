@@ -105,8 +105,20 @@ void AliasTable::addAliasPtr(const VarDecl* var,const VarDecl* ptr)
                 varAliasTable.insert({var,aliasArg{*var,AliasType::Variable}});
             tableValueVar= &varAliasTable.at(var);
         }
-        tableValueVar->pointers.insert(tableValuePtr);
-        tableValuePtr->aliased.insert(tableValueVar);
+        if(getPtrDepthAccess(var->getType(),ptr->getType(),var->getASTContext())!=0)
+        {
+            tableValueVar->pointers.insert(tableValuePtr);
+            tableValuePtr->aliased.insert(tableValueVar);
+        }
+        else if(tableValueVar->type==Pointer)
+        {
+            pointersAliasArg* tableValuePtr2=static_cast<pointersAliasArg*>(tableValueVar);
+            for(const auto& varAliased:tableValuePtr2->aliased)
+            {
+                tableValuePtr->aliased.insert(varAliased);
+                varAliased->pointers.insert(tableValuePtr);
+            }
+        }
     }
 }
 void AliasTable::removeDependencyPtr(const VarDecl* ptr)
@@ -191,6 +203,8 @@ void AliasTable::getModifiedVariables(std::unordered_set<const VarDecl*>& setRes
         for(auto& dep:curSet)
             setResults.insert(&dep->declaration);
     } 
+    else if(depth==-1)
+        setResults.clear();
 }
 
 void AliasTable::dumpVarTable() const
