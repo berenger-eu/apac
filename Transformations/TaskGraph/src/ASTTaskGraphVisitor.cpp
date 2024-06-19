@@ -14,7 +14,7 @@ void ASTTaskGraphVisitor::computeAliasesForRHS(const Expr* expression,std::unord
     aliasTable.getModifiedVariables(aliases,depth+1);
     for(auto& ali:aliases)
       if(v!=ali)
-        instr.curAliases.push_back({v,ali});
+        instr.curAliases.insert({v,ali});
   }
   //Handle CallExpr ( int * p=min(&a,&b) , p might point to a or b or something new)
   else if(isa<CallExpr>(rhs))
