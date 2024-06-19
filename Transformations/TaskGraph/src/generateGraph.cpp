@@ -11,10 +11,10 @@
 #include <fstream>
 
 int Node::idCounter = 0;
-int invisibleNodeCounter = 1;
+int invisibleNodeCounter = 0;
 
 void subGenerateDotGraph(const Graph& inGraph, std::ofstream& file){
-    file << "    invisibleNodeScope_" << invisibleNodeCounter << " [style=invis];\n";
+    file << "    invisibleNodeScope_" << invisibleNodeCounter++ << " [style=invis];\n";
     for(const auto& node : inGraph.nodes){
         file << "    " << node->id << " [label=\"" << node->instruction; 
         for(auto alias:node->instructionPtr->curAliases){
@@ -31,7 +31,7 @@ void subGenerateDotGraph(const Graph& inGraph, std::ofstream& file){
             file << "    " << node->id << " -> " << nextNode.first->id << "[label=\"  "<<ss.str()<<"\"];\n";
         }
         if(node->graph){
-            file << "    " << node->id << " -> invisibleNodeScope_" << ++invisibleNodeCounter << "[label=\"innerScope\"];\n";
+            file << "    " << node->id << " -> invisibleNodeScope_" << invisibleNodeCounter << "[label=\"innerScope\"];\n";
             file << "subgraph cluster_"<<node->id<<" {\n"<< "label = \"subGraph"<<node->id<<"\";\n";
             subGenerateDotGraph(*node->graph, file);
             file << "}\n";
