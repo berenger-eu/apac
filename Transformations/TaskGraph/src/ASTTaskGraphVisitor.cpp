@@ -5,13 +5,18 @@ void ASTTaskGraphVisitor::computeAliasesForRHS(const Expr* expression,std::unord
   int depth;
   const Expr* rhs=expression->IgnoreParenImpCasts();
   const DeclRefExpr* d=getSingleDeclRefExprInsideExpr(rhs);        
+  //We look for variables aliased in a given expression
+  //If we access a variable, then we found the aliases of the variable really accessed
+  //(*p), the variable is p, but in reality we access *p, so we need to look for the aliases of *p
   if(d)
   {
+    //Aliases will be values that refer (or might refer) to the same memory location
     //TODO:Modif ici pour ajout alias aux nodes
     const VarDecl* v=cast<VarDecl>(d->getDecl());
     aliases.insert(v);
     depth=getPtrDepthAccess(*v,*rhs);
-    aliasTable.getModifiedVariables(aliases,depth+1);
+    //We retrive the pointed values or the references
+    aliasTable.getModifiedVariables(aliases,depth);
     for(auto& ali:aliases)
       if(v!=ali)
         instr.curAliases.insert({v,ali});
@@ -30,8 +35,14 @@ void ASTTaskGraphVisitor::computeAliasesForRHS(const Expr* expression,std::unord
         const Expr* arg=c->getArg(i);
         std::unordered_set<const VarDecl*> subAliases;
         computeAliasesForRHS(arg,subAliases,instr);
-        for(auto& v:subAliases)
-          aliases.insert(v);
+        for(auto& alias:subAliases)
+          aliases.insert(alias);
+        if(isa<VarDecl>(getSingleDeclRefExprInsideExpr(arg)->getDecl()))
+        {
+          const VarDecl* v=cast<VarDecl>(getSingleDeclRefExprInsideExpr(arg)->getDecl());
+          if(getPtrDepthAccess(*v,*arg)==-1)
+            aliases.insert(v);
+        }
       }
     }
     //TODO: Handle CallExpr
@@ -69,37 +80,19 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instructi
     {
     //and we increment or decrement it, then it's a read and a write 
       int depth;
-      if(uop.isIncrementOp()||uop.isDecrementOp())
-      {
-        std::unordered_set<const VarDecl*> setVarDecl;
-        setVarDecl.insert(cast<VarDecl>(cast<DeclRefExpr>(d)->getDecl()));
-        aliasTable.getModifiedVariables(setVarDecl,getPtrDepthAccess(**setVarDecl.begin(),*subExpr));
-        for(auto& v:setVarDecl)
-        {
-          v->dump();
-          addDependencyRead(curInstr,v);
-          addDependencyWrite(curInstr,v);
-        }
-        addDependencyRead(curInstr,cast<VarDecl>(cast<DeclRefExpr>(d)->getDecl()));
+      const VarDecl* v=cast<VarDecl>(d->getDecl());
+      std::unordered_set<const VarDecl*> aliases;
+      
+      computeAliasesForRHS(&uop,aliases,curInstr);
+      for(auto& alias:aliases)
+          addDependencyRead(curInstr,alias);
 
-      }
-      //If we access the pointer , then we read the variables it may point to
-      else if((depth=getPtrDepthAccess(*cast<VarDecl>(d->getDecl()),uop))>0)
-      {
-        std::unordered_set<const VarDecl*> setVarDecl;
-        const VarDecl* v=cast<VarDecl>(d->getDecl());
-        setVarDecl.insert(v);
-        int depth=getPtrDepthAccess(*v,uop);
-        aliasTable.getModifiedVariables(setVarDecl,depth);
-        for(auto& curV:setVarDecl)
-          addDependencyRead(curInstr,curV);
-        addDependencyRead(curInstr,v);
-
-      }
-      //If it's not the address of the variable that is read, then it's a read of the variable
-      else if(depth!=-1)
-        addDependencyRead(curInstr,cast<VarDecl>(d->getDecl()));        
       //TODO: check if other cases are read and/or write
+      if(uop.isIncrementOp()||uop.isDecrementOp())
+        for(auto& alias:aliases)
+          addDependencyWrite(curInstr,alias);
+      if((getPtrDepthAccess(*v,*subExpr))>0)
+        addDependencyRead(curInstr,v);      
     }
     //Otherwise, unary expression affects a temporary value so we ignore it but still look through the expression
     else
@@ -115,32 +108,44 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator& bop,Instruc
       const DeclRefExpr* d=getSingleDeclRefExprInsideExpr(bop.getLHS());
       if(d)
       {
-        
-        std::unordered_set<const VarDecl*> setLeftVars;
-        setLeftVars.insert(cast<VarDecl>(d->getDecl()));
-        int depth=getPtrDepthAccess(**setLeftVars.begin(),*bop.getLHS());
-        aliasTable.getModifiedVariables(setLeftVars,depth);
+        const VarDecl* v=cast<VarDecl>(d->getDecl());
+        std::unordered_set<const VarDecl*> aliases;
+        // setLeftVars.insert(v);
+        computeAliasesForRHS(bop.getLHS(),aliases,curInstr);
+        // aliasTable.getModifiedVariables(setLeftVars,depth);
         if(isPointerQualType(bop.getLHS()->getType()))
         {
-          if(setLeftVars.size()==1)
-            aliasTable.removeDependencyPtr(*setLeftVars.begin());
+          //If a single pointer is aliased, then we know that its aliased elements will change
+          //If there are multiple, it's because we can't be sure which one is aliased, so we can't remove the dependencies
+          
+          if(aliases.size()==1)
+            aliasTable.removeDependencyPtr(*aliases.begin());
 
           std::unordered_set<const VarDecl*> aliasesRHS;
           computeAliasesForRHS(bop.getRHS(),aliasesRHS,curInstr);
-          
-          for(auto& ptrV:setLeftVars)
+llvm::errs()<<"Size of aliases: "<<aliasesRHS.size()<<aliases.size()<<"\n";
+          for(auto& alias:aliasesRHS)
+          alias->dump();
+          const DeclRefExpr* d=getSingleDeclRefExprInsideExpr(bop.getRHS());
+          if(d)
+            if(getPtrDepthAccess(*cast<VarDecl>(d->getDecl()),*bop.getRHS())==-1)
+              for(auto& aliasLeft:aliases)
+                aliasTable.addAliasPtr(cast<VarDecl>(d->getDecl()),aliasLeft);
+          for(auto& aliasLeft:aliases)
             for(auto& alias:aliasesRHS)
-              aliasTable.addAliasPtr(alias,ptrV);
+              aliasTable.addAliasPtr(alias,aliasLeft);
+          
         }
-        for(auto& v:setLeftVars)
+        for(auto& alias:aliases)
         {
-          addDependencyWrite(curInstr,v);
+          addDependencyWrite(curInstr,alias);
           if(isa<CompoundAssignOperator>(bop))
-            addDependencyRead(curInstr,v);
+            addDependencyRead(curInstr,alias);
         }
+        int depth=getPtrDepthAccess(*v,*bop.getLHS());
         if(depth>0)
-        addDependencyRead(curInstr,cast<VarDecl>(d->getDecl()));
-        
+          addDependencyRead(curInstr,v);  
+
       }
       else
         handleStmt(*bop.getLHS(),curInstr);
@@ -196,18 +201,12 @@ void ASTTaskGraphVisitor::handleCallExpr(const CallExpr& c,Instruction& curInstr
     else if( !(isFullConstType(p.getType())&&isReferenceQualType(p.getType()))
       ||isPointerQualType(p.getType()) )
     {
-      const Expr* curExpr =b; 
-      curExpr=curExpr->IgnoreCasts();
-      while(isa<UnaryOperator>(curExpr))
-      {
-        curExpr=cast<UnaryOperator>(curExpr)->getSubExpr();
-        curExpr=curExpr->IgnoreCasts();
-      }
+      const DeclRefExpr* d=getSingleDeclRefExprInsideExpr(b);
       //If the parameter can be modified (parameter is either a reference or a pointer AND it's not completely const)
       //  then there might be a write, so we assume there is one
-      if(isa<DeclRefExpr>(curExpr))
+      if(d)
       {
-        const VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(curExpr)->getDecl());
+        const VarDecl* v=cast<VarDecl>(d->getDecl());
         addDependencyRead(curInstr,v);
         addDependencyWrite(curInstr,v);
         std::unordered_set<const VarDecl*> aliases(aliasTable.getAliased(v));
