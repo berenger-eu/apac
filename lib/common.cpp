@@ -145,7 +145,7 @@ std::vector<const DeclRefExpr*> getAllDeclRefExprInsideExpr(const Expr* e)
     while(!vectNodes.empty())
     {
         const Expr* s=vectNodes.front();
-        if (isa<DeclRefExpr>(s))
+        if (isa<DeclRefExpr>(s)&&isa<VarDecl>(cast<DeclRefExpr>(s)->getDecl()))
             vectDeclRefExpr.push_back(cast<DeclRefExpr>(s));
         else
             for (auto it = s->child_begin(); it != s->child_end(); ++it)
