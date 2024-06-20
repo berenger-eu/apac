@@ -42,6 +42,18 @@ struct Instruction {
             llvm::errs()<<ss.str()<<"\n";
         }
     }
+    void dumpAliases() const{
+        llvm::errs()<<"Aliases for instruction: "<<instructionString<<"\n";
+        for(const auto& alias:curAliases){
+            std::stringstream ss;
+            ss << alias.first->getNameAsString() << " : " << alias.second->getNameAsString();
+            llvm::errs()<<ss.str()<<"\n";
+        }
+    }
+    void dump() const{
+        dumpDep();
+        dumpAliases();
+    };
 };
 
 /*

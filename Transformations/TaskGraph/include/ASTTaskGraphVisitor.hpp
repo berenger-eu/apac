@@ -53,6 +53,11 @@ public:
     std::vector<std::vector<Instruction>> functionsInstructionsVector;
 
     const AliasTable& getAliasTable() const{return aliasTable;}
+    inline void dumpInstructions() const {
+        for(const auto& function : functionsInstructionsVector)
+            for(const auto& instr : function)
+                instr.dump(); 
+    }
 private:
     bool isEmptyInstruction(const Instruction& instr){return instr.dependencies.size()==0;};
     inline void addDependencyRead(Instruction& instr,const VarDecl* d){
