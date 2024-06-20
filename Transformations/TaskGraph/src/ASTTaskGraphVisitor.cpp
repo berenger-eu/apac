@@ -51,9 +51,10 @@ void ASTTaskGraphVisitor::computeAliasesForRHS(const Expr* expression,std::unord
     handleStmt(*rhs,instr);
 }
 
-void ASTTaskGraphVisitor::handleCXXOperatorCallExpr(const CXXOperatorCallExpr& c,Instruction& instr)
+void ASTTaskGraphVisitor::handleCXXOperatorCallExpr(const CXXOperatorCallExpr& c,Instruction& instr,bool isWrite)
 {
-  if(c.isAssignmentOp()&&c.getNumArgs()==2)
+  if(c.isAssignmentOp()&&c.getNumArgs()==2){
+
     if(isa<DeclRefExpr>(c.getArg(0))&&isReferenceQualType(c.getArg(0)->getType()))
     {
       const VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(c.getArg(0))->getDecl());
@@ -69,9 +70,14 @@ void ASTTaskGraphVisitor::handleCXXOperatorCallExpr(const CXXOperatorCallExpr& c
         }
       }
     }
+  }
+  else{
+    for(const auto& arg:c.arguments())
+      handleStmt(*arg,instr,isWrite);
+  }
 }
 
-void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instruction& curInstr)
+void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instruction& curInstr,bool isWrite)
 {
     Expr* subExpr=uop.getSubExpr();
     //If we have a variable
@@ -99,7 +105,7 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator& uop,Instructi
       handleStmt(*subExpr,curInstr);
 }
 
-void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator& bop,Instruction& curInstr)
+void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator& bop,Instruction& curInstr,bool isWrite)
 {
   //Special case for assignment operators, because it is a write
     if(bop.isAssignmentOp())
@@ -148,7 +154,7 @@ llvm::errs()<<"Size of aliases: "<<aliasesRHS.size()<<aliases.size()<<"\n";
 
       }
       else
-        handleStmt(*bop.getLHS(),curInstr);
+        handleStmt(*bop.getLHS(),curInstr,true);
       handleStmt(*bop.getRHS(),curInstr);
     }
     //Otherwise, we just look through the expression on both sides
@@ -158,7 +164,7 @@ llvm::errs()<<"Size of aliases: "<<aliasesRHS.size()<<aliases.size()<<"\n";
       handleStmt(*bop.getRHS(),curInstr);
     }
 }
-void ASTTaskGraphVisitor::handleMemberCallExpr(const CXXMemberCallExpr& c,Instruction& curInstr)
+void ASTTaskGraphVisitor::handleMemberCallExpr(const CXXMemberCallExpr& c,Instruction& curInstr,bool isWrite)
 {
   Expr* obj=c.getImplicitObjectArgument();
   if(isa<DeclRefExpr>(obj))
@@ -172,7 +178,7 @@ void ASTTaskGraphVisitor::handleMemberCallExpr(const CXXMemberCallExpr& c,Instru
     handleStmt(*obj,curInstr);
   handleCallExpr(c,curInstr);
 }
-void ASTTaskGraphVisitor::handleCallExpr(const CallExpr& c,Instruction& curInstr)
+void ASTTaskGraphVisitor::handleCallExpr(const CallExpr& c,Instruction& curInstr,bool isWrite)
 {
   //TODO: Methods and read/write on object/data ?
   const FunctionDecl& f=*(c.getDirectCallee());
@@ -225,41 +231,43 @@ void ASTTaskGraphVisitor::handleCallExpr(const CallExpr& c,Instruction& curInstr
       handleStmt(*b,curInstr);   
   }
 }
-void ASTTaskGraphVisitor::handleStmt(const Stmt& st,Instruction& instr)
+void ASTTaskGraphVisitor::handleStmt(const Stmt& st,Instruction& instr,bool isWrite)
 {
   // Simple switch case to call the respective handle method, except for DeclRefExpr which is a variable so it is a read
   if(isa<ReturnStmt>(st))
   {
     if(cast<ReturnStmt>(st).getRetValue())
-      handleStmt(*(cast<ReturnStmt>(st).getRetValue()),instr);
+      handleStmt(*(cast<ReturnStmt>(st).getRetValue()),instr,isWrite);
   }
   else if(isa<Expr>(st))
   {
     const Expr& curExp=*(cast<Expr>(st).IgnoreParenImpCasts()); 
     if(isa<CXXOperatorCallExpr>(curExp))
     {
-      handleCXXOperatorCallExpr(cast<CXXOperatorCallExpr>(curExp),instr);
+      handleCXXOperatorCallExpr(cast<CXXOperatorCallExpr>(curExp),instr,isWrite);
     }
     else if(isa<UnaryOperator>(curExp))
     {
-      handleUnaryOperator(cast<UnaryOperator>(curExp),instr);
+      handleUnaryOperator(cast<UnaryOperator>(curExp),instr,isWrite);
     }
     else if(isa<BinaryOperator>(curExp))
     {
-      handleBinaryOperator(cast<BinaryOperator>(curExp),instr);
+      handleBinaryOperator(cast<BinaryOperator>(curExp),instr,isWrite);
     }
     else if(isa<CXXMemberCallExpr>(curExp))
     {
-      handleMemberCallExpr(cast<CXXMemberCallExpr>(curExp),instr);
+      handleMemberCallExpr(cast<CXXMemberCallExpr>(curExp),instr,isWrite);
     }
     else if(isa<CallExpr>(curExp))
     {
-      handleCallExpr(cast<CallExpr>(curExp),instr);
+      handleCallExpr(cast<CallExpr>(curExp),instr,isWrite);
     }
     else if(isa<DeclRefExpr>(curExp))
     {
       const VarDecl* v=cast<VarDecl>(cast<DeclRefExpr>(curExp).getDecl());
       addDependencyRead(instr,v);
+      if(isWrite)
+        addDependencyWrite(instr,v);
     }
     //Ignored expressions case
     else if(isa<IntegerLiteral>(curExp))

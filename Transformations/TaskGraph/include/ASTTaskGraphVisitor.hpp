@@ -87,12 +87,12 @@ private:
         functionsInstructionsVector.back().push_back(instr);
         return true;
     }
-    void handleCXXOperatorCallExpr(const CXXOperatorCallExpr& ,Instruction&);
-    void handleUnaryOperator(const UnaryOperator& ,Instruction&);
-    void handleBinaryOperator(const BinaryOperator& ,Instruction&);
-    void handleCallExpr(const CallExpr& ,Instruction&);
-    void handleStmt(const Stmt& st,Instruction&);
-    void handleMemberCallExpr(const CXXMemberCallExpr& ,Instruction&);
+    void handleCXXOperatorCallExpr(const CXXOperatorCallExpr& ,Instruction&,bool isWrite=false);
+    void handleUnaryOperator(const UnaryOperator& ,Instruction&,bool isWrite=false);
+    void handleBinaryOperator(const BinaryOperator& ,Instruction&,bool isWrite=false);
+    void handleCallExpr(const CallExpr& ,Instruction&,bool isWrite=false);
+    void handleStmt(const Stmt& st,Instruction&,bool isWrite=false);
+    void handleMemberCallExpr(const CXXMemberCallExpr& ,Instruction&,bool isWrite=false);
     void computeAliasesForRHS(const Expr* bop,std::unordered_set<const VarDecl*>&, Instruction& instr);
     Rewriter &TheRewriter;
     AliasTable aliasTable;
