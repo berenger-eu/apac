@@ -18,7 +18,10 @@ void subGenerateDotGraph(const Graph& inGraph, std::ofstream& file){
     for(const auto& node : inGraph.nodes){
         file << "    " << node->id << " [label=\"" << node->instruction; 
         for(auto alias:node->instructionPtr->curAliases){
-            file << "\n" << alias.first->getNameAsString() << " : " << alias.second->getNameAsString();
+            file << "\n" ;
+            for(int nbStar = 0; nbStar < getPtrDepthAccess(alias.first->getType(),alias.second->getType(),alias.first->getASTContext()); nbStar++)
+                file << "*";
+            file<<alias.first->getNameAsString() << " : " << alias.second->getNameAsString();
         }
         file<<"\"];\n";
         for (const auto& nextNode : node->next) {
