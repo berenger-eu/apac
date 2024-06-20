@@ -203,6 +203,55 @@ void AliasTable::getModifiedVariables(std::unordered_set<const VarDecl*>& setRes
         for(auto& dep:curSet)
             setResults.insert(&dep->declaration);
     } 
+    //Might be merged with previous case
+    else if(depth==0)
+    {
+        if(isReferenceQualType((*setResults.begin())->getType())){
+            llvm::errs()<<"RefCase\n\n";
+            dumpRefTable();
+        (*setResults.begin())->dump();
+        }
+        std::unordered_set<aliasArg*> curSet;
+        for(auto& dep:setResults)
+            if(getAliasArg(dep)!=nullptr)
+                curSet.insert(getAliasArg(dep));
+        //Retrieve the references to the variable
+        std::unordered_set<aliasArg*> tempAliased;
+        for(auto& dep:curSet)
+            tempAliased.insert(dep);
+        int oldSize=0,newSize=tempAliased.size();
+        
+        while(oldSize!=newSize)
+        {
+            oldSize=newSize;
+            //For each variable
+            for(auto& dep:tempAliased)
+            {
+                //If its a reference, then add the aliased variables
+                if(dep->type==Reference)
+                {
+                    referenceAliasArg* ref = static_cast<referenceAliasArg*>(dep);
+                    for(auto& alias:ref->aliased)
+                        tempAliased.insert(alias);
+                }
+                //We add references to the current variable to the set of modified variable
+                //We don't add it to tempAliased because those references can't alias a different variable
+                //Either they refer to a different variable (but we couldn't be sure of it at compile time)
+                //Or they refer to the current variable, in which case its other aliased variables aren't really aliased
+                for(auto& ref:dep->references)
+                    curSet.insert(ref);
+            }
+            newSize=tempAliased.size();
+        }
+        
+       for (auto& alias:tempAliased)
+            curSet.insert(alias);
+        for(auto& dep:curSet)
+            setResults.insert(&dep->declaration);
+        for(auto& dep:setResults)
+            dep->dump();
+        llvm::errs()<<"done\n";
+    }
     else if(depth==-1)
         setResults.clear();
 }
