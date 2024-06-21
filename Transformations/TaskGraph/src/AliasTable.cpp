@@ -2,45 +2,6 @@
 
 using namespace clang;
 
-void aliasArg::dump() const{
-        llvm::errs()<<"AliasArg: "<<declaration.getNameAsString()<<"\n";
-        switch(type){
-            case Reference:
-                llvm::errs()<<"Type: Reference\n";
-                break;
-            case Pointer:
-                llvm::errs()<<"Type: Pointer\n";
-                break;
-            case Variable:
-                llvm::errs()<<"Type: Variable\n";
-                break;
-            default:
-                llvm::errs()<<"Type: Unknown\n";
-                break;
-        }
-        llvm::errs()<<"Pointers: ";
-        for(const auto& ptr:pointers)
-            llvm::errs()<<ptr->declaration.getNameAsString()<<" ";
-        llvm::errs()<<"\n";
-        llvm::errs()<<"References: ";
-        for(const auto& ref:references)
-            llvm::errs()<<ref->declaration.getNameAsString()<<" ";
-        llvm::errs()<<"\n";
-    }
-void pointersAliasArg::dump() const{
-        aliasArg::dump();
-        llvm::errs()<<"Aliased: ";
-        for(const auto& aliased:aliased)
-            llvm::errs()<<aliased->declaration.getNameAsString()<<" ";
-        llvm::errs()<<"\n";
-    }
-void referenceAliasArg::dump() const{
-        aliasArg::dump();
-        llvm::errs()<<"Aliased: ";
-        for(const auto& aliased:aliased)
-            llvm::errs()<<aliased->declaration.getNameAsString()<<" ";
-        llvm::errs()<<"\n";
-}
 std::unordered_set<const VarDecl*> AliasTable::getAliased(const VarDecl* v){
     std::unordered_set<const VarDecl*> aliases;
     std::stack<aliasArg*> stack;
@@ -172,13 +133,14 @@ void AliasTable::getPointersAliases(const VarDecl* v,std::unordered_set<const Va
 
 void AliasTable::getModifiedVariables(std::unordered_set<const VarDecl*>& setResults,const int& depth) 
 {
-    
+    //Access to pointed variables
     if(depth>0)
     {
         int curDepth=0;
         std::unordered_set<aliasArg*> curSet,precSet;
         for(auto& dep:setResults)
             curSet.insert(getAliasArg(dep));
+        //We go through all aliased variables until we reach the desired depth
         while(curDepth<depth)
         {
             precSet=curSet;
@@ -187,8 +149,10 @@ void AliasTable::getModifiedVariables(std::unordered_set<const VarDecl*>& setRes
             {
                 if(dep==nullptr)
                     continue;
+                //TODO:handle references
                 if(dep->type==Reference)
                     referenceAliasArg* ref = static_cast<referenceAliasArg*>(dep);   
+                //If its a pointer, we add all of its aliased variables
                 else if(dep->type==Pointer)
                 {
                     pointersAliasArg* dep2 = static_cast<pointersAliasArg*>(dep);
@@ -252,9 +216,12 @@ void AliasTable::getModifiedVariables(std::unordered_set<const VarDecl*>& setRes
             dep->dump();
         llvm::errs()<<"done\n";
     }
+    //Access to address of variable, so there is no modifications
     else if(depth==-1)
         setResults.clear();
 }
+
+//      Dump Functions
 
 void AliasTable::dumpVarTable() const
 {
@@ -287,4 +254,45 @@ void AliasTable::dumpPtrTable() const
     }
     llvm::errs()<<"\n";
 
+}
+
+
+void aliasArg::dump() const{
+        llvm::errs()<<"AliasArg: "<<declaration.getNameAsString()<<"\n";
+        switch(type){
+            case Reference:
+                llvm::errs()<<"Type: Reference\n";
+                break;
+            case Pointer:
+                llvm::errs()<<"Type: Pointer\n";
+                break;
+            case Variable:
+                llvm::errs()<<"Type: Variable\n";
+                break;
+            default:
+                llvm::errs()<<"Type: Unknown\n";
+                break;
+        }
+        llvm::errs()<<"Pointers: ";
+        for(const auto& ptr:pointers)
+            llvm::errs()<<ptr->declaration.getNameAsString()<<" ";
+        llvm::errs()<<"\n";
+        llvm::errs()<<"References: ";
+        for(const auto& ref:references)
+            llvm::errs()<<ref->declaration.getNameAsString()<<" ";
+        llvm::errs()<<"\n";
+    }
+void pointersAliasArg::dump() const{
+        aliasArg::dump();
+        llvm::errs()<<"Aliased: ";
+        for(const auto& aliased:aliased)
+            llvm::errs()<<aliased->declaration.getNameAsString()<<" ";
+        llvm::errs()<<"\n";
+    }
+void referenceAliasArg::dump() const{
+        aliasArg::dump();
+        llvm::errs()<<"Aliased: ";
+        for(const auto& aliased:aliased)
+            llvm::errs()<<aliased->declaration.getNameAsString()<<" ";
+        llvm::errs()<<"\n";
 }

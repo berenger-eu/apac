@@ -40,7 +40,8 @@ struct referenceAliasArg : public aliasArg
     std::unordered_set<aliasArg*> aliased;
     void dump() const override;
 };
-
+//Three tables, one for each type of data (variable,pointers and references)
+//It would be possible to only use of table for each type
 typedef std::unordered_map<const clang::NamedDecl*, struct aliasArg> VariableAliasTable;
 typedef std::unordered_map<const clang::NamedDecl*, struct referenceAliasArg> ReferenceAliasTable;
 typedef std::unordered_map<const clang::NamedDecl*, struct pointersAliasArg> PointersAliasTable;
@@ -48,8 +49,11 @@ typedef std::unordered_map<const clang::NamedDecl*, struct pointersAliasArg> Poi
 class AliasTable {
     public:
         AliasTable(Rewriter& R) : TheRewriter(R){}
+        //Retrieves the variables that are aliases of the given variable
         const std::unordered_set<const VarDecl*> getAliases(const VarDecl* v ) const;
+        //Retrives the variable that are aliased by the given variable
         std::unordered_set<const VarDecl*> getAliased(const VarDecl* v) ;
+        
         inline void addVariableToTables(const VarDecl* v){
             if(v!=nullptr)
             {
@@ -60,9 +64,16 @@ class AliasTable {
                 //   ptrAliasTable.insert({getKey(v),ptr});
             }
         }
+        //Removes dependencies of the given variable
+        //So it will empty its list of aliased variables (and those variables will remove the link to the given variable)
         void removeDependencyPtr(const VarDecl* ptr);
+        //Adds an alias because of a reference
         void addAliasReference(const VarDecl* var,const VarDecl* ref);
+        //Adds an alias because of a pointer
         void addAliasPtr(const VarDecl* var,const VarDecl* ptr);
+        //Takes variables in setResults and returns in setResults variables that would be modified by an access of the given depth
+        //Example: if depth is 0, it will return the same variables,their references (and if it's a reference, the aliased variables)
+        //For a depth of 1, it will act as with depth 0 but with the pointed variables (so *p, references to it, and referenced variables if any) 
         void getModifiedVariables(std::unordered_set<const VarDecl*>& setResults,const int& depth); 
         void inline dump() const
         {
@@ -72,9 +83,11 @@ class AliasTable {
         };
 
     private:
+        //Returns a key from a variable declaration
         inline const NamedDecl* getKey(const VarDecl* v) const{
             return v->getCanonicalDecl();
         }
+        //Returns the element from the table that corresponds to the given variable
         inline aliasArg* getAliasArg(const VarDecl* v)
         {
             aliasArg* result=nullptr;

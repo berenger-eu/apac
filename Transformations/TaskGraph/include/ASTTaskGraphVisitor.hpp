@@ -19,6 +19,7 @@ public:
     inline bool VisitStmt(Stmt *s){return true;}
     //Traverse methods lets us stop visiting nodes that we don't need
 
+
     inline bool TraverseCXXMethodDecl(CXXMethodDecl *m){
         return TraverseFunctionDecl(m);
     }
@@ -78,21 +79,28 @@ private:
                 instr.dependencies.find(alias->getCanonicalDecl())->second.isWrite=true;  
         }
     }
+    //Basic code used by most Traverse methods to handle simple elements
     bool traverseSimpleElements(Stmt* s){
+        //Ignore statements that are in headers
         if(isInHeaders(TheRewriter.getSourceMgr(),s->getBeginLoc())) 
             return true;
-        
+        //Create an instruction and handle it
         Instruction instr{s,getStmtAsString(s,TheRewriter.getLangOpts()),false};
         handleStmt(*s,instr);
+        //Add the instruction to the current function vector of instructions
         functionsInstructionsVector.back().push_back(instr);
         return true;
     }
+    //TODO: rewrite handles, they should be simpler to understand
+    //It might be needed to add some functions for clarity
+
     void handleCXXOperatorCallExpr(const CXXOperatorCallExpr& ,Instruction&,bool isWrite=false);
     void handleUnaryOperator(const UnaryOperator& ,Instruction&,bool isWrite=false);
     void handleBinaryOperator(const BinaryOperator& ,Instruction&,bool isWrite=false);
     void handleCallExpr(const CallExpr& ,Instruction&,bool isWrite=false);
     void handleStmt(const Stmt& st,Instruction&,bool isWrite=false);
     void handleMemberCallExpr(const CXXMemberCallExpr& ,Instruction&,bool isWrite=false);
+    //Compute the aliases for a given expression and returns them in the set
     void computeAliasesForRHS(const Expr* bop,std::unordered_set<const VarDecl*>&, Instruction& instr);
     Rewriter &TheRewriter;
     AliasTable aliasTable;
