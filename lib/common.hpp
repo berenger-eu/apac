@@ -2,6 +2,8 @@
 
 #include <sstream>
 #include <string>
+#include <queue>
+#include  <vector>
 
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Decl.h"
@@ -12,6 +14,8 @@ using namespace clang;
 
 //Contains functions used by multiple transformations
 
+//Returns the given Stmt as a String
+std::string getStmtAsString(const Stmt*,const LangOptions&);
 //Returns the given Expr as a String
 std::string getExprAsString(const Expr*,const LangOptions&);
 
@@ -34,6 +38,24 @@ bool isPointerQualType(clang::QualType );
 //True when the input is a reference
 bool isReferenceQualType(clang::QualType );
 
+//Returns the leafs (CallExpr,DeclRefExpr,...) of a given statement
+void getLeafs( clang::Stmt* s,std::vector< clang::Stmt*>& leafs);
+
+//Returns the DeclRefExpr (single) of a given Expr, none if there are multiple
+const DeclRefExpr* getSingleDeclRefExprInsideExpr(const Expr* e);
+//Returns all DeclRefExpr inside a given Expr
+std::vector<const DeclRefExpr*> getAllDeclRefExprInsideExpr(const Expr* e);
+
+//True when the input is a completely constant type (exemple, const int *const )
+bool isFullConstType(const QualType& qType);
+
+
+
+//Get the depth of the pointer access 
+//(-1 when getting the addres of v,0 when getting v, 1 when getting *v, 2 when getting **v, ...)
+int getPtrDepthAccess(const clang::VarDecl& v,const clang::Expr& e);
+int getPtrDepthAccess(QualType qt1, QualType qt2,const ASTContext& aContext);
+
 //Inline Function 
 
 //True if v is an Array, false otherwise
@@ -50,6 +72,10 @@ inline QualType getUnreferencedQType(QualType qt,const ASTContext& aContext){
 //Returns a reference to a given type
 inline QualType getReferenceToQType(QualType qt,const ASTContext& aContext){
   return aContext.getLValueReferenceType(qt);
+}
+
+inline QualType getPointerToQType(QualType qt,const ASTContext& aContext){
+  return aContext.getPointerType(qt);
 }
 
 //Returns the initialization part of a variable declaration as a string
