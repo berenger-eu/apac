@@ -39,6 +39,7 @@ bool isPointerQualType(clang::QualType );
 bool isReferenceQualType(clang::QualType );
 
 //Returns the leafs (CallExpr,DeclRefExpr,...) of a given statement
+//TODO: Check usefulness and remove/replace if not needed
 void getLeafs( clang::Stmt* s,std::vector< clang::Stmt*>& leafs);
 
 //Returns the DeclRefExpr (single) of a given Expr, none if there are multiple
@@ -54,6 +55,8 @@ bool isFullConstType(const QualType& qType);
 //Get the depth of the pointer access 
 //(-1 when getting the addres of v,0 when getting v, 1 when getting *v, 2 when getting **v, ...)
 int getPtrDepthAccess(const clang::VarDecl& v,const clang::Expr& e);
+//Get the depth of the pointer access 
+//-1 when qt2 is a pointer to qt1, 0 when qt1 is qt2, 1 when qt1 is a pointer to qt2, ...
 int getPtrDepthAccess(QualType qt1, QualType qt2,const ASTContext& aContext);
 
 //Inline Function 
@@ -83,7 +86,7 @@ inline std::string getInitString(const VarDecl& v)
 {
     return getExprAsString(v.getInit(),v.getASTContext().getLangOpts());
 }
-
+//True when the input location is in a system header or not in the main file
 inline bool isInHeaders(SourceManager& sm,SourceLocation sl)
 {
   return (!(sm.isWrittenInMainFile(sl)))||sm.isInSystemHeader(sl);

@@ -67,14 +67,7 @@ std::string getStmtAsString(const Stmt* statement,const LangOptions& langOpt)
         return stmtString;
     }
 }
-std::string getStmtAsString(const ForStmt* f,const LangOptions& langOpt)
-{
-    
-}
-std::string getStmtAsString(const IfStmt* i,const LangOptions& langOpt)
-{
-    
-}
+
 std::string getExprAsString(const Expr* expression,const LangOptions& langOpt)
 {
     std::string exprString;
@@ -95,10 +88,12 @@ bool isPointerQualType(QualType qType)
 {
     const Type* typeTemp;
     bool returnValue=false;
+    //Check for simple pointers type
     if((typeTemp=qType.getTypePtrOrNull()))
     {
         returnValue=typeTemp->isPointerType();
     }
+    //TODO:Check for more complex pointer types (shared_ptr,unique_ptr,...)
     return returnValue;
 }
 bool isReferenceQualType(QualType qType)
@@ -106,12 +101,13 @@ bool isReferenceQualType(QualType qType)
     bool returnValue=false;
 
     returnValue=qType->isReferenceType();
+    //We check for special cases where the type is not a simple reference type
+    //Here, we check if it's a reference_wrapper
     if(!returnValue)
         returnValue=qType.getAsString().find("reference_wrapper")!=std::string::npos;
 
     return returnValue;
 }
-
 void getLeafs(Stmt* st,std::vector< Stmt*>& leafs)
 {
     std::queue<Stmt*> vectNodes;
@@ -169,8 +165,10 @@ bool isFullConstType(const QualType& qType)
     bool workDone=false;
     bool returnValue=true;
     QualType qTypeTemp=qType;
+    //We remove the reference if there is one, since it's supposed to be const
     if(isReferenceQualType(qType))
         qTypeTemp=qType.getNonReferenceType();
+    //We check all types until we reach the last one, we stop if we find a non-const type
     do
     {
         if(qTypeTemp.isConstQualified())
@@ -187,10 +185,14 @@ bool isFullConstType(const QualType& qType)
 
 int getPtrDepthAccess(QualType qt1, QualType qt2,const ASTContext& aContext){
     int returnValue=0;
+    //If both types are the same, then we return 0 since they have the same depth 
     if(qt1!=qt2)
     {
+        //If a pointer to type qt1 is equal to qt2, then qt2 is a pointer to type qt1
         if(getPointerToQType(qt1,aContext)==qt2)
             returnValue=-1;
+        //Else, we compare type pointed by qt1 until we find the same type as qt2
+        //The number of iteration is the depth of the pointer access
         else
             while(qt1!=qt2&&qt1.getTypePtrOrNull()&&qt2.getTypePtrOrNull()&&qt1->getPointeeType()!=qt2->getPointeeType())
             {
