@@ -67,14 +67,6 @@ std::string getStmtAsString(const Stmt* statement,const LangOptions& langOpt)
         return stmtString;
     }
 }
-std::string getStmtAsString(const ForStmt* f,const LangOptions& langOpt)
-{
-    
-}
-std::string getStmtAsString(const IfStmt* i,const LangOptions& langOpt)
-{
-    
-}
 std::string getExprAsString(const Expr* expression,const LangOptions& langOpt)
 {
     std::string exprString;
@@ -209,4 +201,52 @@ int getPtrDepthAccess(const clang::VarDecl& v,const clang::Expr& e)
     const QualType& qt1=v.getType();
     const QualType& qt2=e.getType();
     return getPtrDepthAccess(qt1,qt2,v.getASTContext());
+}
+
+std::deque<clang::ArraySubscriptExpr*> getArraySubscripts(const clang::Expr* e)
+{
+    std::deque<clang::ArraySubscriptExpr*> queueArraySubscriptExpr;
+    Expr* curExpr;
+    std::stack<Expr*> stackExpr;
+    stackExpr.push(curExpr);
+    while(!stackExpr.empty())
+    {
+        curExpr=stackExpr.top();
+        stackExpr.pop();
+        if(isa<ArraySubscriptExpr>(curExpr)){
+            ArraySubscriptExpr* ase=cast<ArraySubscriptExpr>(curExpr);
+            queueArraySubscriptExpr.push_front(ase);
+            stackExpr.push(ase->getBase());
+        }
+        else{
+            for (auto it = curExpr->child_begin(); it != curExpr->child_end(); ++it)
+                if(isa<Expr>(*it))
+                    stackExpr.push(cast<Expr>(*it));
+        }
+    }
+    return queueArraySubscriptExpr;
+}
+std::vector<clang::Expr*> getArraySubscriptsIndexes(const clang::Expr* e)
+{
+    std::vector<clang::Expr*> vectArraySubscriptExprIndexes;
+    std::deque<clang::ArraySubscriptExpr*> queueArraySubscriptExpr = getArraySubscripts(e);
+    for(auto& expr : queueArraySubscriptExpr)
+    {
+        vectArraySubscriptExprIndexes.push_back(expr->getIdx());
+    }
+    return vectArraySubscriptExprIndexes;
+}
+std::vector<int> getArraySubscriptsIndexesValues(const clang::Expr* e)
+{
+    std::vector<int> vectArraySubscriptExpr;
+    std::vector<Expr*> vectExpr=getArraySubscriptsIndexes(e);
+    for(auto& expr : vectExpr)
+    {
+        //TODO: Handle cases with evaluable expressions (5+4 , ...)
+        if(isa<IntegerLiteral>(expr))
+            vectArraySubscriptExpr.push_back(cast<IntegerLiteral>(expr)->getValue().getSExtValue());
+        else
+            vectArraySubscriptExpr.push_back(-1);
+    }
+    return vectArraySubscriptExpr;
 }
