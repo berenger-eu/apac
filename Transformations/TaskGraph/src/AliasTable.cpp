@@ -75,12 +75,16 @@ void AliasTable::addAliasReference(const VarDecl* var,const VarDecl* ref)
 {
     if(var!=nullptr && ref!=nullptr)
     {
-        if(refAliasTable.count(ref)==0)
-            refAliasTable.insert({ref,referenceAliasArg{*ref}});
-        if(varAliasTable.count(var)==0)
-            varAliasTable.insert({var,aliasArg{*var,AliasType::Variable}});
-        referenceAliasArg* tableValueRef = &refAliasTable.at(ref);
-        aliasArg* tableValueVar = &varAliasTable.at(var);
+        referenceAliasArg* tableValueRef = getRefAliasArg(ref);
+        aliasArg* tableValueVar = getAliasArg(var);
+        if(tableValueRef==nullptr){
+            refAliasTable.insert({{getKey(ref),std::vector<int>()},referenceAliasArg{*ref}});
+            tableValueRef=getRefAliasArg(ref);
+        }
+        if(tableValueVar==nullptr){
+            varAliasTable.insert({{getKey(var),std::vector<int>()},aliasArg{*var,AliasType::Variable}});
+            tableValueVar=getAliasArg(var);
+        }
         tableValueVar->references.insert(tableValueRef);
         tableValueRef->aliased.insert(tableValueVar);
     }
@@ -89,21 +93,25 @@ void AliasTable::addAliasPtr(const VarDecl* var,const VarDecl* ptr)
 {
     if(var!=nullptr && ptr!=nullptr)
     {
-        pointersAliasArg* tableValuePtr;
-        aliasArg* tableValueVar;
-        if(ptrAliasTable.count(ptr)==0)
-            ptrAliasTable.insert({ptr,pointersAliasArg{*ptr}});
-        tableValuePtr = &ptrAliasTable.at(ptr);    
+        pointersAliasArg* tableValuePtr=getPtrAliasArg(ptr);
+        aliasArg* tableValueVar=getAliasArg(var);
+        if(tableValuePtr==nullptr){
+            ptrAliasTable.insert({{getKey(ptr),std::vector<int>()},pointersAliasArg{*ptr}});    
+            tableValuePtr=getPtrAliasArg(ptr);
+        }
         if(isPointerQualType(var->getType()))
         {
-            if(ptrAliasTable.count(var)==0)
-                ptrAliasTable.insert({var,pointersAliasArg{*var}});
-            tableValueVar= &ptrAliasTable.at(var);
+            if(tableValueVar==nullptr){
+                ptrAliasTable.insert({{getKey(var),std::vector<int>()},pointersAliasArg{*var}});
+                tableValueVar=getAliasArg(var);
+            }
         }
         else{
-            if(varAliasTable.count(var)==0)
-                varAliasTable.insert({var,aliasArg{*var,AliasType::Variable}});
-            tableValueVar= &varAliasTable.at(var);
+            if(tableValueVar==nullptr){
+                varAliasTable.insert({{getKey(var),std::vector<int>()},aliasArg{*var,AliasType::Variable}});
+                tableValueVar=getAliasArg(var);
+            }
+        
         }
         if(getPtrDepthAccess(var->getType(),ptr->getType(),var->getASTContext())!=0)
         {
@@ -125,9 +133,9 @@ void AliasTable::removeDependencyPtr(const VarDecl* ptr)
 {
     if(ptr!=nullptr)
     {
-        if(ptrAliasTable.count(ptr)!=0)
+        pointersAliasArg* tableValuePtr= getPtrAliasArg(ptr);
+        if(tableValuePtr)
         {
-            pointersAliasArg* tableValuePtr = &ptrAliasTable.at(ptr);
             for (const auto& varAliased:tableValuePtr->aliased)
             {
                 aliasArg* tableValueVar = getAliasArg(&varAliased->declaration);
@@ -138,36 +146,39 @@ void AliasTable::removeDependencyPtr(const VarDecl* ptr)
     }
 }
 const std::unordered_set<const VarDecl*> AliasTable::getAliases(const VarDecl* v ) const{
-    std::unordered_set<const VarDecl*> aliases;
+    std::unordered_set<const VarDecl*> aliases,prevAliases;
     aliases.insert(v);
     int oldSize=1;
     int newsize=1;
     do{
-        oldSize=aliases.size();
+        oldSize=newsize;
         for(const auto& alias:aliases)
         {
-            getReferencesAliases(alias,aliases);
+            getReferencesAliases(alias,prevAliases);
             // getPointersAliases(alias,aliases);
-            if(refAliasTable.count(alias)!=0)
-                for(const auto& ref:refAliasTable.at(alias).aliased)
+            const referenceAliasArg* refAlias=getRefAliasArg(alias) ;
+            if(refAlias)
+                for(const auto& ref:refAlias->aliased)
                     aliases.insert(&ref->declaration);
         }
+        for(const auto& prevAlias:prevAliases)
+            aliases.insert(prevAlias);
         newsize=aliases.size();
     }
     while(newsize!=oldSize);
     return aliases;
 };
 void AliasTable::getReferencesAliases(const VarDecl* v,std::unordered_set<const VarDecl*>& aliases) const{
-    if(varAliasTable.count(v)==0)
-        return;
-    for(const auto& alias:varAliasTable.at(v).references)
-        aliases.insert(&alias->declaration);
+    auto refAlias=getAliasArg(v) ;
+    if(refAlias)
+        for(const auto& alias:refAlias->references)
+            aliases.insert(&alias->declaration);
 }
 void AliasTable::getPointersAliases(const VarDecl* v,std::unordered_set<const VarDecl*>& aliases) const{
-    if(varAliasTable.count(v)==0)
-        return;
-    for(const auto& alias:varAliasTable.at(v).pointers)
-        aliases.insert(&alias->declaration);
+    auto ptrAlias =getAliasArg(v) ;
+    if(ptrAlias)
+        for(const auto& alias:ptrAlias->pointers)
+            aliases.insert(&alias->declaration);
 }
 
 void AliasTable::getModifiedVariables(std::unordered_set<const VarDecl*>& setResults,const int& depth) 
@@ -176,7 +187,7 @@ void AliasTable::getModifiedVariables(std::unordered_set<const VarDecl*>& setRes
     if(depth>0)
     {
         int curDepth=0;
-        std::unordered_set<aliasArg*> curSet,precSet;
+        std::unordered_set<const aliasArg*> curSet,precSet;
         for(auto& dep:setResults)
             curSet.insert(getAliasArg(dep));
         while(curDepth<depth)
@@ -188,10 +199,10 @@ void AliasTable::getModifiedVariables(std::unordered_set<const VarDecl*>& setRes
                 if(dep==nullptr)
                     continue;
                 if(dep->type==Reference)
-                    referenceAliasArg* ref = static_cast<referenceAliasArg*>(dep);   
+                    const referenceAliasArg* ref = static_cast<const referenceAliasArg*>(dep);   
                 else if(dep->type==Pointer)
                 {
-                    pointersAliasArg* dep2 = static_cast<pointersAliasArg*>(dep);
+                    const pointersAliasArg* dep2 = static_cast<const pointersAliasArg*>(dep);
                     if(dep2->aliased.size())
                         for(auto& ptr:dep2->aliased)
                             curSet.insert(ptr);
@@ -211,12 +222,11 @@ void AliasTable::getModifiedVariables(std::unordered_set<const VarDecl*>& setRes
             dumpRefTable();
         (*setResults.begin())->dump();
         }
-        std::unordered_set<aliasArg*> curSet;
+        std::unordered_set<const aliasArg*> curSet,tempAliased;
         for(auto& dep:setResults)
             if(getAliasArg(dep)!=nullptr)
                 curSet.insert(getAliasArg(dep));
         //Retrieve the references to the variable
-        std::unordered_set<aliasArg*> tempAliased;
         for(auto& dep:curSet)
             tempAliased.insert(dep);
         int oldSize=0,newSize=tempAliased.size();
@@ -230,7 +240,7 @@ void AliasTable::getModifiedVariables(std::unordered_set<const VarDecl*>& setRes
                 //If its a reference, then add the aliased variables
                 if(dep->type==Reference)
                 {
-                    referenceAliasArg* ref = static_cast<referenceAliasArg*>(dep);
+                    const referenceAliasArg* ref = static_cast<const referenceAliasArg*>(dep);
                     for(auto& alias:ref->aliased)
                         tempAliased.insert(alias);
                 }
@@ -258,33 +268,33 @@ void AliasTable::getModifiedVariables(std::unordered_set<const VarDecl*>& setRes
 
 void AliasTable::dumpVarTable() const
 {
-    llvm::errs()<<"Variable Table\n\n";
+    llvm::outs()<<"Variable Table\n\n";
     for(auto& var:varAliasTable)
     {
-        llvm::errs()<<var.first->getNameAsString()<<" var\n";
+        var.first.dump();
         var.second.dump();
     }
-    llvm::errs()<<"\n";
+    llvm::outs()<<"\n";
 
 }
 void AliasTable::dumpRefTable() const
 {
-    llvm::errs()<<"Reference Table\n\n";
+    llvm::outs()<<"Reference Table\n\n";
     for(auto& ref:refAliasTable)
     {
-        llvm::errs()<<ref.first->getNameAsString()<<" ref\n";
+        ref.first.dump();
         ref.second.dump();
     }
-    llvm::errs()<<"\n";
+    llvm::outs()<<"\n";
 }
 void AliasTable::dumpPtrTable() const
 {
-    llvm::errs()<<"Pointer Table\n\n";
+    llvm::outs()<<"Pointer Table\n\n";
     for(auto& ptr:ptrAliasTable)
     {
-        llvm::errs()<<ptr.first->getNameAsString()<<" ptr\n";
+        ptr.first.dump();
         ptr.second.dump();
     }
-    llvm::errs()<<"\n";
+    llvm::outs()<<"\n";
 
 }

@@ -72,7 +72,7 @@ private:
     inline void addDependencyWrite(Instruction& instr,const VarDecl* d){
         for (auto& alias : aliasTable.getAliases(d))
         {
-            if(instr.dependencies.count(alias) == 0)
+            if(instr.dependencies.count(alias->getCanonicalDecl()) == 0)
                 instr.dependencies.insert({alias->getCanonicalDecl(),NodeDependency{false,true}});
             else
                 instr.dependencies.find(alias->getCanonicalDecl())->second.isWrite=true;  
