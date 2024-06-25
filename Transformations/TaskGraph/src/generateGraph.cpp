@@ -175,7 +175,10 @@ void optimizeGraph(Graph& graph)
             toRemove.push(node->next.begin()->first);
             graph.fuseNodes(node,(node->next.begin()->first));
             llvm::errs()<<"Done\n";
-        }    
+        }  
+        //TODO: handle multiple subgraphs (might happen after fusion of nodes)
+        if(node->graph)
+            optimizeGraph(*node->graph);
     }
 }
 
