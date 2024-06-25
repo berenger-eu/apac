@@ -17,7 +17,8 @@ void subGenerateDotGraph(const Graph& inGraph, std::ofstream& file){
     file << "    invisibleNodeScope_" << invisibleNodeCounter++ << " [style=invis];\n";
     for(const auto& node : inGraph.nodes){
         file << "    " << node->id << " [label=\"" << node->instruction; 
-        for(auto alias:node->instructionPtr->curAliases){
+        for(auto instr :node->instructionPtr)
+            for(auto alias : instr->curAliases){
             file << "\n" ;
             for(int nbStar = 0; nbStar < getPtrDepthAccess(alias.first->getType(),alias.second->getType(),alias.first->getASTContext()); nbStar++)
                 file << "*";
@@ -62,7 +63,8 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
     for(const auto& curInstruction : inInstructions){
         auto node = std::make_shared<Node>();
         node->instruction = curInstruction.instructionString;//instruction.instruction;
-        node->instructionPtr = &curInstruction;
+        node->instructionPtr = std::vector<const Instruction*>();
+        node->instructionPtr.push_back(&curInstruction);
         node->id = Node::idCounter++;
         graph.nodes.push_back(node);
         if(curInstruction.complexInstruction){
@@ -81,7 +83,7 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
                  if(dataUsedInWrite.find(dep.first) != dataUsedInWrite.end()){
                       if((*dataUsedInWrite.find(dep.first)).second->id!=node->id){
                         auto depNode = dataUsedInWrite[dep.first];
-                        depNode->addReadLink(node,dep.first);
+                        depNode->addReadLink(depNode,node,dep.first);
                     }
                 }
                 readFound = true;    
@@ -94,7 +96,7 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
                         if(depNode->id == node->id){
                             continue;
                         }
-                        depNode->addWriteLink(node,dep.first);
+                        depNode->addWriteLink(depNode,node,dep.first);
                     }
 
                     dataUsedInRead.erase(dep.first);
@@ -103,7 +105,7 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
                     auto it= dataUsedInWrite.find(dep.first);
                     if(it->second->id!=node->id){
                         auto depNode = dataUsedInWrite[dep.first];
-                        depNode->addWriteLink(node,dep.first);
+                        depNode->addWriteLink(depNode,node,dep.first);
                     }    
                 }       
                 dataUsedInWrite[dep.first] = node;            
@@ -147,6 +149,35 @@ void PrintGraph(const Graph& inGraph){
         std::cout << root->id <<" ";
     std::cout << std::endl;
 }
+void optimizeGraph(Graph& graph)
+{
+    std::stack<std::shared_ptr<Node>> toRemove;
+    for(long unsigned int i=0;i<graph.nodes.size();i++)     
+    {
+        auto node = graph.nodes[i];
+        llvm::errs()<<"Node : "<<node->instruction<<"\n";
+        llvm::errs()<<"Size : "<<node->next.size()<<"\n";
+        if(node->next.size() >= 1)
+        {
+            llvm::errs()<<"Size : "<<node->next.begin()->first->prev.size()<<"\n";
+            for(auto& n : node->next)
+            {
+                llvm::errs()<<"Next : "<<n.first->instruction<<"\n";
+                for(auto& p : n.first->prev)
+                {
+                    llvm::errs()<<"Prev : "<<p->instruction<<"\n";
+                }
+            }
+        }
+        while(node->next.size() == 1 && node->next.begin()->first->prev.size() == 1)
+        {
+            llvm::errs()<<"First : \n"<<node->instruction<<"\n Second : \n"<<node->next.begin()->first->instruction<<"\n";
+            toRemove.push(node->next.begin()->first);
+            graph.fuseNodes(node,(node->next.begin()->first));
+            llvm::errs()<<"Done\n";
+        }    
+    }
+}
 
 //Generate all of the graph for a file, (generate one for each function)
 void generateGraph(const std::vector<std::vector<Instruction>>& graphVector){
@@ -156,6 +187,7 @@ void generateGraph(const std::vector<std::vector<Instruction>>& graphVector){
         
         auto graph = InstructionToGraph(functionInstructions);
         //PrintGraph(graph);
+        optimizeGraph(graph);
         graphs.push_back(graph);
     }
     GenerateDotGraph(graphs, "graph.dot");

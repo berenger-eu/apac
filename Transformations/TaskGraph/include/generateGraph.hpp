@@ -35,26 +35,26 @@ struct Node {
     std::unordered_set<std::shared_ptr<Node>> prev;
     std::shared_ptr<struct Graph> graph;
     std::string instruction;
-    const Instruction* instructionPtr;
-    void addLink(std::shared_ptr<Node> n, bool isRead, bool isWrite, const NamedDecl* arg){
+    std::vector<const Instruction*> instructionPtr;
+    void addLink(std::shared_ptr<Node>curN,std::shared_ptr<Node> n, bool isRead, bool isWrite, const NamedDecl* arg){
         if(arg == nullptr)
             return;   
         if(this->next.count(n) == 0)
             this->next.insert({n,std::unordered_map<const NamedDecl*,NodeDependency>()});       
         if (this->next.at(n).count(arg) == 0){
             this->next.at(n).insert({arg,{isRead,isWrite}});
-            n->prev.insert(std::make_shared<Node>(*this));
+            n->prev.insert(curN);
         }
         else{
             this->next.at(n).at(arg).isRead = this->next.at(n).at(arg).isRead || isRead;
             this->next.at(n).at(arg).isWrite = this->next.at(n).at(arg).isWrite || isWrite;
         }
     }
-    inline void addReadLink(std::shared_ptr<Node> n, const NamedDecl* arg){
-        addLink(n,true,false,arg);
+    inline void addReadLink(std::shared_ptr<Node>curN,std::shared_ptr<Node> n, const NamedDecl* arg){
+        addLink(curN,n,true,false,arg);
     }
-    inline void addWriteLink(std::shared_ptr<Node> n, const NamedDecl* arg){
-        addLink(n,false,true,arg);
+    inline void addWriteLink(std::shared_ptr<Node>curN,std::shared_ptr<Node> n, const NamedDecl* arg){
+        addLink(curN,n,false,true,arg);
     }
 };
 
@@ -63,6 +63,17 @@ struct Node {
 struct Graph {
     std::vector<std::shared_ptr<Node>> nodes;
     std::vector<std::shared_ptr<Node>> roots;
+    void fuseNodes(std::shared_ptr<Node> n1, std::shared_ptr<Node> n2){
+        n1->next=n2->next;
+        for (auto &n : n2->next){
+            n.first->prev.erase(n2);
+            n.first->prev.insert(n1);
+        }
+        for(auto& n : n2->instructionPtr)
+            n1->instructionPtr.push_back(n);
+        n1->instruction+="\n"+n2->instruction;
+        this->nodes.erase(std::find(this->nodes.begin(),this->nodes.end(),n2)); 
+    }
 };
 
 Graph InstructionToGraph(const std::vector<Instruction>& );
