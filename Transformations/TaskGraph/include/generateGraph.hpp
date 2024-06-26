@@ -36,6 +36,16 @@ struct Node {
     std::shared_ptr<struct Graph> graph;
     std::string instruction;
     std::vector<const Instruction*> instructionPtr;
+    void dump()
+    {
+        llvm::errs()<<"Instructions: "<<instruction<<"\n";
+        for(auto& instr:instructionPtr){
+
+            instr->dump();
+            
+        }
+        llvm::errs()<<"\n";
+    }
     void addLink(std::shared_ptr<Node>curN,std::shared_ptr<Node> n, bool isRead, bool isWrite, const NamedDecl* arg){
         if(arg == nullptr)
             return;   
@@ -63,6 +73,14 @@ struct Node {
 struct Graph {
     std::vector<std::shared_ptr<Node>> nodes;
     std::vector<std::shared_ptr<Node>> roots;
+    void dump()
+    {
+        llvm::errs()<<"Graph: \n";
+        for (const auto& node : nodes){
+            llvm::errs()<<"Node: \n";
+            node->dump();
+        }
+    }
     void fuseNodes(std::shared_ptr<Node> n1, std::shared_ptr<Node> n2){
         n1->next=n2->next;
         for (auto &n : n2->next){

@@ -268,33 +268,33 @@ void AliasTable::getModifiedVariables(std::unordered_set<const VarDecl*>& setRes
 
 void AliasTable::dumpVarTable() const
 {
-    llvm::outs()<<"Variable Table\n\n";
+    llvm::errs()<<"Variable Table\n\n";
     for(auto& var:varAliasTable)
     {
         var.first.dump();
         var.second.dump();
     }
-    llvm::outs()<<"\n";
+    llvm::errs()<<"\n";
 
 }
 void AliasTable::dumpRefTable() const
 {
-    llvm::outs()<<"Reference Table\n\n";
+    llvm::errs()<<"Reference Table\n\n";
     for(auto& ref:refAliasTable)
     {
         ref.first.dump();
         ref.second.dump();
     }
-    llvm::outs()<<"\n";
+    llvm::errs()<<"\n";
 }
 void AliasTable::dumpPtrTable() const
 {
-    llvm::outs()<<"Pointer Table\n\n";
+    llvm::errs()<<"Pointer Table\n\n";
     for(auto& ptr:ptrAliasTable)
     {
         ptr.first.dump();
         ptr.second.dump();
     }
-    llvm::outs()<<"\n";
+    llvm::errs()<<"\n";
 
 }

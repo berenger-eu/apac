@@ -45,11 +45,11 @@ struct key_struct {
     std::vector<int> indices;
     void dump() const {
         // Dump the contents of the key_struct
-        llvm::outs() << decl->getNameAsString();
+        llvm::errs() << decl->getNameAsString();
         for (const auto& index : indices) {
-            llvm::outs() <<" ["<< index << "]";
+            llvm::errs() <<" ["<< index << "]";
         }
-        llvm::outs() << "\n";
+        llvm::errs() << "\n";
     }
 };
 struct key_hash {
