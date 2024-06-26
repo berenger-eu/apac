@@ -15,7 +15,7 @@ using namespace clang;
 class ASTTaskGraphVisitor : public RecursiveASTVisitor<ASTTaskGraphVisitor>
 {
 public:
-    ASTTaskGraphVisitor(Rewriter &R,instructionsOrder& orderManager) : TheRewriter(R),orderManager(orderManager),aliasTable(R) {};
+    ASTTaskGraphVisitor(Rewriter &R,StmtOrder& orderManager) : TheRewriter(R),orderManager(orderManager),aliasTable(R) {};
     inline bool VisitStmt(Stmt *s){return true;}
     //Traverse methods lets us stop visiting nodes that we don't need
 
@@ -81,7 +81,7 @@ private:
     bool traverseSimpleElements(Stmt* s){
         if(isInHeaders(TheRewriter.getSourceMgr(),s->getBeginLoc())) 
             return true;
-        addInstructionToManager(s,orderManager);
+        orderManager.addInstructionToManager(s);
         Instruction instr{s,getStmtAsString(s,TheRewriter.getLangOpts()),false};
         handleStmt(*s,instr);
         functionsInstructionsVector.back().push_back(instr);
@@ -95,7 +95,7 @@ private:
     void handleMemberCallExpr(const CXXMemberCallExpr& ,Instruction&,bool isWrite=false);
     void computeAliasesForRHS(const Expr* bop,std::unordered_set<const VarDecl*>&, Instruction& instr);
     Rewriter &TheRewriter;
-    instructionsOrder& orderManager;
+    StmtOrder& orderManager;
     AliasTable aliasTable;
 };
 

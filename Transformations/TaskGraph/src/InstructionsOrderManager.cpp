@@ -1,11 +1,13 @@
 #include "InstructionsOrderManager.hpp"
 
-void moveInstruction(const Stmt* key1,const Stmt* key2,instructionsOrder& instructionsOrderManager)
+void StmtOrder::moveInstruction(const Stmt* key1,const Stmt* key2)
 {
     const Stmt* key,*newKey;
     
     if(key1==nullptr || key2==nullptr)
         return;
+    //Choose the key with the biggest location (so further in the code), to avoid moving
+    //an instruction behind a needed declaration
     if(key1->getBeginLoc()>key2->getBeginLoc())
     {
         key=key2;
@@ -16,39 +18,28 @@ void moveInstruction(const Stmt* key1,const Stmt* key2,instructionsOrder& instru
         key=key1;
         newKey=key2;
     }
-    auto it = instructionsOrderManager.find(key);
-    if(it!=instructionsOrderManager.end())
+
+    if(instructionLinks.count(key)==0)
+        return;
+    if(instructionLinks.count(newKey)==0)
+        return;
+    auto groupNumberOld=instructionLinks.at(key);
+    if(instructionGroups.count(groupNumberOld)==0)
+        return;
+    auto groupNumberNew=instructionLinks.at(newKey);
+    if(instructionGroups.count(groupNumberNew)==0)
+        return;
+
+    auto& instructionGroup = instructionGroups.at(groupNumberOld);
+    auto& instructionGroupNew = instructionGroups.at(groupNumberNew);
+    for(auto instr:instructionGroup)
     {
-        auto vectInstructions = it->second;
-        if(instructionsOrderManager.find(newKey)==instructionsOrderManager.end())
-        {
-            return;
-        }
-        else
-        {
-    llvm::errs()<<"temp1\n";
-            // instructionsOrderManager[newKey].push_back(key);
-            for(int i=vectInstructions.size()-1;i>=0;i--)
-            {
-                    llvm::errs()<<"temp1\n"<<i<<"\n";
-
-                instructionsOrderManager[newKey].push_front(vectInstructions[i]);
-    llvm::errs()<<"temp2\n";
-                /*
-                if(vectInstructions[i]==key)
-                {
-                    instructionsOrderManager[key].erase(instructionsOrderManager[key].begin()+i);
-                    break;
-                }
-                */
-            }
-                llvm::errs()<<"temp1\n";
-
-        }
-        vectInstructions.clear();
+        instructionGroupNew.insert(instr);
+        instructionLinks.at(instr)=groupNumberNew;
     }
+    instructionGroups.erase(groupNumberOld);
 }
-void fuseInstructions(const std::vector<const Stmt*> vect,instructionsOrder& instructionsOrderManager)
+void fuseInstructions(const std::vector<const Stmt*> vect,StmtOrder& instructionsOrderManager)
 {
     if(vect.size()<2)
         return;
@@ -66,24 +57,27 @@ void fuseInstructions(const std::vector<const Stmt*> vect,instructionsOrder& ins
     {
         if(instr==key)
             continue;
-        moveInstruction(key,instr,instructionsOrderManager);
+        instructionsOrderManager.moveInstruction(key,instr);
     }
 }
 
-void modifyFile(Rewriter& TheRewriter,const instructionsOrder& instructionsOrderManager)
+void modifyFile(Rewriter& TheRewriter,const StmtOrder& instructionsOrderManager)
 {
-    for(const auto& instruction : instructionsOrderManager)
+    for(const auto& instruction : instructionsOrderManager.instructionGroups)
     {
         //Remove old text
-        auto st=instruction.first;
-        TheRewriter.RemoveText(SourceRange(st->getBeginLoc(),Lexer::getLocForEndOfToken(st->getEndLoc(),0,TheRewriter.getSourceMgr(),TheRewriter.getLangOpts())));
         auto vect = instruction.second;
+
+        const Stmt* st=*vect.rbegin();
+        TheRewriter.RemoveText(SourceRange(st->getBeginLoc(),Lexer::getLocForEndOfToken(st->getEndLoc(),0,TheRewriter.getSourceMgr(),TheRewriter.getLangOpts())));
         if(vect.size()==0)
             continue;
         std::stringstream ssPrint;
         ssPrint<<"#pragma \n{\n";
         for(auto instr:vect)
         {
+            if(instr!=st)
+                TheRewriter.RemoveText(SourceRange(instr->getBeginLoc(),Lexer::getLocForEndOfToken(instr->getEndLoc(),0,TheRewriter.getSourceMgr(),TheRewriter.getLangOpts())));
             ssPrint<<getStmtAsString(instr,TheRewriter.getLangOpts())<<";\n";   
         }
         ssPrint<<"}\n";

@@ -30,7 +30,7 @@ public:
   
 
 private:
-  instructionsOrder orderManager;
+  StmtOrder orderManager;
 	ASTTaskGraphVisitor VisitorTaskGraph;
   Rewriter &TheRewriter; 
 };
