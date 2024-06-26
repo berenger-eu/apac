@@ -149,7 +149,7 @@ void PrintGraph(const Graph& inGraph){
         std::cout << root->id <<" ";
     std::cout << std::endl;
 }
-void optimizeGraph(Graph& graph)
+void optimizeGraph(Graph& graph,instructionsOrder& orderManager)
 {
     std::stack<std::shared_ptr<Node>> toRemove;
     for(long unsigned int i=0;i<graph.nodes.size();i++)     
@@ -157,41 +157,58 @@ void optimizeGraph(Graph& graph)
         auto node = graph.nodes[i];
         llvm::errs()<<"Node : "<<node->instruction<<"\n";
         llvm::errs()<<"Size : "<<node->next.size()<<"\n";
-        if(node->next.size() >= 1)
-        {
-            llvm::errs()<<"Size : "<<node->next.begin()->first->prev.size()<<"\n";
-            for(auto& n : node->next)
-            {
-                llvm::errs()<<"Next : "<<n.first->instruction<<"\n";
-                for(auto& p : n.first->prev)
-                {
-                    llvm::errs()<<"Prev : "<<p->instruction<<"\n";
-                }
-            }
-        }
         while(node->next.size() == 1 && node->next.begin()->first->prev.size() == 1)
         {
-            llvm::errs()<<"First : \n"<<node->instruction<<"\n Second : \n"<<node->next.begin()->first->instruction<<"\n";
             toRemove.push(node->next.begin()->first);
             graph.fuseNodes(node,(node->next.begin()->first));
-            llvm::errs()<<"Done\n";
+            llvm::errs()<<"Fusion\n";
+            llvm::errs()<<"Move\n";
         }  
         //TODO: handle multiple subgraphs (might happen after fusion of nodes)
         if(node->graph)
-            optimizeGraph(*node->graph);
+            optimizeGraph(*node->graph,orderManager);
+    }
+}
+
+void updateInstructionOrderNode(const std::shared_ptr<Node>& node,
+instructionsOrder& orderManager,std::unordered_set<std::shared_ptr<Node>>& visited)
+{
+    if(visited.count(node))
+        return;
+    for(const auto& prev: node->prev)
+        if(!visited.count(prev))
+            updateInstructionOrderNode(prev,orderManager,visited);
+    visited.insert(node);
+
+    std::vector<const Stmt*> vectStmts;
+    for(auto instr : node->instructionPtr)
+        vectStmts.push_back(instr->instruction);
+    fuseInstructions(vectStmts,orderManager);
+    if(node->graph)
+        updateInstructionOrderFromGraph(*node->graph,orderManager);
+}
+
+void updateInstructionOrderFromGraph(const Graph& graph,instructionsOrder& orderManager){
+    std::unordered_set<std::shared_ptr<Node>> visited;
+    for(const auto& node : graph.nodes){
+        updateInstructionOrderNode(node,orderManager,visited);
     }
 }
 
 //Generate all of the graph for a file, (generate one for each function)
-void generateGraph(const std::vector<std::vector<Instruction>>& graphVector){
+void generateGraph(const std::vector<std::vector<Instruction>>& graphVector,instructionsOrder& orderManager){
     std::vector<Graph> graphs;
     for (auto& functionInstructions : graphVector)
     {
         
         auto graph = InstructionToGraph(functionInstructions);
         //PrintGraph(graph);
-        optimizeGraph(graph);
+        optimizeGraph(graph,orderManager);
         graphs.push_back(graph);
+        for(auto node : graph.roots)
+            node->dump();
+        // graph.dump();
+        updateInstructionOrderFromGraph(graph,orderManager);
     }
     GenerateDotGraph(graphs, "graph.dot");
 }

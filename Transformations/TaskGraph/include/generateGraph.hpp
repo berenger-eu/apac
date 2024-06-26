@@ -94,12 +94,15 @@ struct Graph {
         this->nodes.erase(std::find(this->nodes.begin(),this->nodes.end(),n2)); 
     }
 };
+void updateInstructionOrderNode(const std::shared_ptr<Node>& ,instructionsOrder& ,std::unordered_set<std::shared_ptr<Node>>& );
+void updateInstructionOrderFromGraph(const Graph& ,instructionsOrder& );
 
 Graph InstructionToGraph(const std::vector<Instruction>& );
 
 void PrintGraph(const Graph& );
 
 void GenerateDotGraph(const std::vector<Graph>& graph, const std::string& filename);
+void optimizeGraph(Graph& graph,instructionsOrder& orderManager);
 
 //Generate all of the graph for a file, (generate one for each function)
-void generateGraph(const std::vector<std::vector<Instruction>>& );
+void generateGraph(const std::vector<std::vector<Instruction>>& ,instructionsOrder& );

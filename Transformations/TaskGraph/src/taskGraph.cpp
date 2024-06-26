@@ -19,16 +19,18 @@ return (*ptr);}\n\n" ;
 class MyASTConsumer : public ASTConsumer
 {
 public:
-	MyASTConsumer(Rewriter &R) : VisitorTaskGraph(R),TheRewriter(R) {}
+	MyASTConsumer(Rewriter &R) : VisitorTaskGraph(R,orderManager),TheRewriter(R) {}
 
 	//Parse all the file
     virtual void HandleTranslationUnit(ASTContext &Ctx){
       VisitorTaskGraph.TraverseAST(Ctx);
-      generateGraph(VisitorTaskGraph.functionsInstructionsVector);
+      generateGraph(VisitorTaskGraph.functionsInstructionsVector,orderManager);
+      modifyFile(TheRewriter,orderManager);
     }
   
 
 private:
+  instructionsOrder orderManager;
 	ASTTaskGraphVisitor VisitorTaskGraph;
   Rewriter &TheRewriter; 
 };
@@ -40,6 +42,7 @@ public:
     SourceManager &SM = TheRewriter.getSourceMgr();
     llvm::errs() << "** EndSourceFileAction for: "
                  << SM.getFileEntryRefForID(SM.getMainFileID())->getName() << "\n";
+    TheRewriter.getEditBuffer(SM.getMainFileID()).write(llvm::outs());
 
   }
 
