@@ -18,6 +18,7 @@
 #include <functional>
 #include "PotTaskGraphInterface.hpp"
 #include "AliasTable.hpp"
+#include "InstructionsOrderManager.hpp"
 #include "clang/AST/Decl.h"
 #include <fstream>
 

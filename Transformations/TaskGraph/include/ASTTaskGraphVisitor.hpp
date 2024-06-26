@@ -6,7 +6,7 @@
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Rewrite/Core/Rewriter.h"
-
+#include "InstructionsOrderManager.hpp"
 #include "PotTaskGraphInterface.hpp"
 #include "common.hpp"
 #include "AliasTable.hpp"
