@@ -15,7 +15,7 @@ using namespace clang;
 class ASTTaskGraphVisitor : public RecursiveASTVisitor<ASTTaskGraphVisitor>
 {
 public:
-    ASTTaskGraphVisitor(Rewriter &R,StmtOrder& orderManager) : TheRewriter(R),orderManager(orderManager),aliasTable(R) {};
+    ASTTaskGraphVisitor(Rewriter &R,StmtOrder& orderManager) : TheRewriter(R),orderManager(orderManager),aliasTable(R),ignoreStmtPragma(false) {};
     inline bool VisitStmt(Stmt *s){return true;}
     //Traverse methods lets us stop visiting nodes that we don't need
     inline bool TraverseDeclStmt(DeclStmt *d){
@@ -86,7 +86,8 @@ private:
     bool traverseSimpleElements(Stmt* s){
         if(isInHeaders(TheRewriter.getSourceMgr(),s->getBeginLoc())) 
             return true;
-        orderManager.addInstructionToManager(s);
+        if(!ignoreStmtPragma)
+            orderManager.addInstructionToManager(s);
         Instruction instr{s,getStmtAsString(s,TheRewriter.getLangOpts()),false};
         handleStmt(*s,instr);
         functionsInstructionsVector.back().push_back(instr);
@@ -102,6 +103,7 @@ private:
     Rewriter &TheRewriter;
     StmtOrder& orderManager;
     AliasTable aliasTable;
+    bool ignoreStmtPragma;
 };
 
 inline bool isInExceptionList(const ParmVarDecl& p){

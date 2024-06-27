@@ -304,15 +304,15 @@ bool ASTTaskGraphVisitor::TraverseForStmt(ForStmt* f)
   bool res=true;
   Instruction compInstr{f,getStmtAsString(f,TheRewriter.getLangOpts()),true,0};
   functionsInstructionsVector.push_back(std::vector<Instruction>());
-  res=RecursiveASTVisitor::TraverseStmt(f->getCond());
-  if(!res)
+  ignoreStmtPragma=true;
+  if(!( RecursiveASTVisitor::TraverseStmt(f->getCond())
+    &&  RecursiveASTVisitor::TraverseStmt(f->getBody())
+    &&  RecursiveASTVisitor::TraverseStmt(f->getInc()) ) )
+  {
+    ignoreStmtPragma=true;
     return false;
-  res=RecursiveASTVisitor::TraverseStmt(f->getBody());
-  if(!res)
-    return false;
-  res=RecursiveASTVisitor::TraverseStmt(f->getInc());
-  if(!res)
-    return false;
+  }
+  ignoreStmtPragma=true;
   compInstr.scopedInstructions=functionsInstructionsVector.back();
   for(auto& instr:compInstr.scopedInstructions){
     for(auto& dep:instr.dependencies){
@@ -328,7 +328,7 @@ bool ASTTaskGraphVisitor::TraverseForStmt(ForStmt* f)
   
   return res;
 }
-
+//TODO: refacto
 bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt* i)
 {
   if(isInHeaders(TheRewriter.getSourceMgr(),i->getBeginLoc())) 
