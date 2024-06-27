@@ -35,7 +35,7 @@ void StmtOrder::moveInstruction(const Stmt* key1,const Stmt* key2)
     for(auto instr:instructionGroup)
     {
         instructionGroupNew.insert(instr);
-        instructionLinks.at(instr)=groupNumberNew;
+        instructionLinks.at(instr.first)=groupNumberNew;
     }
     instructionGroups.erase(groupNumberOld);
 }
@@ -61,6 +61,12 @@ void fuseInstructions(const std::vector<const Stmt*> vect,StmtOrder& instruction
     }
 }
 
+std::string modifiedStringForInstruction(Rewriter& TheRewriter,const Stmt* instr)
+{
+    std::string instrString=getStmtAsStringFull(instr,TheRewriter.getLangOpts());
+    return instrString;
+}
+
 void modifyFile(Rewriter& TheRewriter,const StmtOrder& instructionsOrderManager)
 {
     for(const auto& instruction : instructionsOrderManager.instructionGroups)
@@ -68,14 +74,15 @@ void modifyFile(Rewriter& TheRewriter,const StmtOrder& instructionsOrderManager)
         //Remove old text
         auto vect = instruction.second;
 
-        const Stmt* st=*vect.rbegin();
+        const Stmt* st=(*vect.rbegin()).first;
         TheRewriter.RemoveText(SourceRange(st->getBeginLoc(),Lexer::getLocForEndOfToken(st->getEndLoc(),0,TheRewriter.getSourceMgr(),TheRewriter.getLangOpts())));
         if(vect.size()==0)
             continue;
         std::stringstream ssPrint;
         ssPrint<<"#pragma \n{\n";
-        for(auto instr:vect)
+        for(auto instrPair:vect)
         {
+            auto instr=instrPair.first;
             if(instr!=st)
                 TheRewriter.RemoveText(SourceRange(instr->getBeginLoc(),Lexer::getLocForEndOfToken(instr->getEndLoc(),0,TheRewriter.getSourceMgr(),TheRewriter.getLangOpts())));
             ssPrint<<getStmtAsStringFull(instr,TheRewriter.getLangOpts())<<";\n";   

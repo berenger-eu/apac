@@ -12,24 +12,23 @@
 //This structure will be used to easily fuse and swap instructions
 using namespace clang;
 
+struct StmtOrder;
 struct SmallerBeginLocation {
-  bool operator()(const Stmt*& a, const Stmt*& b) const {
-    return a->getBeginLoc() <= b->getBeginLoc();
+  bool operator()(const std::pair<const Stmt*,std::shared_ptr<StmtOrder>>& a, const std::pair<const Stmt*,std::shared_ptr<StmtOrder>>& b) const {
+    return a.first->getBeginLoc() <= b.first->getBeginLoc();
   }
-  bool operator()(const Stmt* const & a, const Stmt* const & b) const {
-    return a->getBeginLoc() <= b->getBeginLoc();
-  }
-};
 
+};
 struct StmtOrder{
     int groupCounter = 0;
     std::map<const Stmt*,int> instructionLinks;
-    std::map<int,std::set<const Stmt*,SmallerBeginLocation>> instructionGroups;
+    std::map<int,std::set<std::pair<const Stmt*,std::shared_ptr<StmtOrder>>,SmallerBeginLocation>> instructionGroups;
     inline void addInstructionToManager(const Stmt* key)
     {
         instructionLinks.insert({key,groupCounter});
-        instructionGroups.insert({groupCounter,std::set<const Stmt*,SmallerBeginLocation>()});
-        instructionGroups.at(groupCounter++).insert(key);
+        std::set<std::pair<const Stmt*,std::shared_ptr<StmtOrder>>,SmallerBeginLocation> temp;
+        instructionGroups.insert({groupCounter,temp});
+        instructionGroups.at(groupCounter++).insert({{key,std::shared_ptr<StmtOrder>()}});
     }
     void dump(){
         for(const auto& instruction : instructionGroups)
@@ -37,7 +36,7 @@ struct StmtOrder{
             llvm::errs()<<"Group "<<instruction.first<<"\n";
             for(const auto& instr : instruction.second)
             {
-                instr->dump();
+                instr.first->dump();
             }
         }
     }
