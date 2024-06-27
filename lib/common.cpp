@@ -67,6 +67,18 @@ std::string getStmtAsString(const Stmt* statement,const LangOptions& langOpt)
         return stmtString;
     }
 }
+std::string getStmtAsStringFull(const Stmt* statement,const LangOptions& langOpt)
+{
+    if(!statement)
+        return std::string();
+    std::string stmtString;
+    std::stringstream SSprint;
+    PrintingPolicy print_policy(langOpt);
+    print_policy.SuppressUnwrittenScope=true;
+    llvm::raw_string_ostream stringStreamStmt(stmtString);
+    statement->printPretty(stringStreamStmt,NULL,print_policy);
+    return stmtString;
+}
 std::string getExprAsString(const Expr* expression,const LangOptions& langOpt)
 {
     std::string exprString;

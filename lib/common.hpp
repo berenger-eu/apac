@@ -18,6 +18,8 @@ using namespace clang;
 std::string getStmtAsString(const Stmt*,const LangOptions&);
 //Returns the given Expr as a String
 std::string getExprAsString(const Expr*,const LangOptions&);
+//Returns the given Stmt as a String, with full information (including children)
+std::string getStmtAsStringFull(const Stmt* statement,const LangOptions& langOpt);
 
 
 //From a VarDecl Type, get the string corresponding to its declaration in a single instruction
