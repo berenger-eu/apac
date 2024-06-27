@@ -34,10 +34,10 @@ void subGenerateDotGraph(const Graph& inGraph, std::ofstream& file){
             }
             file << "    " << node->id << " -> " << nextNode.first->id << "[label=\"  "<<ss.str()<<"\"];\n";
         }
-        if(node->graph){
+        for(auto& subGraph : node->graph){
             file << "    " << node->id << " -> invisibleNodeScope_" << invisibleNodeCounter << "[label=\"innerScope\"];\n";
             file << "subgraph cluster_"<<node->id<<" {\n"<< "label = \"subGraph"<<node->id<<"\";\n";
-            subGenerateDotGraph(*node->graph, file);
+            subGenerateDotGraph(*subGraph, file);
             file << "}\n";
         }
     }
@@ -68,8 +68,7 @@ Graph InstructionToGraph(const std::vector<Instruction>& inInstructions){
         node->id = Node::idCounter++;
         graph.nodes.push_back(node);
         if(curInstruction.complexInstruction){
-            node->graph = std::make_shared<Graph>();
-            *node->graph = InstructionToGraph(curInstruction.scopedInstructions);
+            node->graph.emplace_back(std::make_shared<Graph>(InstructionToGraph(curInstruction.scopedInstructions)));
         }
     }
     std::unordered_map<const clang::Decl*, std::set<std::shared_ptr<Node>>> dataUsedInRead;
@@ -138,9 +137,9 @@ void PrintGraph(const Graph& inGraph){
             std::cout << prev->id << " ";
         }
         std::cout << std::endl;
-        if(node->graph){
+        for(auto subGraph : node->graph){
             std::cout << "-- SubGraph: " << std::endl;
-            PrintGraph(*node->graph);
+            PrintGraph(*subGraph);
         }
 
     }
@@ -161,8 +160,8 @@ void optimizeGraph(Graph& graph)
             graph.fuseNodes(node,(node->next.begin()->first));
         }  
         //TODO: handle multiple subgraphs (might happen after fusion of nodes)
-        if(node->graph)
-            optimizeGraph(*node->graph);
+        for(auto subGraph : node->graph)
+             optimizeGraph(*subGraph);
     }
 }
 

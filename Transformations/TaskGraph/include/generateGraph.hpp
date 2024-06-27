@@ -34,7 +34,7 @@ struct Node {
     int id;
     std::unordered_map<std::shared_ptr<Node>,std::unordered_map<const NamedDecl*,NodeDependency>> next;
     std::unordered_set<std::shared_ptr<Node>> prev;
-    std::shared_ptr<struct Graph> graph;
+    std::vector<std::shared_ptr<struct Graph>> graph;
     std::string instruction;
     std::vector<const Instruction*> instructionPtr;
     void dump()
@@ -90,6 +90,8 @@ struct Graph {
         }
         for(auto& n : n2->instructionPtr)
             n1->instructionPtr.push_back(n);
+        for(auto& graph : n2->graph)
+            n1->graph.push_back(graph);
         n1->instruction+="\n"+n2->instruction;
         this->nodes.erase(std::find(this->nodes.begin(),this->nodes.end(),n2)); 
     }
