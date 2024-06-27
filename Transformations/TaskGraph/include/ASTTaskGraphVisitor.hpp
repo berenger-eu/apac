@@ -18,7 +18,9 @@ public:
     ASTTaskGraphVisitor(Rewriter &R,StmtOrder& orderManager) : TheRewriter(R),orderManager(orderManager),aliasTable(R) {};
     inline bool VisitStmt(Stmt *s){return true;}
     //Traverse methods lets us stop visiting nodes that we don't need
-
+    inline bool TraverseDeclStmt(DeclStmt *d){
+        return true;
+    }
     inline bool TraverseCXXMethodDecl(CXXMethodDecl *m){
         return TraverseFunctionDecl(m);
     }
@@ -40,8 +42,11 @@ public:
     inline bool TraverseCompoundAssignOperator(CompoundAssignOperator* bop){
         return traverseSimpleElements(bop);
     }
+    //Can be ignore if it is assumed that previous passes were run
+    //So the return statement should not contain any expressions
     inline bool TraverseReturnStmt(ReturnStmt* r){
-        return traverseSimpleElements(r);
+        return true;
+        //return traverseSimpleElements(r);
     }
     inline bool TraverseCXXOperatorCallExpr(CXXOperatorCallExpr* c){
         return traverseSimpleElements(c);
