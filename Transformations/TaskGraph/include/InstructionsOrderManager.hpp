@@ -31,6 +31,16 @@ struct StmtOrder{
         instructionGroups.insert({groupCounter,std::set<const Stmt*,SmallerBeginLocation>()});
         instructionGroups.at(groupCounter++).insert(key);
     }
+    void dump(){
+        for(const auto& instruction : instructionGroups)
+        {
+            llvm::errs()<<"Group "<<instruction.first<<"\n";
+            for(const auto& instr : instruction.second)
+            {
+                instr->dump();
+            }
+        }
+    }
     void moveInstruction(const Stmt* key1,const Stmt* key2);
 } typedef StmtOrder;
 // typedef std::map<const Stmt*,std::deque<const Stmt*>> instructionsOrder;
