@@ -78,7 +78,7 @@ void modifyFile(Rewriter& TheRewriter,const StmtOrder& instructionsOrderManager)
         {
             if(instr!=st)
                 TheRewriter.RemoveText(SourceRange(instr->getBeginLoc(),Lexer::getLocForEndOfToken(instr->getEndLoc(),0,TheRewriter.getSourceMgr(),TheRewriter.getLangOpts())));
-            ssPrint<<getStmtAsString(instr,TheRewriter.getLangOpts())<<";\n";   
+            ssPrint<<getStmtAsStringFull(instr,TheRewriter.getLangOpts())<<";\n";   
         }
         ssPrint<<"}\n";
         TheRewriter.InsertText(st->getBeginLoc(),ssPrint.str());
