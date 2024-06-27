@@ -34,9 +34,19 @@ void subGenerateDotGraph(const Graph& inGraph, std::ofstream& file){
             }
             file << "    " << node->id << " -> " << nextNode.first->id << "[label=\"  "<<ss.str()<<"\"];\n";
         }
-        for(auto& subGraph : node->graph){
-            file << "    " << node->id << " -> invisibleNodeScope_" << invisibleNodeCounter << "[label=\"innerScope\"];\n";
-            file << "subgraph cluster_"<<node->id<<" {\n"<< "label = \"subGraph"<<node->id<<"\";\n";
+        for(auto i=0;i<node->graph.size();i++){
+            auto subGraph = node->graph[i];
+            int curInstrIndex = 0,countGraph = -1;
+            for(auto instr : node->instructionPtr){
+                if(countGraph != i){
+                    if(instr->complexInstruction)
+                        countGraph++;
+                    if(countGraph !=i)
+                        curInstrIndex++;
+                }
+            }
+            file << "    " << node->id << " -> invisibleNodeScope_" << invisibleNodeCounter << "[label=\""<<"instr "<<curInstrIndex<<" : "<<node->instructionPtr.at(curInstrIndex)->instructionString<<"\"];\n";
+            file << "subgraph cluster_"<<node->id<<"_"<<i<<" {\n"<< "label = \"subGraph"<<node->id<<"_"<<i<<"\";\n";
             subGenerateDotGraph(*subGraph, file);
             file << "}\n";
         }
