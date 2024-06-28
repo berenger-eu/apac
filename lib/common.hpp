@@ -15,9 +15,9 @@ using namespace clang;
 //Contains functions used by multiple transformations
 
 //Returns the given Stmt as a String
-std::string getStmtAsString(const Stmt*,const LangOptions&);
+std::string getStmtAsString(const Stmt*,const LangOptions&,bool = false);
 //Returns the given Expr as a String
-std::string getExprAsString(const Expr*,const LangOptions&);
+std::string getExprAsString(const Expr*,const LangOptions&,bool = false);
 //Returns the given Stmt as a String, with full information (including children)
 std::string getStmtAsStringFull(const Stmt* statement,const LangOptions& langOpt);
 

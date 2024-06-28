@@ -36,7 +36,7 @@ std::string getVarDeclDeclStr(const VarDecl& v)
     SSresult<<v.getType().getAsString()<<" "<<v.getNameAsString()<<";\n";
     return SSresult.str();
 }
-std::string getStmtAsString(const Stmt* statement,const LangOptions& langOpt)
+std::string getStmtAsString(const Stmt* statement,const LangOptions& langOpt,bool noSemi)
 {
     if(!statement)
         return std::string();
@@ -44,9 +44,9 @@ std::string getStmtAsString(const Stmt* statement,const LangOptions& langOpt)
     {
         const ForStmt* f=cast<ForStmt>(statement);
         std::stringstream ss;
-        ss<<"for("<<getStmtAsString(f->getInit(),langOpt)<<";"
-        <<getExprAsString(f->getCond(),langOpt)<<";"
-        <<getExprAsString(f->getInc(),langOpt)<<")";
+        ss<<"for("<<getStmtAsString(f->getInit(),langOpt)
+        <<getExprAsString(f->getCond(),langOpt)
+        <<getExprAsString(f->getInc(),langOpt,true)<<")";
         return ss.str();
     }
     else if(isa<IfStmt>(statement))
@@ -64,6 +64,10 @@ std::string getStmtAsString(const Stmt* statement,const LangOptions& langOpt)
         print_policy.SuppressUnwrittenScope=true;
         llvm::raw_string_ostream stringStreamStmt(stmtString);
         statement->printPretty(stringStreamStmt,NULL,print_policy);
+        if(!noSemi&&!isa<DeclStmt>(statement))
+            stmtString+=";";
+        else if(noSemi&&isa<DeclStmt>(statement))
+            stmtString=stmtString.substr(0,stmtString.size()-1);
         return stmtString;
     }
 }
@@ -77,9 +81,11 @@ std::string getStmtAsStringFull(const Stmt* statement,const LangOptions& langOpt
     print_policy.SuppressUnwrittenScope=true;
     llvm::raw_string_ostream stringStreamStmt(stmtString);
     statement->printPretty(stringStreamStmt,NULL,print_policy);
+    if(!isa<DeclStmt>(statement))
+            stmtString+=";";
     return stmtString;
 }
-std::string getExprAsString(const Expr* expression,const LangOptions& langOpt)
+std::string getExprAsString(const Expr* expression,const LangOptions& langOpt,bool noSemi)
 {
     std::string exprString;
     if(expression!=NULL)
@@ -90,6 +96,8 @@ std::string getExprAsString(const Expr* expression,const LangOptions& langOpt)
         print_policy.SuppressUnwrittenScope=true;
         llvm::raw_string_ostream stringStreamExpr(exprString);
         expression->printPretty(stringStreamExpr,NULL,print_policy);
+        if(!noSemi)
+            exprString+=";";
     }
     return exprString;
 }
