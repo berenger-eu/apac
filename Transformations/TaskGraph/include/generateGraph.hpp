@@ -74,7 +74,7 @@ struct Node {
 struct Graph {
     std::vector<std::shared_ptr<Node>> nodes;
     std::vector<std::shared_ptr<Node>> roots;
-    void dump()
+    void dump() const
     {
         llvm::errs()<<"Graph: \n";
         for (const auto& node : nodes){
