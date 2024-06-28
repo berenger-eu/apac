@@ -19,6 +19,10 @@ public:
     inline bool VisitStmt(Stmt *s){return true;}
     //Traverse methods lets us stop visiting nodes that we don't need
     inline bool TraverseDeclStmt(DeclStmt *d){
+        if(isInHeaders(TheRewriter.getSourceMgr(),d->getBeginLoc())) 
+            return true;
+        if(!ignoreStmtPragma)
+            currentOrderManager->addInstructionToManager(d);
         return true;
     }
     inline bool TraverseCXXMethodDecl(CXXMethodDecl *m){

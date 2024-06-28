@@ -314,8 +314,10 @@ bool ASTTaskGraphVisitor::TraverseForStmt(ForStmt* f)
   functionsInstructionsVector.push_back(std::vector<Instruction>());
   ignoreStmtPragma=true;
   if( !( RecursiveASTVisitor::TraverseStmt(f->getCond())
-    &&  RecursiveASTVisitor::TraverseStmt(f->getInc()) )
+    &&  RecursiveASTVisitor::TraverseStmt(f->getInc()) 
+    &&  RecursiveASTVisitor::TraverseStmt(f->getInit())
     )
+  )
   {
     ignoreStmtPragma=oldValIgnore;
     return false;

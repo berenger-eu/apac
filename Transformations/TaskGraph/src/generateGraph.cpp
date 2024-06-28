@@ -188,10 +188,15 @@ StmtOrder& orderManager,std::unordered_set<std::shared_ptr<Node>>& visited)
     for(auto instr : node->instructionPtr)
         vectStmts.push_back(instr->instruction);
     fuseInstructions(vectStmts,orderManager);
-    /*
-    if(node->graph)
-        updateInstructionOrderFromGraph(*node->graph,orderManager);
-    */
+    for(int i=0;i<node->graph.size();i++)
+    {
+        auto subGraph = node->graph[i];
+        int count=-1;
+        for(auto instr : node->instructionPtr)
+            if(instr->complexInstruction&&++count==i)
+                updateInstructionOrderFromGraph(*subGraph,*orderManager.getSubStmtOrder(instr->instruction));
+    }
+    
 }
 
 void updateInstructionOrderFromGraph(const Graph& graph,StmtOrder& orderManager){

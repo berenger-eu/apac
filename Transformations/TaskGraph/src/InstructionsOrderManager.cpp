@@ -71,18 +71,20 @@ std::string modifiedStringForInstruction(Rewriter& TheRewriter,const StmtOrder& 
         ssPrint<<getStmtAsString(instr,TheRewriter.getLangOpts())<<"{\n";
         for(auto instrSubGroups:subOrder->instructionGroups)
         {
-            ssPrint<<"#pragma \n{\n";
+            if(!(instrSubGroups.second.size()==1&&isa<DeclStmt>(instrSubGroups.second.begin()->first)))
+                ssPrint<<"#pragma \n{\n";
             for(auto instrPair:instrSubGroups.second)
             {
                 auto instr=instrPair.first;
-                ssPrint<<modifiedStringForInstruction(TheRewriter,instructionsOrderManager,instr)<<";\n";
+                ssPrint<<modifiedStringForInstruction(TheRewriter,instructionsOrderManager,instr)<<"\n";
             }
-            ssPrint<<"}\n";
+            if(!(instrSubGroups.second.size()==1&&isa<DeclStmt>(instrSubGroups.second.begin()->first)))
+                ssPrint<<"}\n";
         }
         ssPrint<<"}\n";
     }
     else
-        ssPrint<<getStmtAsStringFull(instr,TheRewriter.getLangOpts())<<";\n";
+        ssPrint<<getStmtAsStringFull(instr,TheRewriter.getLangOpts())<<"\n";
     return ssPrint.str();
 }
 
@@ -98,14 +100,16 @@ void modifyFile(Rewriter& TheRewriter,const StmtOrder& instructionsOrderManager)
         if(vect.size()==0)
             continue;
         std::stringstream ssPrint;
-        ssPrint<<"#pragma \n{\n";
+        if(!(vect.size()==1&&isa<DeclStmt>(vect.begin()->first)))
+            ssPrint<<"#pragma \n{\n";
         for(auto instrPair:vect)
         {
             auto instr=instrPair.first;
             TheRewriter.RemoveText(SourceRange(instr->getBeginLoc(),Lexer::getLocForEndOfToken(instr->getEndLoc(),0,TheRewriter.getSourceMgr(),TheRewriter.getLangOpts())));
             ssPrint<<modifiedStringForInstruction(TheRewriter,instructionsOrderManager,instr);   
         }
-        ssPrint<<"}\n";
+        if(!(vect.size()==1&&isa<DeclStmt>(vect.begin()->first)))
+            ssPrint<<"}\n";
         TheRewriter.InsertText(st->getBeginLoc(),ssPrint.str());
     }
 }
