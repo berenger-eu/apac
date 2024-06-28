@@ -302,21 +302,34 @@ bool ASTTaskGraphVisitor::TraverseForStmt(ForStmt* f)
   if(isInHeaders(TheRewriter.getSourceMgr(),f->getBeginLoc())) 
     return true;
   bool res=true;
+  llvm::errs()<<"ForStmt\n";
   bool oldValIgnore=ignoreStmtPragma;
+  StmtOrder* outerInstrOrder=currentOrderManager;
   if(!ignoreStmtPragma)
-    orderManager.addInstructionToManager(f);
+    currentOrderManager->addInstructionToManager(f);
+  if(currentOrderManager->getSubStmtOrder(f)!=nullptr)
+    currentOrderManager=(outerInstrOrder->getSubStmtOrder(f)).get();
+  llvm::errs()<<((outerInstrOrder->getSubStmtOrder(f)).get()==nullptr)<<"End ForStmt\n";
   Instruction compInstr{f,getStmtAsString(f,TheRewriter.getLangOpts()),true,0};
   functionsInstructionsVector.push_back(std::vector<Instruction>());
   ignoreStmtPragma=true;
-  if(!( RecursiveASTVisitor::TraverseStmt(f->getCond())
-    &&  RecursiveASTVisitor::TraverseStmt(f->getInc())
-    &&  RecursiveASTVisitor::TraverseStmt(f->getBody())
-    ) )
+  if( !( RecursiveASTVisitor::TraverseStmt(f->getCond())
+    &&  RecursiveASTVisitor::TraverseStmt(f->getInc()) )
+    )
+  {
+    ignoreStmtPragma=oldValIgnore;
+    return false;
+  }
+  ignoreStmtPragma=false;
+  if( ! RecursiveASTVisitor::TraverseStmt(f->getBody()))
   {
     ignoreStmtPragma=oldValIgnore;
     return false;
   }
   ignoreStmtPragma=oldValIgnore;
+  currentOrderManager=outerInstrOrder;
+
+
   compInstr.scopedInstructions=functionsInstructionsVector.back();
   for(auto& instr:compInstr.scopedInstructions){
     for(auto& dep:instr.dependencies){

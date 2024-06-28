@@ -61,10 +61,29 @@ void fuseInstructions(const std::vector<const Stmt*> vect,StmtOrder& instruction
     }
 }
 
-std::string modifiedStringForInstruction(Rewriter& TheRewriter,const Stmt* instr)
+std::string modifiedStringForInstruction(Rewriter& TheRewriter,const StmtOrder& instructionsOrderManager,const Stmt* instr)
 {
-    std::string instrString=getStmtAsStringFull(instr,TheRewriter.getLangOpts());
-    return instrString;
+    std::stringstream ssPrint;
+    //If the instruction contains a group of instructions (for,if,...)
+    StmtOrder* subOrder=instructionsOrderManager.getSubStmtOrder(instr).get();
+    if(subOrder!=nullptr)
+    {
+        ssPrint<<getStmtAsString(instr,TheRewriter.getLangOpts())<<"{\n";
+        for(auto instrSubGroups:subOrder->instructionGroups)
+        {
+            ssPrint<<"#pragma \n{\n";
+            for(auto instrPair:instrSubGroups.second)
+            {
+                auto instr=instrPair.first;
+                ssPrint<<modifiedStringForInstruction(TheRewriter,instructionsOrderManager,instr)<<";\n";
+            }
+            ssPrint<<"}\n";
+        }
+        ssPrint<<"}\n";
+    }
+    else
+        ssPrint<<getStmtAsStringFull(instr,TheRewriter.getLangOpts())<<";\n";
+    return ssPrint.str();
 }
 
 void modifyFile(Rewriter& TheRewriter,const StmtOrder& instructionsOrderManager)
@@ -83,9 +102,8 @@ void modifyFile(Rewriter& TheRewriter,const StmtOrder& instructionsOrderManager)
         for(auto instrPair:vect)
         {
             auto instr=instrPair.first;
-            if(instr!=st)
-                TheRewriter.RemoveText(SourceRange(instr->getBeginLoc(),Lexer::getLocForEndOfToken(instr->getEndLoc(),0,TheRewriter.getSourceMgr(),TheRewriter.getLangOpts())));
-            ssPrint<<getStmtAsStringFull(instr,TheRewriter.getLangOpts())<<";\n";   
+            TheRewriter.RemoveText(SourceRange(instr->getBeginLoc(),Lexer::getLocForEndOfToken(instr->getEndLoc(),0,TheRewriter.getSourceMgr(),TheRewriter.getLangOpts())));
+            ssPrint<<modifiedStringForInstruction(TheRewriter,instructionsOrderManager,instr);   
         }
         ssPrint<<"}\n";
         TheRewriter.InsertText(st->getBeginLoc(),ssPrint.str());

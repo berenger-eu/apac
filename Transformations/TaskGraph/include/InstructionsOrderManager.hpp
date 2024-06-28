@@ -28,15 +28,41 @@ struct StmtOrder{
         instructionLinks.insert({key,groupCounter});
         std::set<std::pair<const Stmt*,std::shared_ptr<StmtOrder>>,SmallerBeginLocation> temp;
         instructionGroups.insert({groupCounter,temp});
-        instructionGroups.at(groupCounter++).insert({{key,std::shared_ptr<StmtOrder>()}});
+        if(isa<ForStmt>(key))
+            instructionGroups.at(groupCounter++).insert({{key,std::make_shared<StmtOrder>()}});
+        else
+            instructionGroups.at(groupCounter++).insert({{key,std::shared_ptr<StmtOrder>()}});
+        
     }
-    void dump(){
+    inline std::shared_ptr<StmtOrder> getSubStmtOrder(const Stmt* key) const
+    {
+        if(instructionLinks.count(key)==0)
+            return nullptr;
+        int temp=instructionLinks.at(key);
+        if(instructionGroups.count(instructionLinks.at(key))==0)
+            return nullptr;
+        for(const auto& instr : instructionGroups.at(temp))
+        {
+            if(instr.first==key)
+            {
+                return instr.second;
+            }
+        }
+        return std::shared_ptr<StmtOrder>();
+    }
+     
+    void dump() const {
+        llvm::errs()<<"Dumping StmtOrder\n";
         for(const auto& instruction : instructionGroups)
         {
             llvm::errs()<<"Group "<<instruction.first<<"\n";
             for(const auto& instr : instruction.second)
             {
                 instr.first->dump();
+                if(instr.second!=nullptr)
+                {
+                    instr.second->dump();
+                }
             }
         }
     }
