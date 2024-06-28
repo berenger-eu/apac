@@ -76,7 +76,7 @@ std::string modifiedStringForInstruction(Rewriter& TheRewriter,const StmtOrder& 
             for(auto instrPair:instrSubGroups.second)
             {
                 auto instr=instrPair.first;
-                ssPrint<<modifiedStringForInstruction(TheRewriter,instructionsOrderManager,instr)<<"\n";
+                ssPrint<<modifiedStringForInstruction(TheRewriter,*subOrder,instr)<<"\n";
             }
             if(!(instrSubGroups.second.size()==1&&isa<DeclStmt>(instrSubGroups.second.begin()->first)))
                 ssPrint<<"}\n";

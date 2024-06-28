@@ -302,7 +302,6 @@ bool ASTTaskGraphVisitor::TraverseForStmt(ForStmt* f)
   if(isInHeaders(TheRewriter.getSourceMgr(),f->getBeginLoc())) 
     return true;
   bool res=true;
-  llvm::errs()<<"ForStmt\n";
   bool oldValIgnore=ignoreStmtPragma;
   StmtOrder* outerInstrOrder=currentOrderManager;
   if(!ignoreStmtPragma)

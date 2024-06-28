@@ -45,7 +45,7 @@ std::string getStmtAsString(const Stmt* statement,const LangOptions& langOpt,boo
         const ForStmt* f=cast<ForStmt>(statement);
         std::stringstream ss;
         ss<<"for("<<getStmtAsString(f->getInit(),langOpt)
-        <<getExprAsString(f->getCond(),langOpt)
+        <<getExprAsString(f->getCond(),langOpt)<<";"
         <<getExprAsString(f->getInc(),langOpt,true)<<")";
         return ss.str();
     }
@@ -96,8 +96,6 @@ std::string getExprAsString(const Expr* expression,const LangOptions& langOpt,bo
         print_policy.SuppressUnwrittenScope=true;
         llvm::raw_string_ostream stringStreamExpr(exprString);
         expression->printPretty(stringStreamExpr,NULL,print_policy);
-        if(!noSemi)
-            exprString+=";";
     }
     return exprString;
 }
