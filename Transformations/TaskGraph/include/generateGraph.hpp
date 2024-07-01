@@ -104,7 +104,14 @@ Graph InstructionToGraph(const std::vector<Instruction>& );
 void PrintGraph(const Graph& );
 
 void GenerateDotGraph(const std::vector<Graph>& graph, const std::string& filename);
+
+//Graph optimizations functions
 void optimizeGraph(Graph& graph);
+
+//Fuse nodes in the graph (nodes with a single link between them)
+void nodesFusion(Graph& graph);
+//Remove transitive dependencies in the graph
+void transitiveReduction(Graph& graph);
 
 //Generate all of the graph for a file, (generate one for each function)
 void generateGraph(const std::vector<std::vector<Instruction>>& ,StmtOrder& );

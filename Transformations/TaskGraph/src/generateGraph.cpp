@@ -158,7 +158,45 @@ void PrintGraph(const Graph& inGraph){
         std::cout << root->id <<" ";
     std::cout << std::endl;
 }
-void optimizeGraph(Graph& graph)
+
+void transitiveReduction(Graph& graph)
+{
+    for(auto node : graph.nodes)
+    {
+        std::set<std::shared_ptr<Node>> visited;
+        for(auto nextNode: node->next )
+        {
+            std::stack<std::shared_ptr<Node>> toVisit;
+            for(auto nextNextNode: nextNode.first->next)
+                toVisit.push(nextNextNode.first);
+            while(!toVisit.empty())
+            {
+                auto curNode = toVisit.top();
+                toVisit.pop();
+                if(visited.count(curNode))
+                    continue;
+                visited.insert(curNode);
+                
+                for(auto nextNode: curNode->next)
+                {
+                    toVisit.push(nextNode.first);
+                }
+            }
+        }
+        std::vector<std::shared_ptr<Node>> toRemove;
+        for(auto nextNode: node->next)
+            if(visited.count(nextNode.first))
+                toRemove.push_back(nextNode.first);
+        for(auto nextNode: toRemove)
+        {
+            node->next.erase(nextNode);
+            nextNode->prev.erase(node);
+        }
+
+    }
+}
+
+void nodesFusion(Graph& graph)
 {
     std::stack<std::shared_ptr<Node>> toRemove;
     for(long unsigned int i=0;i<graph.nodes.size();i++)     
@@ -173,6 +211,11 @@ void optimizeGraph(Graph& graph)
         for(auto subGraph : node->graph)
              optimizeGraph(*subGraph);
     }
+}
+void optimizeGraph(Graph& graph)
+{
+    transitiveReduction(graph);
+    nodesFusion(graph);  
 }
 
 void updateInstructionOrderNode(const std::shared_ptr<Node>& node,
