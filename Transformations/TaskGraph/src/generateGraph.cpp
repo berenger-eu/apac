@@ -253,13 +253,12 @@ void updateInstructionOrderFromGraph(const Graph& graph,StmtOrder& orderManager)
 void generateGraph(const std::vector<std::vector<Instruction>>& graphVector,StmtOrder& orderManager){
     std::vector<Graph> graphs;
     for (auto& functionInstructions : graphVector)
+        graphs.emplace_back(InstructionToGraph(functionInstructions));
+    GenerateDotGraph(graphs, "rawGraph.dot");
+    for(auto& graph : graphs)
     {
-        
-        auto graph = InstructionToGraph(functionInstructions);
-        //PrintGraph(graph);
         optimizeGraph(graph);
-        graphs.push_back(graph);
         updateInstructionOrderFromGraph(graph,orderManager);
     }
-    GenerateDotGraph(graphs, "graph.dot");
+    GenerateDotGraph(graphs, "optimizedGraph.dot");
 }
