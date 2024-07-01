@@ -1,20 +1,21 @@
-#include "core.hpp"
 #include "SymTab.hpp"
+#include "core.hpp"
 using namespace clang;
-class ASTConstifyVisitor : public RecursiveASTVisitor<ASTConstifyVisitor>
-{
+class ASTConstifyVisitor : public RecursiveASTVisitor<ASTConstifyVisitor> {
 public:
-    ASTConstifyVisitor(Rewriter &R,SymTab& SymTableIn) : TheRewriter(R),SymT(SymTableIn) {};
-    inline bool VisitStmt(Stmt *){return true ;};
-    bool VisitCXXMethodDecl(CXXMethodDecl*);
-    bool VisitBinaryOperator(BinaryOperator*);
-    bool VisitUnaryOperator(UnaryOperator*);
-    bool VisitReturnStmt(ReturnStmt*);
-    //bool VisitCXXMemberCallExpr(CXXMemberCallExpr* );
-    bool VisitCallExpr(CallExpr* );
-    bool VisitVarDecl(VarDecl *);
+  ASTConstifyVisitor(Rewriter &R, SymTab &SymTableIn)
+      : TheRewriter(R), SymT(SymTableIn) {};
+  inline bool VisitStmt(Stmt *) { return true; };
+  bool VisitCXXMethodDecl(CXXMethodDecl *);
+  bool VisitBinaryOperator(BinaryOperator *);
+  bool VisitUnaryOperator(UnaryOperator *);
+  bool VisitReturnStmt(ReturnStmt *);
+  // bool VisitCXXMemberCallExpr(CXXMemberCallExpr* );
+  bool VisitCallExpr(CallExpr *);
+  bool VisitVarDecl(VarDecl *);
+
 private:
-    Rewriter &TheRewriter;
-    SymTab& SymT;
+  Rewriter &TheRewriter;
+  SymTab &SymT;
 };
-void unconstifyByPropagation(const_arg*);
+void unconstifyByPropagation(const_arg *);

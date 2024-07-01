@@ -19,6 +19,5 @@ int main() {
     };
     delete apacMemeBloc__j_0;
   }
-
   delete apacMemeBloc__i_0;
 }

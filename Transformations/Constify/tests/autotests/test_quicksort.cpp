@@ -1,43 +1,43 @@
-#include <cstdlib>
 #include <cstdio>
+#include <cstdlib>
 #include <time.h>
 
 #define SIZE 100000000
 
-void swap(int * a, int * b) {
+void swap(int *a, int *b) {
   int temp = *a;
   *a = *b;
   *b = temp;
 }
 
-void init(int * arr) {
-  for(int idx = 0; idx < SIZE; idx++) {
+void init(int *arr) {
+  for (int idx = 0; idx < SIZE; idx++) {
     arr[idx] = rand();
   }
 }
 
-void Partition(int * outPivot, int * arr, int rightLimit) {
+void Partition(int *outPivot, int *arr, int rightLimit) {
   int pivot = arr[rightLimit - 1];
   int idxLeft = -1;
   int idxIter;
 
-  for(idxIter = 0; idxIter < rightLimit - 1; idxIter++) {
-    if(arr[idxIter] < pivot) {
+  for (idxIter = 0; idxIter < rightLimit - 1; idxIter++) {
+    if (arr[idxIter] < pivot) {
       idxLeft++;
       swap(&arr[idxLeft], &arr[idxIter]);
     }
   }
-  
+
   swap(&arr[idxLeft + 1], &arr[rightLimit - 1]);
   *outPivot = (idxLeft + 1);
 }
 
-void InsertionSort(int * arr, int rightLimit) {
-  for(int idx = 0; idx < rightLimit - 1; ++idx) {
+void InsertionSort(int *arr, int rightLimit) {
+  for (int idx = 0; idx < rightLimit - 1; ++idx) {
     int idxMin = idx;
     int idxIter;
-    for(idxIter = idxMin + 1; idxIter < rightLimit; ++idxIter) {
-      if(arr[idxMin] > arr[idxIter]) {
+    for (idxIter = idxMin + 1; idxIter < rightLimit; ++idxIter) {
+      if (arr[idxMin] > arr[idxIter]) {
         idxMin = idxIter;
       }
     }
@@ -45,12 +45,12 @@ void InsertionSort(int * arr, int rightLimit) {
   }
 }
 
-void SortCore(int * inOutData, int rightLimit) {
+void SortCore(int *inOutData, int rightLimit) {
   if (0 >= rightLimit) {
     return;
   }
-  
-  if(rightLimit <= 256) {
+
+  if (rightLimit <= 256) {
     InsertionSort(inOutData, rightLimit);
   } else {
     int pivot;
@@ -60,28 +60,26 @@ void SortCore(int * inOutData, int rightLimit) {
   }
 }
 
-void Sort(int * inOutData, int inSize) {
-  SortCore(inOutData, inSize);
-}
+void Sort(int *inOutData, int inSize) { SortCore(inOutData, inSize); }
 
-int main(){
-  
-  int * data = (int *) malloc(SIZE * sizeof(int));
+int main() {
 
-  if(!data) {
+  int *data = (int *)malloc(SIZE * sizeof(int));
+
+  if (!data) {
     printf("Error while allocating data array!\n");
     return 1;
   }
-  
+
   srand(time(NULL));
-  
+
   init(data);
 
   Sort(data, SIZE);
-  
+
   int idx;
-  for(idx = 1; idx < SIZE; idx++) {
-    if(data[idx - 1] > data[idx]){
+  for (idx = 1; idx < SIZE; idx++) {
+    if (data[idx - 1] > data[idx]) {
       printf("Array is not sorted!\n");
       free(data);
       return 1;
@@ -89,6 +87,6 @@ int main(){
   }
 
   free(data);
-  
+
   return 0;
 }

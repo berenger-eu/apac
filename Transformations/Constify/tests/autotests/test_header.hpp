@@ -1,1 +1,1 @@
-void fun( int );
+void fun(int);

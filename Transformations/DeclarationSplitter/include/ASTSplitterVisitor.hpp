@@ -1,7 +1,7 @@
 #pragma once
+#include <queue>
 #include <sstream>
 #include <string>
-#include <queue>
 
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/RecursiveASTVisitor.h"
@@ -11,15 +11,14 @@
 #include "common.hpp"
 
 using namespace clang;
-class ASTSplitterVisitor : public RecursiveASTVisitor<ASTSplitterVisitor>
-{
+class ASTSplitterVisitor : public RecursiveASTVisitor<ASTSplitterVisitor> {
 public:
-    ASTSplitterVisitor(Rewriter &R) : TheRewriter(R) {};
-    inline bool VisitStmt(Stmt *) {return true;}
-    bool VisitDeclStmt(DeclStmt*);
+  ASTSplitterVisitor(Rewriter &R) : TheRewriter(R) {};
+  inline bool VisitStmt(Stmt *) { return true; }
+  bool VisitDeclStmt(DeclStmt *);
 
 private:
-    bool isValidSeparation(const VarDecl& );
-    void stringVarDecl(const VarDecl&,std::stringstream& , std::stringstream& );
-    Rewriter &TheRewriter;
+  bool isValidSeparation(const VarDecl &);
+  void stringVarDecl(const VarDecl &, std::stringstream &, std::stringstream &);
+  Rewriter &TheRewriter;
 };
