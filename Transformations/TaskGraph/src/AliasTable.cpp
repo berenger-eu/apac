@@ -2,31 +2,66 @@
 
 using namespace clang;
 
+void aliasArg::dump() const {
+  llvm::errs() << "AliasArg: " << declaration.getNameAsString() << "\n";
+  switch (type) {
+  case Reference:
+    llvm::errs() << "Type: Reference\n";
+    break;
+  case Pointer:
+    llvm::errs() << "Type: Pointer\n";
+    break;
+  case Variable:
+    llvm::errs() << "Type: Variable\n";
+    break;
+  default:
+    llvm::errs() << "Type: Unknown\n";
+    break;
+  }
+  llvm::errs() << "Pointers: ";
+  for (const auto &ptr : pointers)
+    llvm::errs() << ptr->declaration.getNameAsString() << " ";
+  llvm::errs() << "\n";
+  llvm::errs() << "References: ";
+  for (const auto &ref : references)
+    llvm::errs() << ref->declaration.getNameAsString() << " ";
+  llvm::errs() << "\n";
+}
+void pointersAliasArg::dump() const {
+  aliasArg::dump();
+  llvm::errs() << "Aliased: ";
+  for (const auto &aliased : aliased)
+    llvm::errs() << aliased->declaration.getNameAsString() << " ";
+  llvm::errs() << "\n";
+}
+void referenceAliasArg::dump() const {
+  aliasArg::dump();
+  llvm::errs() << "Aliased: ";
+  for (const auto &aliased : aliased)
+    llvm::errs() << aliased->declaration.getNameAsString() << " ";
+  llvm::errs() << "\n";
+}
 std::unordered_set<const VarDecl *> AliasTable::getAliased(const VarDecl *v) {
   std::unordered_set<const VarDecl *> aliases;
   std::stack<aliasArg *> stack;
   auto alias = getAliasArg(v);
-  if (alias != nullptr) {
+  if (alias != nullptr)
     stack.push(alias);
-  }
   while (!stack.empty()) {
     const aliasArg *cur = stack.top();
     stack.pop();
-    if (aliases.count(&cur->declaration) != 0) {
+    if (aliases.count(&cur->declaration) != 0)
       continue;
-    }
     aliases.insert(&cur->declaration);
     if (cur->type == Reference) {
       const referenceAliasArg *ref =
           static_cast<const referenceAliasArg *>(cur);
-      for (const auto &alias : ref->aliased) {
+      for (const auto &alias : ref->aliased)
         stack.push(alias);
-      }
     } else if (cur->type == Pointer) {
       const pointersAliasArg *ptr = static_cast<const pointersAliasArg *>(cur);
-      for (const auto &alias : ptr->aliased) {
+      for (const auto &alias : ptr->aliased)
         stack.push(alias);
-      }
     }
   }
 
@@ -117,14 +152,9 @@ AliasTable::getAliases(const VarDecl *v) const {
     for (const auto &prevAlias : prevAliases)
       aliases.insert(prevAlias);
     newsize = aliases.size();
-  }
-  newsize = aliases.size();
-}
-while (newsize != oldSize)
-  ;
-return aliases;
-}
-;
+  } while (newsize != oldSize);
+  return aliases;
+};
 void AliasTable::getReferencesAliases(
     const VarDecl *v, std::unordered_set<const VarDecl *> &aliases) const {
   auto refAlias = getAliasArg(v);
@@ -217,16 +247,9 @@ void AliasTable::getModifiedVariables(
     for (auto &dep : setResults)
       dep->dump();
     llvm::errs() << "done\n";
-  }
-  llvm::errs() << "done\n";
+  } else if (depth == -1)
+    setResults.clear();
 }
-// Access to address of variable, so there is no modifications
-else if (depth == -1) {
-  setResults.clear();
-}
-}
-
-//      Dump Functions
 
 void AliasTable::dumpVarTable() const {
   llvm::errs() << "Variable Table\n\n";
