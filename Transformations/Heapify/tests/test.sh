@@ -34,7 +34,7 @@ for file in $testsPath/*.cpp; do
             differenceInAST=true
             differenceInText=true
         else
-            clang-format -i "$folderResultPath/$fileName" 
+            clang-format-18 -i "$folderResultPath/$fileName" 
             for file2 in "$folderResultPath"/*.cpp; do
                 if [ -f "$file2" ] && [[ "$file2" != *"astdiff"* ]]; then
                     #echo "Created file : $file2"
@@ -67,7 +67,7 @@ for file in $testsPath/*.cpp; do
         else 
             echo -e "${GREEN}Test succeeded, TEXT : $folderName${NC}"
         fi
-        if [ $differenceInAST == false ]; then #&& [ $differenceInText == false ]
+        if [ $differenceInAST == false ] && [ $differenceInText == false ]; then #
             rm -rf "$folderResultPath"
         fi
     fi
@@ -76,6 +76,6 @@ echo -e "${BLUE}${BOLD}Tests passed : $countPassed/$countTotal ${NC}"
 if [ $countPassed != $countTotal ]; then
     exit 1
 fi
-rm -rf "$resultPath/"
+#rm -rf "$resultPath/"
 exit 0
 done

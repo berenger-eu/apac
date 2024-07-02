@@ -74,10 +74,10 @@ int main() {
 
   int **apacMemeBloc__po_0 = new int *[10];
   int **&po = (apacMemeBloc__po_0);
-  int **apacMemeBloc__pl_0 = new int *[2] { aa, ab };
+  int **apacMemeBloc__pl_0 = new int *[2]{aa, ab};
   int **&pl = (apacMemeBloc__pl_0);
 
-  int **apacMemeBloc__pg_0 = new int *[2] { aa, ab };
+  int **apacMemeBloc__pg_0 = new int *[2]{aa, ab};
   int **&pg = (apacMemeBloc__pg_0);
 
   int *ai = new int(1);

@@ -1,5 +1,5 @@
 //   #include <memory>
-//  #include <vector> 
+//  #include <vector>
 #include <functional>
 #include <optional>
 template <class T> T &invalid_ref() {
@@ -7,16 +7,14 @@ template <class T> T &invalid_ref() {
   return (*ptr);
 }
 
-class Point{
+class Point {
 public:
-    Point() =default;
-    void setX(int t)
-    {
-        x = 4;
-    }
-    private:
-    int x;
-    int y;
+  Point() = default;
+  void setX(int t) { x = 4; }
+
+private:
+  int x;
+  int y;
 };
 /*
 int gun(int& b)
@@ -58,71 +56,70 @@ int fun(int& b)
     b=i;
     return gun(b);
 }*/
- /*
+/*
 void ptrtest(std::shared_ptr<int> ptr,int &k,int* p)
 {
-    *ptr = 4;
-    k++;
-    *p=4;
+   *ptr = 4;
+   k++;
+   *p=4;
 }*/
-int main()
-{
-    int i;
-    i=4;
-    int a;
-    int j;
-      std::reference_wrapper<int> ref = invalid_ref<int>();
+int main() {
+  int i;
+  i = 4;
+  int a;
+  int j;
+  std::reference_wrapper<int> ref = invalid_ref<int>();
   ref = a;
   a++;
   ref++;
-  int *p,*p1;
-  p=&i;
-  p1=p;
-  p=&j;
-  (*p1)=4;
-    j++;
-    i++;
-    *p=4;
+  int *p, *p1;
+  p = &i;
+  p1 = p;
+  p = &j;
+  (*p1) = 4;
+  j++;
+  i++;
+  *p = 4;
   //  std::shared_ptr<int> ptr;
-   // ptr = std::make_shared<int>(i);
-   // ptr.get();
-   // *ptr = 4;
-    j=i;
-    i++;
-    Point po;
-    po.setX(4);
-    po.setX(8);
-    po.setX(i);
-    po.setX(j);
-    // ptrtest(ptr,j,&i);
-    /*
-    for(int k=0;k<4;k++)
-    {
-        i++;
-        j++;
-        for(int l=0;l<4;l++)
-        {
-            i++;
-            j++;
-        }
-        for(int m=0;m<4;m++)
-        {
-            ;
-        }
-        int a;
-        a++;
-    }
-    
-    i=41;
-    j++;
-    i=4;
-    for (int k=0;k<4;k++)
-    {
-        i++;
-        j++;
-    }
-    j=4;
-    i=4+i+j;
-  */  
-    return 0;
+  // ptr = std::make_shared<int>(i);
+  // ptr.get();
+  // *ptr = 4;
+  j = i;
+  i++;
+  Point po;
+  po.setX(4);
+  po.setX(8);
+  po.setX(i);
+  po.setX(j);
+  // ptrtest(ptr,j,&i);
+  /*
+  for(int k=0;k<4;k++)
+  {
+      i++;
+      j++;
+      for(int l=0;l<4;l++)
+      {
+          i++;
+          j++;
+      }
+      for(int m=0;m<4;m++)
+      {
+          ;
+      }
+      int a;
+      a++;
+  }
+
+  i=41;
+  j++;
+  i=4;
+  for (int k=0;k<4;k++)
+  {
+      i++;
+      j++;
+  }
+  j=4;
+  i=4+i+j;
+*/
+  return 0;
 }

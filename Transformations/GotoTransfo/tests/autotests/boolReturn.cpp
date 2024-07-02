@@ -1,4 +1,1 @@
-bool h()
-{
-    return true;
-}
+bool h() { return true; }

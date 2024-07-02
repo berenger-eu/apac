@@ -1,6 +1,5 @@
-int main()
-{
-    int a=1;
-    char b;
-    return 1;
+int main() {
+  int a = 1;
+  char b;
+  return 1;
 }

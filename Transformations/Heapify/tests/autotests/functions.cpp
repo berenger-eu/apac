@@ -1,12 +1,10 @@
-void functionj()
-{
-    int nm;
-    int m;
-    return ;
+void functionj() {
+  int nm;
+  int m;
+  return;
 }
 
-int main()
-{
-    int m;
-    return 1;
+int main() {
+  int m;
+  return 1;
 }

@@ -1,8 +1,7 @@
-int main()
-{
-    int n=5;
-    {
-        int n=1;
-        return 1;
-    }
+int main() {
+  int n = 5;
+  {
+    int n = 1;
+    return 1;
+  }
 }

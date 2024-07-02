@@ -1,4 +1,4 @@
-int main(){
-    int m,k=5;
-    return 1;
+int main() {
+  int m, k = 5;
+  return 1;
 }
