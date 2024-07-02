@@ -32,16 +32,16 @@ std::string getVarDeclDeclStr(const VarDecl &v) {
   SSresult << v.getType().getAsString() << " " << v.getNameAsString() << ";\n";
   return SSresult.str();
 }
-std::string getStmtAsString(const Stmt *statement, const LangOptions &langOpt) {
-  if (!statement) {
+std::string getStmtAsString(const Stmt *statement, const LangOptions &langOpt,
+                            bool noSemi) {
+  if (!statement)
     return std::string();
-  }
   if (isa<ForStmt>(statement)) {
     const ForStmt *f = cast<ForStmt>(statement);
     std::stringstream ss;
-    ss << "for(" << getStmtAsString(f->getInit(), langOpt) << ";"
+    ss << "for(" << getStmtAsString(f->getInit(), langOpt)
        << getExprAsString(f->getCond(), langOpt) << ";"
-       << getExprAsString(f->getInc(), langOpt) << ")";
+       << getExprAsString(f->getInc(), langOpt, true) << ")";
     return ss.str();
   } else if (isa<IfStmt>(statement)) {
     const IfStmt *i = cast<IfStmt>(statement);
@@ -55,8 +55,39 @@ std::string getStmtAsString(const Stmt *statement, const LangOptions &langOpt) {
     print_policy.SuppressUnwrittenScope = true;
     llvm::raw_string_ostream stringStreamStmt(stmtString);
     statement->printPretty(stringStreamStmt, NULL, print_policy);
+    if (!noSemi && !isa<DeclStmt>(statement))
+      stmtString += ";";
+    else if (noSemi && isa<DeclStmt>(statement))
+      stmtString = stmtString.substr(0, stmtString.size() - 1);
     return stmtString;
   }
+}
+std::string getStmtAsStringFull(const Stmt *statement,
+                                const LangOptions &langOpt) {
+  if (!statement)
+    return std::string();
+  std::string stmtString;
+  std::stringstream SSprint;
+  PrintingPolicy print_policy(langOpt);
+  print_policy.SuppressUnwrittenScope = true;
+  llvm::raw_string_ostream stringStreamStmt(stmtString);
+  statement->printPretty(stringStreamStmt, NULL, print_policy);
+  if (!isa<DeclStmt>(statement))
+    stmtString += ";";
+  return stmtString;
+}
+std::string getExprAsString(const Expr *expression, const LangOptions &langOpt,
+                            bool noSemi) {
+  std::string exprString;
+  if (expression != NULL) {
+
+    std::stringstream SSprint;
+    PrintingPolicy print_policy(langOpt);
+    print_policy.SuppressUnwrittenScope = true;
+    llvm::raw_string_ostream stringStreamExpr(exprString);
+    expression->printPretty(stringStreamExpr, NULL, print_policy);
+  }
+  return exprString;
 }
 
 std::string getExprAsString(const Expr *expression,
@@ -199,4 +230,48 @@ int getPtrDepthAccess(const clang::VarDecl &v, const clang::Expr &e) {
   const QualType &qt1 = v.getType();
   const QualType &qt2 = e.getType();
   return getPtrDepthAccess(qt1, qt2, v.getASTContext());
+}
+
+std::deque<clang::ArraySubscriptExpr *>
+getArraySubscripts(const clang::Expr *e) {
+  std::deque<clang::ArraySubscriptExpr *> queueArraySubscriptExpr;
+  Expr *curExpr;
+  std::stack<Expr *> stackExpr;
+  stackExpr.push(curExpr);
+  while (!stackExpr.empty()) {
+    curExpr = stackExpr.top();
+    stackExpr.pop();
+    if (isa<ArraySubscriptExpr>(curExpr)) {
+      ArraySubscriptExpr *ase = cast<ArraySubscriptExpr>(curExpr);
+      queueArraySubscriptExpr.push_front(ase);
+      stackExpr.push(ase->getBase());
+    } else {
+      for (auto it = curExpr->child_begin(); it != curExpr->child_end(); ++it)
+        if (isa<Expr>(*it))
+          stackExpr.push(cast<Expr>(*it));
+    }
+  }
+  return queueArraySubscriptExpr;
+}
+std::vector<clang::Expr *> getArraySubscriptsIndexes(const clang::Expr *e) {
+  std::vector<clang::Expr *> vectArraySubscriptExprIndexes;
+  std::deque<clang::ArraySubscriptExpr *> queueArraySubscriptExpr =
+      getArraySubscripts(e);
+  for (auto &expr : queueArraySubscriptExpr) {
+    vectArraySubscriptExprIndexes.push_back(expr->getIdx());
+  }
+  return vectArraySubscriptExprIndexes;
+}
+std::vector<int> getArraySubscriptsIndexesValues(const clang::Expr *e) {
+  std::vector<int> vectArraySubscriptExpr;
+  std::vector<Expr *> vectExpr = getArraySubscriptsIndexes(e);
+  for (auto &expr : vectExpr) {
+    // TODO: Handle cases with evaluable expressions (5+4 , ...)
+    if (isa<IntegerLiteral>(expr))
+      vectArraySubscriptExpr.push_back(
+          cast<IntegerLiteral>(expr)->getValue().getSExtValue());
+    else
+      vectArraySubscriptExpr.push_back(-1);
+  }
+  return vectArraySubscriptExpr;
 }

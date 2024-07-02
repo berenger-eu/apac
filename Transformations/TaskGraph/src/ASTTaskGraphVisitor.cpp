@@ -10,7 +10,7 @@ void ASTTaskGraphVisitor::computeAliasesForRHS(
   // If we access a variable, then we found the aliases of the variable really
   // accessed
   //(*p), the variable is p, but in reality we access *p, so we need to look for
-  //the aliases of *p
+  // the aliases of *p
   if (d) {
     // Aliases will be values that refer (or might refer) to the same memory
     // location
@@ -20,11 +20,9 @@ void ASTTaskGraphVisitor::computeAliasesForRHS(
     depth = getPtrDepthAccess(*v, *rhs);
     // We retrive the pointed values or the references
     aliasTable.getModifiedVariables(aliases, depth);
-    for (auto &ali : aliases) {
-      if (v != ali) {
+    for (auto &ali : aliases)
+      if (v != ali)
         instr.curAliases.insert({v, ali});
-      }
-    }
   }
   // Handle CallExpr ( int * p=min(&a,&b) , p might point to a or b or something
   // new)
@@ -39,22 +37,19 @@ void ASTTaskGraphVisitor::computeAliasesForRHS(
         const Expr *arg = c->getArg(i);
         std::unordered_set<const VarDecl *> subAliases;
         computeAliasesForRHS(arg, subAliases, instr);
-        for (auto &alias : subAliases) {
+        for (auto &alias : subAliases)
           aliases.insert(alias);
-        }
         if (isa<VarDecl>(getSingleDeclRefExprInsideExpr(arg)->getDecl())) {
           const VarDecl *v =
               cast<VarDecl>(getSingleDeclRefExprInsideExpr(arg)->getDecl());
-          if (getPtrDepthAccess(*v, *arg) == -1) {
+          if (getPtrDepthAccess(*v, *arg) == -1)
             aliases.insert(v);
-          }
         }
       }
     }
     // TODO: Handle CallExpr
-  } else {
+  } else
     handleStmt(*rhs, instr);
-  }
 }
 
 void ASTTaskGraphVisitor::handleCXXOperatorCallExpr(
@@ -75,11 +70,9 @@ void ASTTaskGraphVisitor::handleCXXOperatorCallExpr(
         }
       }
     }
-  } else {
-    for (const auto &arg : c.arguments()) {
+  } else
+    for (const auto &arg : c.arguments())
       handleStmt(*arg, instr, isWrite);
-    }
-  }
 }
 
 void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator &uop,
@@ -95,25 +88,20 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator &uop,
     std::unordered_set<const VarDecl *> aliases;
 
     computeAliasesForRHS(&uop, aliases, curInstr);
-    for (auto &alias : aliases) {
+    for (auto &alias : aliases)
       addDependencyRead(curInstr, alias);
-    }
 
     // TODO: check if other cases are read and/or write
-    if (uop.isIncrementOp() || uop.isDecrementOp()) {
-      for (auto &alias : aliases) {
+    if (uop.isIncrementOp() || uop.isDecrementOp())
+      for (auto &alias : aliases)
         addDependencyWrite(curInstr, alias);
-      }
-    }
-    if ((getPtrDepthAccess(*v, *subExpr)) > 0) {
+    if ((getPtrDepthAccess(*v, *subExpr)) > 0)
       addDependencyRead(curInstr, v);
-    }
   }
   // Otherwise, unary expression affects a temporary value so we ignore it but
   // still look through the expression
-  else {
+  else
     handleStmt(*subExpr, curInstr);
-  }
 }
 
 void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator &bop,
@@ -135,46 +123,36 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator &bop,
         // elements will change If there are multiple, it's because we can't be
         // sure which one is aliased, so we can't remove the dependencies
 
-        if (aliases.size() == 1) {
+        if (aliases.size() == 1)
           aliasTable.removeDependencyPtr(*aliases.begin());
-        }
 
         std::unordered_set<const VarDecl *> aliasesRHS;
         computeAliasesForRHS(bop.getRHS(), aliasesRHS, curInstr);
         llvm::errs() << "Size of aliases: " << aliasesRHS.size()
                      << aliases.size() << "\n";
-        for (auto &alias : aliasesRHS) {
+        for (auto &alias : aliasesRHS)
           alias->dump();
-        }
         const DeclRefExpr *d = getSingleDeclRefExprInsideExpr(bop.getRHS());
-        if (d) {
+        if (d)
           if (getPtrDepthAccess(*cast<VarDecl>(d->getDecl()), *bop.getRHS()) ==
-              -1) {
-            for (auto &aliasLeft : aliases) {
+              -1)
+            for (auto &aliasLeft : aliases)
               aliasTable.addAliasPtr(cast<VarDecl>(d->getDecl()), aliasLeft);
-            }
-          }
-        }
-        for (auto &aliasLeft : aliases) {
-          for (auto &alias : aliasesRHS) {
+        for (auto &aliasLeft : aliases)
+          for (auto &alias : aliasesRHS)
             aliasTable.addAliasPtr(alias, aliasLeft);
-          }
-        }
       }
       for (auto &alias : aliases) {
         addDependencyWrite(curInstr, alias);
-        if (isa<CompoundAssignOperator>(bop)) {
+        if (isa<CompoundAssignOperator>(bop))
           addDependencyRead(curInstr, alias);
-        }
       }
       int depth = getPtrDepthAccess(*v, *bop.getLHS());
-      if (depth > 0) {
+      if (depth > 0)
         addDependencyRead(curInstr, v);
-      }
 
-    } else {
+    } else
       handleStmt(*bop.getLHS(), curInstr, true);
-    }
     handleStmt(*bop.getRHS(), curInstr);
   }
   // Otherwise, we just look through the expression on both sides
@@ -190,12 +168,10 @@ void ASTTaskGraphVisitor::handleMemberCallExpr(const CXXMemberCallExpr &c,
   if (isa<DeclRefExpr>(obj)) {
     VarDecl *v = cast<VarDecl>(cast<DeclRefExpr>(obj)->getDecl());
     addDependencyRead(curInstr, v);
-    if (!c.getMethodDecl()->isConst()) {
+    if (!c.getMethodDecl()->isConst())
       addDependencyWrite(curInstr, v);
-    }
-  } else {
+  } else
     handleStmt(*obj, curInstr);
-  }
   handleCallExpr(c, curInstr);
 }
 void ASTTaskGraphVisitor::handleCallExpr(const CallExpr &c,
@@ -209,12 +185,10 @@ void ASTTaskGraphVisitor::handleCallExpr(const CallExpr &c,
     // If we have a variable, then there might be a write
     if (isInExceptionList(p)) {
       const Expr *d = b;
-      if (isa<CXXBindTemporaryExpr>(d)) {
+      if (isa<CXXBindTemporaryExpr>(d))
         d = cast<CXXBindTemporaryExpr>(*(b->IgnoreCasts())).getSubExpr();
-      }
-      if (isa<CXXConstructExpr>(d)) {
+      if (isa<CXXConstructExpr>(d))
         d = cast<CXXConstructExpr>(d)->getArg(0);
-      }
       if (isa<DeclRefExpr>(d->IgnoreParenImpCasts())) {
         const VarDecl *v = cast<VarDecl>(
             cast<DeclRefExpr>(d->IgnoreParenImpCasts())->getDecl());
@@ -237,15 +211,13 @@ void ASTTaskGraphVisitor::handleCallExpr(const CallExpr &c,
           addDependencyRead(curInstr, ali);
           addDependencyWrite(curInstr, ali);
         }
-      } else {
+      } else
         llvm::errs() << "Failed to find DeclRefExpr\n";
-      }
     }
     // Otherwise, we look through the expression since it is the same as looking
     // through any expression
-    else {
+    else
       handleStmt(*b, curInstr);
-    }
   }
 }
 void ASTTaskGraphVisitor::handleStmt(const Stmt &st, Instruction &instr,
@@ -253,28 +225,26 @@ void ASTTaskGraphVisitor::handleStmt(const Stmt &st, Instruction &instr,
   // Simple switch case to call the respective handle method, except for
   // DeclRefExpr which is a variable so it is a read
   if (isa<ReturnStmt>(st)) {
-    if (cast<ReturnStmt>(st).getRetValue()) {
+    if (cast<ReturnStmt>(st).getRetValue())
       handleStmt(*(cast<ReturnStmt>(st).getRetValue()), instr, isWrite);
-    }
   } else if (isa<Expr>(st)) {
     const Expr &curExp = *(cast<Expr>(st).IgnoreParenImpCasts());
-    if (isa<CXXOperatorCallExpr>(curExp)) {
+    if (isa<CXXOperatorCallExpr>(curExp))
       handleCXXOperatorCallExpr(cast<CXXOperatorCallExpr>(curExp), instr,
                                 isWrite);
-    } else if (isa<UnaryOperator>(curExp)) {
+    else if (isa<UnaryOperator>(curExp))
       handleUnaryOperator(cast<UnaryOperator>(curExp), instr, isWrite);
-    } else if (isa<BinaryOperator>(curExp)) {
+    else if (isa<BinaryOperator>(curExp))
       handleBinaryOperator(cast<BinaryOperator>(curExp), instr, isWrite);
-    } else if (isa<CXXMemberCallExpr>(curExp)) {
+    else if (isa<CXXMemberCallExpr>(curExp))
       handleMemberCallExpr(cast<CXXMemberCallExpr>(curExp), instr, isWrite);
-    } else if (isa<CallExpr>(curExp)) {
+    else if (isa<CallExpr>(curExp))
       handleCallExpr(cast<CallExpr>(curExp), instr, isWrite);
-    } else if (isa<DeclRefExpr>(curExp)) {
+    else if (isa<DeclRefExpr>(curExp)) {
       const VarDecl *v = cast<VarDecl>(cast<DeclRefExpr>(curExp).getDecl());
       addDependencyRead(instr, v);
-      if (isWrite) {
+      if (isWrite)
         addDependencyWrite(instr, v);
-      }
     }
     // Ignored expressions case
     else if (isa<IntegerLiteral>(curExp)) {
@@ -291,9 +261,8 @@ void ASTTaskGraphVisitor::handleStmt(const Stmt &st, Instruction &instr,
 }
 
 bool ASTTaskGraphVisitor::TraverseFunctionDecl(FunctionDecl *f) {
-  if (isInHeaders(TheRewriter.getSourceMgr(), f->getBeginLoc())) {
+  if (isInHeaders(TheRewriter.getSourceMgr(), f->getBeginLoc()))
     return true;
-  }
 
   // If function is not in headers and has a body and is a definition, then we
   // traverse it recursively Using traverse we can avoid visiting nodes that we
@@ -306,25 +275,35 @@ bool ASTTaskGraphVisitor::TraverseFunctionDecl(FunctionDecl *f) {
 }
 
 bool ASTTaskGraphVisitor::TraverseForStmt(ForStmt *f) {
-  if (isInHeaders(TheRewriter.getSourceMgr(), f->getBeginLoc())) {
+  if (isInHeaders(TheRewriter.getSourceMgr(), f->getBeginLoc()))
     return true;
-  }
   bool res = true;
+  bool oldValIgnore = ignoreStmtPragma;
+  StmtOrder *outerInstrOrder = currentOrderManager;
+  if (!ignoreStmtPragma)
+    currentOrderManager->addInstructionToManager(f);
+  if (currentOrderManager->getSubStmtOrder(f) != nullptr)
+    currentOrderManager = (outerInstrOrder->getSubStmtOrder(f)).get();
+  llvm::errs() << ((outerInstrOrder->getSubStmtOrder(f)).get() == nullptr)
+               << "End ForStmt\n";
   Instruction compInstr{f, getStmtAsString(f, TheRewriter.getLangOpts()), true,
                         0};
   functionsInstructionsVector.push_back(std::vector<Instruction>());
-  res = RecursiveASTVisitor::TraverseStmt(f->getCond());
-  if (!res) {
+  ignoreStmtPragma = true;
+  if (!(RecursiveASTVisitor::TraverseStmt(f->getCond()) &&
+        RecursiveASTVisitor::TraverseStmt(f->getInc()) &&
+        RecursiveASTVisitor::TraverseStmt(f->getInit()))) {
+    ignoreStmtPragma = oldValIgnore;
     return false;
   }
-  res = RecursiveASTVisitor::TraverseStmt(f->getBody());
-  if (!res) {
+  ignoreStmtPragma = false;
+  if (!RecursiveASTVisitor::TraverseStmt(f->getBody())) {
+    ignoreStmtPragma = oldValIgnore;
     return false;
   }
-  res = RecursiveASTVisitor::TraverseStmt(f->getInc());
-  if (!res) {
-    return false;
-  }
+  ignoreStmtPragma = oldValIgnore;
+  currentOrderManager = outerInstrOrder;
+
   compInstr.scopedInstructions = functionsInstructionsVector.back();
   for (auto &instr : compInstr.scopedInstructions) {
     for (auto &dep : instr.dependencies) {
@@ -340,11 +319,10 @@ bool ASTTaskGraphVisitor::TraverseForStmt(ForStmt *f) {
 
   return res;
 }
-
+// TODO: refacto
 bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt *i) {
-  if (isInHeaders(TheRewriter.getSourceMgr(), i->getBeginLoc())) {
+  if (isInHeaders(TheRewriter.getSourceMgr(), i->getBeginLoc()))
     return true;
-  }
   bool res = true;
   Instruction compInstr{i, getStmtAsString(i, TheRewriter.getLangOpts()), true,
                         0};

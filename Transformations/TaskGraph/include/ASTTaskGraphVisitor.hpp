@@ -2,22 +2,31 @@
 #include <sstream>
 #include <string>
 
+#include "AliasTable.hpp"
+#include "InstructionsOrderManager.hpp"
+#include "PotTaskGraphInterface.hpp"
+#include "common.hpp"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 
-#include "AliasTable.hpp"
-#include "PotTaskGraphInterface.hpp"
-#include "common.hpp"
-
 using namespace clang;
 class ASTTaskGraphVisitor : public RecursiveASTVisitor<ASTTaskGraphVisitor> {
 public:
-  ASTTaskGraphVisitor(Rewriter &R) : TheRewriter(R), aliasTable(R) {};
+  ASTTaskGraphVisitor(Rewriter &R, StmtOrder &orderManager)
+      : TheRewriter(R), orderManager(orderManager),
+        currentOrderManager(&orderManager), aliasTable(R),
+        ignoreStmtPragma(false){};
   inline bool VisitStmt(Stmt *s) { return true; }
   // Traverse methods lets us stop visiting nodes that we don't need
-
+  inline bool TraverseDeclStmt(DeclStmt *d) {
+    if (isInHeaders(TheRewriter.getSourceMgr(), d->getBeginLoc()))
+      return true;
+    if (!ignoreStmtPragma)
+      currentOrderManager->addInstructionToManager(d);
+    return true;
+  }
   inline bool TraverseCXXMethodDecl(CXXMethodDecl *m) {
     return TraverseFunctionDecl(m);
   }
@@ -39,8 +48,11 @@ public:
   inline bool TraverseCompoundAssignOperator(CompoundAssignOperator *bop) {
     return traverseSimpleElements(bop);
   }
+  // Can be ignore if it is assumed that previous passes were run
+  // So the return statement should not contain any expressions
   inline bool TraverseReturnStmt(ReturnStmt *r) {
-    return traverseSimpleElements(r);
+    return true;
+    // return traverseSimpleElements(r);
   }
   inline bool TraverseCXXOperatorCallExpr(CXXOperatorCallExpr *c) {
     return traverseSimpleElements(c);
@@ -53,11 +65,9 @@ public:
 
   const AliasTable &getAliasTable() const { return aliasTable; }
   inline void dumpInstructions() const {
-    for (const auto &function : functionsInstructionsVector) {
-      for (const auto &instr : function) {
+    for (const auto &function : functionsInstructionsVector)
+      for (const auto &instr : function)
         instr.dump();
-      }
-    }
   }
 
 private:
@@ -66,42 +76,34 @@ private:
   };
   inline void addDependencyRead(Instruction &instr, const VarDecl *d) {
     for (auto &alias : aliasTable.getAliases(d)) {
-      if (instr.dependencies.count(alias) == 0) {
+      if (instr.dependencies.count(alias) == 0)
         instr.dependencies.insert(
             {alias->getCanonicalDecl(), NodeDependency{true, false}});
-      } else {
+      else
         instr.dependencies.find(alias->getCanonicalDecl())->second.isRead =
             true;
-      }
     }
   }
   inline void addDependencyWrite(Instruction &instr, const VarDecl *d) {
     for (auto &alias : aliasTable.getAliases(d)) {
-      if (instr.dependencies.count(alias) == 0) {
+      if (instr.dependencies.count(alias->getCanonicalDecl()) == 0)
         instr.dependencies.insert(
             {alias->getCanonicalDecl(), NodeDependency{false, true}});
-      } else {
+      else
         instr.dependencies.find(alias->getCanonicalDecl())->second.isWrite =
             true;
-      }
     }
   }
-  // Basic code used by most Traverse methods to handle simple elements
   bool traverseSimpleElements(Stmt *s) {
-    // Ignore statements that are in headers
-    if (isInHeaders(TheRewriter.getSourceMgr(), s->getBeginLoc())) {
+    if (isInHeaders(TheRewriter.getSourceMgr(), s->getBeginLoc()))
       return true;
-    }
-    // Create an instruction and handle it
+    if (!ignoreStmtPragma)
+      currentOrderManager->addInstructionToManager(s);
     Instruction instr{s, getStmtAsString(s, TheRewriter.getLangOpts()), false};
     handleStmt(*s, instr);
-    // Add the instruction to the current function vector of instructions
     functionsInstructionsVector.back().push_back(instr);
     return true;
   }
-  // TODO: rewrite handles, they should be simpler to understand
-  // It might be needed to add some functions for clarity
-
   void handleCXXOperatorCallExpr(const CXXOperatorCallExpr &, Instruction &,
                                  bool isWrite = false);
   void handleUnaryOperator(const UnaryOperator &, Instruction &,
@@ -112,12 +114,14 @@ private:
   void handleStmt(const Stmt &st, Instruction &, bool isWrite = false);
   void handleMemberCallExpr(const CXXMemberCallExpr &, Instruction &,
                             bool isWrite = false);
-  // Compute the aliases for a given expression and returns them in the set
   void computeAliasesForRHS(const Expr *bop,
                             std::unordered_set<const VarDecl *> &,
                             Instruction &instr);
   Rewriter &TheRewriter;
+  StmtOrder &orderManager;
+  StmtOrder *currentOrderManager;
   AliasTable aliasTable;
+  bool ignoreStmtPragma;
 };
 
 inline bool isInExceptionList(const ParmVarDecl &p) {

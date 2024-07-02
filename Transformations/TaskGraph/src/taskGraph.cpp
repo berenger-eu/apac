@@ -18,15 +18,18 @@ return (*ptr);}\n\n";
 // by the Clang parser.
 class MyASTConsumer : public ASTConsumer {
 public:
-  MyASTConsumer(Rewriter &R) : VisitorTaskGraph(R), TheRewriter(R) {}
+  MyASTConsumer(Rewriter &R)
+      : VisitorTaskGraph(R, orderManager), TheRewriter(R) {}
 
   // Parse all the file
   virtual void HandleTranslationUnit(ASTContext &Ctx) {
     VisitorTaskGraph.TraverseAST(Ctx);
-    generateGraph(VisitorTaskGraph.functionsInstructionsVector);
+    generateGraph(VisitorTaskGraph.functionsInstructionsVector, orderManager);
+    modifyFile(TheRewriter, orderManager);
   }
 
 private:
+  StmtOrder orderManager;
   ASTTaskGraphVisitor VisitorTaskGraph;
   Rewriter &TheRewriter;
 };
@@ -39,6 +42,7 @@ public:
     llvm::errs() << "** EndSourceFileAction for: "
                  << SM.getFileEntryRefForID(SM.getMainFileID())->getName()
                  << "\n";
+    TheRewriter.getEditBuffer(SM.getMainFileID()).write(llvm::outs());
   }
 
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,

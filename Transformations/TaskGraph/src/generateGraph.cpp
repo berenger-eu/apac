@@ -18,26 +18,25 @@ void subGenerateDotGraph(const Graph &inGraph, std::ofstream &file) {
        << " [style=invis];\n";
   for (const auto &node : inGraph.nodes) {
     file << "    " << node->id << " [label=\"" << node->instruction;
-    for (auto alias : node->instructionPtr->curAliases) {
-      file << "\n";
-      for (int nbStar = 0;
-           nbStar < getPtrDepthAccess(alias.first->getType(),
-                                      alias.second->getType(),
-                                      alias.first->getASTContext());
-           nbStar++) {
-        file << "*";
+    for (auto instr : node->instructionPtr)
+      for (auto alias : instr->curAliases) {
+        file << "\n";
+        for (int nbStar = 0;
+             nbStar < getPtrDepthAccess(alias.first->getType(),
+                                        alias.second->getType(),
+                                        alias.first->getASTContext());
+             nbStar++)
+          file << "*";
+        file << alias.first->getNameAsString() << " : "
+             << alias.second->getNameAsString();
       }
-      file << alias.first->getNameAsString() << " : "
-           << alias.second->getNameAsString();
-    }
     file << "\"];\n";
     for (const auto &nextNode : node->next) {
       std::stringstream ss;
       for (auto iterBegin = nextNode.second.begin();
            iterBegin != nextNode.second.end(); iterBegin++) {
-        if (iterBegin != nextNode.second.begin()) {
+        if (iterBegin != nextNode.second.begin())
           ss << ",";
-        }
         ss << iterBegin->first->getNameAsString()
            << (iterBegin->second.isRead ? "R" : "")
            << (iterBegin->second.isWrite ? "W" : "");
@@ -45,12 +44,24 @@ void subGenerateDotGraph(const Graph &inGraph, std::ofstream &file) {
       file << "    " << node->id << " -> " << nextNode.first->id
            << "[label=\"  " << ss.str() << "\"];\n";
     }
-    if (node->graph) {
+    for (auto i = 0; i < node->graph.size(); i++) {
+      auto subGraph = node->graph[i];
+      int curInstrIndex = 0, countGraph = -1;
+      for (auto instr : node->instructionPtr) {
+        if (countGraph != i) {
+          if (instr->complexInstruction)
+            countGraph++;
+          if (countGraph != i)
+            curInstrIndex++;
+        }
+      }
       file << "    " << node->id << " -> invisibleNodeScope_"
-           << invisibleNodeCounter << "[label=\"innerScope\"];\n";
-      file << "subgraph cluster_" << node->id << " {\n"
-           << "label = \"subGraph" << node->id << "\";\n";
-      subGenerateDotGraph(*node->graph, file);
+           << invisibleNodeCounter << "[label=\"" << "instr " << curInstrIndex
+           << " : " << node->instructionPtr.at(curInstrIndex)->instructionString
+           << "\"];\n";
+      file << "subgraph cluster_" << node->id << "_" << i << " {\n"
+           << "label = \"subGraph" << node->id << "_" << i << "\";\n";
+      subGenerateDotGraph(*subGraph, file);
       file << "}\n";
     }
   }
@@ -77,12 +88,13 @@ Graph InstructionToGraph(const std::vector<Instruction> &inInstructions) {
     auto node = std::make_shared<Node>();
     node->instruction =
         curInstruction.instructionString; // instruction.instruction;
-    node->instructionPtr = &curInstruction;
+    node->instructionPtr = std::vector<const Instruction *>();
+    node->instructionPtr.push_back(&curInstruction);
     node->id = Node::idCounter++;
     graph.nodes.push_back(node);
     if (curInstruction.complexInstruction) {
-      node->graph = std::make_shared<Graph>();
-      *node->graph = InstructionToGraph(curInstruction.scopedInstructions);
+      node->graph.emplace_back(std::make_shared<Graph>(
+          InstructionToGraph(curInstruction.scopedInstructions)));
     }
   }
   std::unordered_map<const clang::Decl *, std::set<std::shared_ptr<Node>>>
@@ -98,7 +110,7 @@ Graph InstructionToGraph(const std::vector<Instruction> &inInstructions) {
         if (dataUsedInWrite.find(dep.first) != dataUsedInWrite.end()) {
           if ((*dataUsedInWrite.find(dep.first)).second->id != node->id) {
             auto depNode = dataUsedInWrite[dep.first];
-            depNode->addReadLink(node, dep.first);
+            depNode->addReadLink(depNode, node, dep.first);
           }
         }
         readFound = true;
@@ -110,7 +122,7 @@ Graph InstructionToGraph(const std::vector<Instruction> &inInstructions) {
             if (depNode->id == node->id) {
               continue;
             }
-            depNode->addWriteLink(node, dep.first);
+            depNode->addWriteLink(depNode, node, dep.first);
           }
 
           dataUsedInRead.erase(dep.first);
@@ -118,22 +130,19 @@ Graph InstructionToGraph(const std::vector<Instruction> &inInstructions) {
           auto it = dataUsedInWrite.find(dep.first);
           if (it->second->id != node->id) {
             auto depNode = dataUsedInWrite[dep.first];
-            depNode->addWriteLink(node, dep.first);
+            depNode->addWriteLink(depNode, node, dep.first);
           }
         }
         dataUsedInWrite[dep.first] = node;
       }
-      if (readFound) {
+      if (readFound)
         dataUsedInRead[dep.first].insert(node);
-      }
     }
   }
 
-  for (const auto &node : graph.nodes) {
-    if (node->prev.empty()) {
+  for (const auto &node : graph.nodes)
+    if (node->prev.empty())
       graph.roots.push_back(node);
-    }
-  }
 
   return graph;
 }
@@ -152,26 +161,107 @@ void PrintGraph(const Graph &inGraph) {
       std::cout << prev->id << " ";
     }
     std::cout << std::endl;
-    if (node->graph) {
+    for (auto subGraph : node->graph) {
       std::cout << "-- SubGraph: " << std::endl;
-      PrintGraph(*node->graph);
+      PrintGraph(*subGraph);
     }
   }
   std::cout << "Roots: " << std::endl;
-  for (const auto &root : inGraph.roots) {
+  for (const auto &root : inGraph.roots)
     std::cout << root->id << " ";
-  }
   std::cout << std::endl;
 }
 
-// Generate all of the graph for a file, (generate one for each function)
-void generateGraph(const std::vector<std::vector<Instruction>> &graphVector) {
-  std::vector<Graph> graphs;
-  for (auto &functionInstructions : graphVector) {
+void transitiveReduction(Graph &graph) {
+  for (auto node : graph.nodes) {
+    std::set<std::shared_ptr<Node>> visited;
+    for (auto nextNode : node->next) {
+      std::stack<std::shared_ptr<Node>> toVisit;
+      for (auto nextNextNode : nextNode.first->next)
+        toVisit.push(nextNextNode.first);
+      while (!toVisit.empty()) {
+        auto curNode = toVisit.top();
+        toVisit.pop();
+        if (visited.count(curNode))
+          continue;
+        visited.insert(curNode);
 
-    auto graph = InstructionToGraph(functionInstructions);
-    // PrintGraph(graph);
-    graphs.push_back(graph);
+        for (auto nextNode : curNode->next) {
+          toVisit.push(nextNode.first);
+        }
+      }
+    }
+    std::vector<std::shared_ptr<Node>> toRemove;
+    for (auto nextNode : node->next)
+      if (visited.count(nextNode.first))
+        toRemove.push_back(nextNode.first);
+    for (auto nextNode : toRemove) {
+      node->next.erase(nextNode);
+      nextNode->prev.erase(node);
+    }
   }
-  GenerateDotGraph(graphs, "graph.dot");
+}
+
+void nodesFusion(Graph &graph) {
+  std::stack<std::shared_ptr<Node>> toRemove;
+  for (long unsigned int i = 0; i < graph.nodes.size(); i++) {
+    auto node = graph.nodes[i];
+    while (node->next.size() == 1 &&
+           node->next.begin()->first->prev.size() == 1) {
+      toRemove.push(node->next.begin()->first);
+      graph.fuseNodes(node, (node->next.begin()->first));
+    }
+    // TODO: handle multiple subgraphs (might happen after fusion of nodes)
+    for (auto subGraph : node->graph)
+      optimizeGraph(*subGraph);
+  }
+}
+void optimizeGraph(Graph &graph) {
+  transitiveReduction(graph);
+  nodesFusion(graph);
+}
+
+void updateInstructionOrderNode(
+    const std::shared_ptr<Node> &node, StmtOrder &orderManager,
+    std::unordered_set<std::shared_ptr<Node>> &visited) {
+  if (visited.count(node))
+    return;
+  for (const auto &prev : node->prev)
+    if (!visited.count(prev))
+      updateInstructionOrderNode(prev, orderManager, visited);
+  visited.insert(node);
+  std::vector<const Stmt *> vectStmts;
+  for (auto instr : node->instructionPtr)
+    vectStmts.push_back(instr->instruction);
+  fuseInstructions(vectStmts, orderManager);
+  for (int i = 0; i < node->graph.size(); i++) {
+    auto subGraph = node->graph[i];
+    int count = -1;
+    for (auto instr : node->instructionPtr)
+      if (instr->complexInstruction && ++count == i)
+        updateInstructionOrderFromGraph(
+            *subGraph, *orderManager.getSubStmtOrder(instr->instruction));
+  }
+}
+
+void updateInstructionOrderFromGraph(const Graph &graph,
+                                     StmtOrder &orderManager) {
+  std::unordered_set<std::shared_ptr<Node>> visited;
+  for (const auto &node : graph.nodes) {
+    updateInstructionOrderNode(node, orderManager, visited);
+  }
+}
+
+// Generate all of the graph for a file, (generate one for each function)
+void generateGraph(const std::vector<std::vector<Instruction>> &graphVector,
+                   StmtOrder &orderManager) {
+  std::vector<Graph> graphs;
+  for (auto &functionInstructions : graphVector)
+    graphs.emplace_back(InstructionToGraph(functionInstructions));
+  GenerateDotGraph(graphs, "rawGraph.dot");
+  for (auto &graph : graphs) {
+    optimizeGraph(graph);
+    updateInstructionOrderFromGraph(graph, orderManager);
+  }
+  GenerateDotGraph(graphs, "optimizedGraph.dot");
 }
