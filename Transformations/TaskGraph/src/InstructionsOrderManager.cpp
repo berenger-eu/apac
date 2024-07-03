@@ -63,41 +63,45 @@ modifiedStringForInstruction(Rewriter &TheRewriter,
   if (subOrder != nullptr) {
     ssPrint << getStmtAsString(instr, TheRewriter.getLangOpts()) << "{\n";
     for (auto instrSubGroups : subOrder->instructionGroups) {
-      if (!(instrSubGroups.second.size() == 1 &&
-            isa<DeclStmt>(instrSubGroups.second.begin()->first)))
+      bool addPragma = isPragmaValid(*subOrder, instrSubGroups.second);
+      if (addPragma)
         ssPrint << "#pragma \n{\n";
       for (auto instrPair : instrSubGroups.second) {
         auto instr = instrPair.first;
         ssPrint << modifiedStringForInstruction(TheRewriter, *subOrder, instr)
                 << "\n";
       }
-      if (!(instrSubGroups.second.size() == 1 &&
-            isa<DeclStmt>(instrSubGroups.second.begin()->first)))
+      if (addPragma)
         ssPrint << "}\n";
     }
     ssPrint << "}\n";
   } else
     ssPrint << getStmtAsStringFull(instr, TheRewriter.getLangOpts()) << "\n";
+  llvm::errs() << "Modified instruction: " << ssPrint.str();
   return ssPrint.str();
 }
 
 void modifyFile(Rewriter &TheRewriter,
                 const StmtOrder &instructionsOrderManager) {
-  for (const auto &instruction : instructionsOrderManager.instructionGroups) {
+  for (const auto &instructionGroup :
+       instructionsOrderManager.instructionGroups) {
     // Remove old text
-    auto vect = instruction.second;
+    auto instructionGroupSet = instructionGroup.second;
+    if (instructionGroupSet.size() == 0)
+      continue;
 
-    const Stmt *st = (*vect.rbegin()).first;
+    const Stmt *st = (*instructionGroupSet.rbegin()).first;
     TheRewriter.RemoveText(SourceRange(
         st->getBeginLoc(), Lexer::getLocForEndOfToken(
                                st->getEndLoc(), 0, TheRewriter.getSourceMgr(),
                                TheRewriter.getLangOpts())));
-    if (vect.size() == 0)
-      continue;
     std::stringstream ssPrint;
-    if (!(vect.size() == 1 && isa<DeclStmt>(vect.begin()->first)))
+    bool addPragma =
+        isPragmaValid(instructionsOrderManager, instructionGroupSet);
+    if (addPragma)
       ssPrint << "#pragma \n{\n";
-    for (auto instrPair : vect) {
+    llvm::errs() << ssPrint.str();
+    for (auto instrPair : instructionGroupSet) {
       auto instr = instrPair.first;
       TheRewriter.RemoveText(
           SourceRange(instr->getBeginLoc(),
@@ -107,8 +111,32 @@ void modifyFile(Rewriter &TheRewriter,
       ssPrint << modifiedStringForInstruction(TheRewriter,
                                               instructionsOrderManager, instr);
     }
-    if (!(vect.size() == 1 && isa<DeclStmt>(vect.begin()->first)))
+    if (addPragma)
       ssPrint << "}\n";
+    llvm::errs() << "Modified instruction2: " << ssPrint.str();
+
     TheRewriter.InsertText(st->getBeginLoc(), ssPrint.str());
   }
+}
+
+bool isPragmaValid(const StmtOrder &instructionsOrderManager,
+                   const auto &instructionGroup) {
+
+  // Group of instructions is empty
+  if (instructionGroup.size() == 0)
+    return false;
+  // Group of instructions has only one instruction
+  if (instructionGroup.size() == 1) {
+
+    auto instrPair = instructionGroup.begin();
+    auto instr = instrPair->first;
+    // Instruction is a declaration, so no task can be created
+    if (isa<DeclStmt>(instr))
+      return false;
+    // Instruction is a complex instruction, so no task should be created
+    std::shared_ptr<Node> node;
+    if (instrPair->second != nullptr)
+      return false;
+  }
+  return true;
 }
