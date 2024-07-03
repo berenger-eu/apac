@@ -22,22 +22,25 @@ struct SmallerBeginLocation {
   }
 };
 struct StmtOrder {
+  bool isLooped;
   int groupCounter = 0;
   std::map<const Stmt *, int> instructionLinks;
   std::map<int, std::set<std::pair<const Stmt *, std::shared_ptr<StmtOrder>>,
                          SmallerBeginLocation>>
       instructionGroups;
   std::map<int, std::shared_ptr<Node>> nodesGroup;
+  StmtOrder() : isLooped(false) {}
   inline void addInstructionToManager(const Stmt *key) {
     instructionLinks.insert({key, groupCounter});
     std::set<std::pair<const Stmt *, std::shared_ptr<StmtOrder>>,
              SmallerBeginLocation>
         temp;
     instructionGroups.insert({groupCounter, temp});
-    if (isa<ForStmt>(key))
-      instructionGroups.at(groupCounter++)
-          .insert({{key, std::make_shared<StmtOrder>()}});
-    else
+    if (isa<ForStmt>(key)) {
+      std::shared_ptr<StmtOrder> temp = std::make_shared<StmtOrder>();
+      temp->isLooped = true;
+      instructionGroups.at(groupCounter++).insert({{key, temp}});
+    } else
       instructionGroups.at(groupCounter++)
           .insert({{key, std::shared_ptr<StmtOrder>()}});
   }

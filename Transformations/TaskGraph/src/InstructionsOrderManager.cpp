@@ -145,7 +145,7 @@ bool isPragmaValid(const StmtOrder &instructionsOrderManager,
 std::string createPragmaTaskString(const StmtOrder &instructionsOrderManager,
                                    const auto &instructionGroup) {
   std::stringstream ssPrint;
-  ssPrint << "#pragma task ";
+  ssPrint << "#pragma omp task ";
   auto instr = instructionGroup.begin()->first;
   auto node = instructionsOrderManager.getNode(instr);
 
@@ -171,6 +171,14 @@ std::string createPragmaTaskString(const StmtOrder &instructionsOrderManager,
   for (auto nextNode : node->next) {
     inoutSet.insert(nextNode.second.begin()->first->getNameAsString());
   }
+
+  if (instructionsOrderManager.isLooped)
+    for (auto dep : node->instructionPtr.front()->dependencies) {
+      if (dep.second.isWrite) {
+        inoutSet.insert(dep.first->getNameAsString());
+      }
+    }
+
   for (auto prevNode : node->prev) {
     for (auto prevNodeNext : prevNode->next) {
       if (prevNodeNext.first->id == node->id) {
@@ -182,22 +190,22 @@ std::string createPragmaTaskString(const StmtOrder &instructionsOrderManager,
     }
   }
   if (inoutSet.size() > 0) {
-    ssPrint << "inout(";
+    ssPrint << " depend (inout:";
     for (auto it = inoutSet.begin(); it != inoutSet.end(); ++it) {
       if (it != inoutSet.begin())
         ssPrint << ",";
       ssPrint << *it;
     }
-    ssPrint << ")";
+    ssPrint << ") ";
   }
   if (inSet.size() > 0) {
-    ssPrint << " in(";
+    ssPrint << " depend (in:";
     for (auto it = inSet.begin(); it != inSet.end(); ++it) {
       if (it != inSet.begin())
         ssPrint << ",";
       ssPrint << *it;
     }
-    ssPrint << ")";
+    ssPrint << ") ";
   }
   return ssPrint.str();
 }
