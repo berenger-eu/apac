@@ -246,6 +246,7 @@ void updateInstructionOrderNode(
         updateInstructionOrderFromGraph(
             *subGraph, *orderManager.getSubStmtOrder(instr->instruction));
   }
+  orderManager.addNodeToGroup(node);
 }
 
 void updateInstructionOrderFromGraph(const Graph &graph,
@@ -254,8 +255,6 @@ void updateInstructionOrderFromGraph(const Graph &graph,
   for (const auto &node : graph.nodes)
     updateInstructionOrderNode(node, orderManager, visited);
   // Separated just in case
-  for (const auto &node : graph.roots)
-    orderManager.addNodeToGroup(node);
 }
 
 // Generate all of the graph for a file, (generate one for each function)

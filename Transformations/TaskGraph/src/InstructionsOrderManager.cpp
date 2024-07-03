@@ -65,7 +65,8 @@ modifiedStringForInstruction(Rewriter &TheRewriter,
     for (auto instrSubGroups : subOrder->instructionGroups) {
       bool addPragma = isPragmaValid(*subOrder, instrSubGroups.second);
       if (addPragma)
-        ssPrint << "#pragma \n{\n";
+        ssPrint << createPragmaTaskString(*subOrder, instrSubGroups.second)
+                << "\n{\n";
       for (auto instrPair : instrSubGroups.second) {
         auto instr = instrPair.first;
         ssPrint << modifiedStringForInstruction(TheRewriter, *subOrder, instr)
@@ -77,7 +78,6 @@ modifiedStringForInstruction(Rewriter &TheRewriter,
     ssPrint << "}\n";
   } else
     ssPrint << getStmtAsStringFull(instr, TheRewriter.getLangOpts()) << "\n";
-  llvm::errs() << "Modified instruction: " << ssPrint.str();
   return ssPrint.str();
 }
 
@@ -99,7 +99,9 @@ void modifyFile(Rewriter &TheRewriter,
     bool addPragma =
         isPragmaValid(instructionsOrderManager, instructionGroupSet);
     if (addPragma)
-      ssPrint << "#pragma \n{\n";
+      ssPrint << createPragmaTaskString(instructionsOrderManager,
+                                        instructionGroupSet)
+              << "\n{\n";
     llvm::errs() << ssPrint.str();
     for (auto instrPair : instructionGroupSet) {
       auto instr = instrPair.first;
@@ -113,7 +115,6 @@ void modifyFile(Rewriter &TheRewriter,
     }
     if (addPragma)
       ssPrint << "}\n";
-    llvm::errs() << "Modified instruction2: " << ssPrint.str();
 
     TheRewriter.InsertText(st->getBeginLoc(), ssPrint.str());
   }
@@ -139,4 +140,64 @@ bool isPragmaValid(const StmtOrder &instructionsOrderManager,
       return false;
   }
   return true;
+}
+
+std::string createPragmaTaskString(const StmtOrder &instructionsOrderManager,
+                                   const auto &instructionGroup) {
+  std::stringstream ssPrint;
+  ssPrint << "#pragma task ";
+  auto instr = instructionGroup.begin()->first;
+  auto node = instructionsOrderManager.getNode(instr);
+
+  if (node == nullptr) {
+    llvm::errs() << "Node is null\n";
+    instr->dump();
+    llvm::errs() << instructionsOrderManager.instructionLinks.count(instr)
+                 << "\n";
+    llvm::errs() << instructionsOrderManager.nodesGroup.count(
+                        instructionsOrderManager.instructionLinks.at(instr))
+                 << "\n";
+    return "";
+  }
+  std::unordered_set<std::string> inoutSet;
+  std::unordered_set<std::string> inSet;
+  // We add the first dependency to a next node to the task as inout
+  // And then we add the first dependency from a previous node to this one to
+  // the task as in if the dependency is not in the inout set We don't have to
+  // add the dependencies from one node to another as one is sufficient As long
+  // as we chose the same single one for both of them (which here is always the
+  // first one)
+
+  for (auto nextNode : node->next) {
+    inoutSet.insert(nextNode.second.begin()->first->getNameAsString());
+  }
+  for (auto prevNode : node->prev) {
+    for (auto prevNodeNext : prevNode->next) {
+      if (prevNodeNext.first->id == node->id) {
+        auto variableDepString =
+            prevNodeNext.second.begin()->first->getNameAsString();
+        if (inoutSet.count(variableDepString) == 0)
+          inSet.insert(variableDepString);
+      }
+    }
+  }
+  if (inoutSet.size() > 0) {
+    ssPrint << "inout(";
+    for (auto it = inoutSet.begin(); it != inoutSet.end(); ++it) {
+      if (it != inoutSet.begin())
+        ssPrint << ",";
+      ssPrint << *it;
+    }
+    ssPrint << ")";
+  }
+  if (inSet.size() > 0) {
+    ssPrint << " in(";
+    for (auto it = inSet.begin(); it != inSet.end(); ++it) {
+      if (it != inSet.begin())
+        ssPrint << ",";
+      ssPrint << *it;
+    }
+    ssPrint << ")";
+  }
+  return ssPrint.str();
 }
