@@ -56,8 +56,10 @@ void subGenerateDotGraph(const Graph &inGraph, std::ofstream &file) {
         }
       }
       file << "    " << node->id << " -> invisibleNodeScope_"
-           << invisibleNodeCounter << "[label=\"" << "instr " << curInstrIndex
-           << " : " << node->instructionPtr.at(curInstrIndex)->instructionString
+           << invisibleNodeCounter
+           << "[label=\""
+           //  << "instr " << curInstrIndex << " : "
+           //  << node->instructionPtr.at(curInstrIndex)->instructionString
            << "\"];\n";
       file << "subgraph cluster_" << node->id << "_" << i << " {\n"
            << "label = \"subGraph" << node->id << "_" << i << "\";\n";
@@ -206,8 +208,10 @@ void nodesFusion(Graph &graph) {
   std::stack<std::shared_ptr<Node>> toRemove;
   for (long unsigned int i = 0; i < graph.nodes.size(); i++) {
     auto node = graph.nodes[i];
-    while (node->next.size() == 1 &&
-           node->next.begin()->first->prev.size() == 1) {
+    while (
+        node->next.size() == 1 && node->next.begin()->first->prev.size() == 1 &&
+        !(node->next.begin()->first->instructionPtr.size() == 1 &&
+          node->next.begin()->first->instructionPtr[0]->complexInstruction)) {
       toRemove.push(node->next.begin()->first);
       graph.fuseNodes(node, (node->next.begin()->first));
     }
@@ -247,9 +251,11 @@ void updateInstructionOrderNode(
 void updateInstructionOrderFromGraph(const Graph &graph,
                                      StmtOrder &orderManager) {
   std::unordered_set<std::shared_ptr<Node>> visited;
-  for (const auto &node : graph.nodes) {
+  for (const auto &node : graph.nodes)
     updateInstructionOrderNode(node, orderManager, visited);
-  }
+  // Separated just in case
+  for (const auto &node : graph.roots)
+    orderManager.addNodeToGroup(node);
 }
 
 // Generate all of the graph for a file, (generate one for each function)
