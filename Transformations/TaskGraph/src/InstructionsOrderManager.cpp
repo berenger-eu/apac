@@ -63,9 +63,9 @@ modifiedStringForInstruction(Rewriter &TheRewriter,
   if (subOrder != nullptr) {
     ssPrint << getStmtAsString(instr, TheRewriter.getLangOpts()) << "{\n";
     for (auto instrSubGroups : subOrder->instructionGroups) {
-      bool addPragma = isPragmaValid(*subOrder, instrSubGroups.second);
+      bool addPragma = isPragmaValid(*subOrder, instrSubGroups.first);
       if (addPragma)
-        ssPrint << createPragmaTaskString(*subOrder, instrSubGroups.second)
+        ssPrint << createPragmaTaskString(*subOrder, instrSubGroups.first)
                 << "\n{\n";
       for (auto instrPair : instrSubGroups.second) {
         auto instr = instrPair.first;
@@ -86,6 +86,7 @@ void modifyFile(Rewriter &TheRewriter,
   for (const auto &instructionGroup :
        instructionsOrderManager.instructionGroups) {
     // Remove old text
+    auto instructionGroupNum = instructionGroup.first;
     auto instructionGroupSet = instructionGroup.second;
     if (instructionGroupSet.size() == 0)
       continue;
@@ -97,10 +98,10 @@ void modifyFile(Rewriter &TheRewriter,
                                TheRewriter.getLangOpts())));
     std::stringstream ssPrint;
     bool addPragma =
-        isPragmaValid(instructionsOrderManager, instructionGroupSet);
+        isPragmaValid(instructionsOrderManager, instructionGroupNum);
     if (addPragma)
       ssPrint << createPragmaTaskString(instructionsOrderManager,
-                                        instructionGroupSet)
+                                        instructionGroupNum)
               << "\n{\n";
     llvm::errs() << ssPrint.str();
     for (auto instrPair : instructionGroupSet) {
@@ -121,8 +122,10 @@ void modifyFile(Rewriter &TheRewriter,
 }
 
 bool isPragmaValid(const StmtOrder &instructionsOrderManager,
-                   const auto &instructionGroup) {
+                   const int &instructionGroupNum) {
 
+  const auto &instructionGroup =
+      instructionsOrderManager.instructionGroups.at(instructionGroupNum);
   // Group of instructions is empty
   if (instructionGroup.size() == 0)
     return false;
@@ -143,7 +146,9 @@ bool isPragmaValid(const StmtOrder &instructionsOrderManager,
 }
 
 std::string createPragmaTaskString(const StmtOrder &instructionsOrderManager,
-                                   const auto &instructionGroup) {
+                                   const int &instructionGroupNum) {
+  const auto &instructionGroup =
+      instructionsOrderManager.instructionGroups.at(instructionGroupNum);
   std::stringstream ssPrint;
   ssPrint << "#pragma omp task ";
   auto instr = instructionGroup.begin()->first;

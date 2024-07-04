@@ -94,6 +94,6 @@ void modifyFile(Rewriter &TheRewriter,
                 const StmtOrder &instructionsOrderManager);
 
 bool isPragmaValid(const StmtOrder &instructionsOrderManager,
-                   const auto &instructionGroup);
+                   const int &instructionGroupNum);
 std::string createPragmaTaskString(const StmtOrder &instructionsOrderManager,
-                                   const auto &instructionGroup);
+                                   const int &instructionGroupNum);
