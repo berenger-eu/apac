@@ -32,9 +32,6 @@ struct Node {
     for (const auto &dep : inDep) {
       llvm::errs() << "InDep: " << dep->getNameAsString() << "\n";
     }
-
-      instr->dump();
-    }
     llvm::errs() << "\n";
   }
   void addLink(std::shared_ptr<Node> curN, std::shared_ptr<Node> n, bool isRead,
@@ -61,5 +58,42 @@ struct Node {
   inline void addWriteLink(std::shared_ptr<Node> curN, std::shared_ptr<Node> n,
                            const NamedDecl *arg) {
     addLink(curN, n, false, true, arg);
+  }
+  inline void computeInOutInDep() {
+    computeInOutDep();
+    computeInDep();
+  }
+  void computeInOutDep() {
+    for (const auto &dep : dependencies) {
+      if (!dep.second.isWrite) {
+        continue;
+      }
+      bool isInOut = false;
+      auto itNext = next.begin(), endNext = next.end();
+      while (itNext != endNext && !isInOut) {
+        if (itNext->second.count(dep.first) > 0) {
+          isInOut = true;
+          break;
+        }
+        ++itNext;
+      }
+      if (isInOut) {
+        inOutDep.insert(dep.first);
+      }
+    }
+  }
+  void computeInDep() {
+    for (const auto &dep : dependencies) {
+      bool isIn = false;
+      auto itPrev = prev.begin(), endPrev = prev.end();
+      while (itPrev != endPrev && !isIn) {
+        if ((*itPrev)->dependencies.count(dep.first) > 0) {
+          isIn = true;
+        }
+        ++itPrev;
+      }
+      if (isIn && inOutDep.count(dep.first) == 0)
+        inDep.insert(dep.first);
+    }
   }
 };

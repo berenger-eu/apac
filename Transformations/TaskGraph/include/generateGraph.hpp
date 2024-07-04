@@ -38,6 +38,13 @@ struct Graph {
       n.first->prev.erase(n2);
       n.first->prev.insert(n1);
     }
+    for (auto &n2Dep : n2->dependencies) {
+      if (n1->dependencies.count(n2Dep.first) == 0)
+        n1->dependencies.insert(n2Dep);
+      else
+        n1->dependencies.at(n2Dep.first) =
+            n1->dependencies.at(n2Dep.first) + n2Dep.second;
+    }
     for (auto &n : n2->instructionPtr)
       n1->instructionPtr.push_back(n);
     for (auto &graph : n2->graph)

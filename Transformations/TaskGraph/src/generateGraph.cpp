@@ -98,6 +98,9 @@ Graph InstructionToGraph(const std::vector<Instruction> &inInstructions) {
       node->graph.emplace_back(std::make_shared<Graph>(
           InstructionToGraph(curInstruction.scopedInstructions)));
     }
+    for (const auto &dep : curInstruction.dependencies) {
+      node->dependencies.insert(dep);
+    }
   }
   std::unordered_map<const clang::Decl *, std::set<std::shared_ptr<Node>>>
       dataUsedInRead;
@@ -220,9 +223,17 @@ void nodesFusion(Graph &graph) {
       optimizeGraph(*subGraph);
   }
 }
+void nodesComputeInOut(Graph &graph) {
+  for (auto &node : graph.nodes) {
+    node->computeInOutInDep();
+    for (auto &subGraph : node->graph)
+      nodesComputeInOut(*subGraph);
+  }
+}
 void optimizeGraph(Graph &graph) {
   transitiveReduction(graph);
   nodesFusion(graph);
+  nodesComputeInOut(graph);
 }
 
 void updateInstructionOrderNode(
