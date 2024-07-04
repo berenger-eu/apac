@@ -13,9 +13,25 @@ struct Node {
   std::vector<std::shared_ptr<struct Graph>> graph;
   std::string instruction;
   std::vector<const Instruction *> instructionPtr;
+  std::unordered_map<const NamedDecl *, NodeDependency> dependencies;
+  std::unordered_set<const NamedDecl *> inOutDep;
+  std::unordered_set<const NamedDecl *> inDep;
   void dump() {
     llvm::errs() << "Instructions: " << instruction << "\n";
     for (auto &instr : instructionPtr) {
+      instr->dump();
+    }
+    for (const auto &dep : dependencies) {
+      llvm::errs() << "Dep: " << dep.first->getNameAsString()
+                   << " Read: " << dep.second.isRead
+                   << " Write: " << dep.second.isWrite << "\n";
+    }
+    for (const auto &dep : inOutDep) {
+      llvm::errs() << "InOutDep: " << dep->getNameAsString() << "\n";
+    }
+    for (const auto &dep : inDep) {
+      llvm::errs() << "InDep: " << dep->getNameAsString() << "\n";
+    }
 
       instr->dump();
     }

@@ -9,7 +9,10 @@ struct NodeDependency {
   bool isRead;
   bool isWrite;
 };
-
+inline NodeDependency operator+(const NodeDependency &lhs,
+                                const NodeDependency &rhs) {
+  return NodeDependency{lhs.isRead || rhs.isRead, lhs.isWrite || rhs.isWrite};
+}
 struct AliasesDependencyHash {
   std::size_t
   operator()(const std::pair<const clang::VarDecl *, const clang::VarDecl *> &p)
