@@ -83,20 +83,25 @@ void GenerateDotGraph(const std::vector<Graph> &graphs,
   file.close();
 }
 
-Graph InstructionToGraph(const std::vector<Instruction> &inInstructions) {
+Graph InstructionToGraph(const std::vector<Instruction> &inInstructions,
+                         bool isLoop) {
   Graph graph;
 
   for (const auto &curInstruction : inInstructions) {
     auto node = std::make_shared<Node>();
+    node->isLooped = isLoop;
     node->instruction =
         curInstruction.instructionString; // instruction.instruction;
     node->instructionPtr = std::vector<const Instruction *>();
     node->instructionPtr.push_back(&curInstruction);
-    node->id = Node::idCounter++;
     graph.nodes.push_back(node);
     if (curInstruction.complexInstruction) {
-      node->graph.emplace_back(std::make_shared<Graph>(
-          InstructionToGraph(curInstruction.scopedInstructions)));
+      if (isa<ForStmt>(curInstruction.instruction))
+        node->graph.emplace_back(std::make_shared<Graph>(
+            InstructionToGraph(curInstruction.scopedInstructions, true)));
+      else
+        node->graph.emplace_back(std::make_shared<Graph>(
+            InstructionToGraph(curInstruction.scopedInstructions, isLoop)));
     }
     for (const auto &dep : curInstruction.dependencies) {
       node->dependencies.insert(dep);

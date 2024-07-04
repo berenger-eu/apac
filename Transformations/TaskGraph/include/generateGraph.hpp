@@ -58,7 +58,7 @@ void updateInstructionOrderNode(const std::shared_ptr<Node> &, StmtOrder &,
 void updateInstructionOrderFromGraph(const Graph &, StmtOrder &);
 
 // Translate a list of instructions to a graph
-Graph InstructionToGraph(const std::vector<Instruction> &);
+Graph InstructionToGraph(const std::vector<Instruction> &, bool isLoop = false);
 
 // Print the graph, mostly to debug
 void PrintGraph(const Graph &);

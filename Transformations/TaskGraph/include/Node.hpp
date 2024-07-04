@@ -6,6 +6,7 @@ struct Node {
 
   static int idCounter;
   int id;
+  bool isLooped;
   std::unordered_map<std::shared_ptr<Node>,
                      std::unordered_map<const NamedDecl *, NodeDependency>>
       next;
@@ -16,6 +17,7 @@ struct Node {
   std::unordered_map<const NamedDecl *, NodeDependency> dependencies;
   std::unordered_set<const NamedDecl *> inOutDep;
   std::unordered_set<const NamedDecl *> inDep;
+  Node() : id(idCounter++), isLooped(false) {}
   void dump() {
     llvm::errs() << "Instructions: " << instruction << "\n";
     for (auto &instr : instructionPtr) {
@@ -69,6 +71,8 @@ struct Node {
         continue;
       }
       bool isInOut = false;
+      if (isLooped)
+        isInOut = true;
       auto itNext = next.begin(), endNext = next.end();
       while (itNext != endNext && !isInOut) {
         if (itNext->second.count(dep.first) > 0) {
