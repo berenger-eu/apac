@@ -164,42 +164,20 @@ std::string createPragmaTaskString(const StmtOrder &instructionsOrderManager,
                  << "\n";
     return "";
   }
-  std::unordered_set<std::string> inoutSet;
-  std::unordered_set<std::string> inSet;
   // We add the first dependency to a next node to the task as inout
   // And then we add the first dependency from a previous node to this one to
   // the task as in if the dependency is not in the inout set We don't have to
   // add the dependencies from one node to another as one is sufficient As long
   // as we chose the same single one for both of them (which here is always the
   // first one)
-
-  for (auto nextNode : node->next) {
-    inoutSet.insert(nextNode.second.begin()->first->getNameAsString());
-  }
-
-  if (instructionsOrderManager.isLooped)
-    for (auto dep : node->instructionPtr.front()->dependencies) {
-      if (dep.second.isWrite) {
-        inoutSet.insert(dep.first->getNameAsString());
-      }
-    }
-
-  for (auto prevNode : node->prev) {
-    for (auto prevNodeNext : prevNode->next) {
-      if (prevNodeNext.first->id == node->id) {
-        auto variableDepString =
-            prevNodeNext.second.begin()->first->getNameAsString();
-        if (inoutSet.count(variableDepString) == 0)
-          inSet.insert(variableDepString);
-      }
-    }
-  }
-  if (inoutSet.size() > 0) {
+  const auto &inOutSet = node->inOutDep;
+  const auto &inSet = node->inDep;
+  if (inOutSet.size() > 0) {
     ssPrint << " depend (inout:";
-    for (auto it = inoutSet.begin(); it != inoutSet.end(); ++it) {
-      if (it != inoutSet.begin())
+    for (auto it = inOutSet.begin(); it != inOutSet.end(); ++it) {
+      if (it != inOutSet.begin())
         ssPrint << ",";
-      ssPrint << *it;
+      ssPrint << (*it)->getNameAsString();
     }
     ssPrint << ") ";
   }
@@ -208,7 +186,7 @@ std::string createPragmaTaskString(const StmtOrder &instructionsOrderManager,
     for (auto it = inSet.begin(); it != inSet.end(); ++it) {
       if (it != inSet.begin())
         ssPrint << ",";
-      ssPrint << *it;
+      ssPrint << (*it)->getNameAsString();
     }
     ssPrint << ") ";
   }
