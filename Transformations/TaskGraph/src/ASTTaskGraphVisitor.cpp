@@ -195,9 +195,9 @@ void ASTTaskGraphVisitor::handleCallExpr(const CallExpr &c,
         addDependencyRead(curInstr, v);
         addDependencyWrite(curInstr, v);
       }
-    } else if (!(isFullConstType(p.getType()) &&
-                 isReferenceQualType(p.getType())) ||
-               isPointerQualType(p.getType())) {
+    } else if (!(isFullConstType(p.getType())) &&
+               (isReferenceQualType(p.getType()) ||
+                isPointerQualType(p.getType()))) {
       const DeclRefExpr *d = getSingleDeclRefExprInsideExpr(b);
       // If the parameter can be modified (parameter is either a reference or a
       // pointer AND it's not completely const)
