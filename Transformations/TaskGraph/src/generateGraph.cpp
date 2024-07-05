@@ -216,6 +216,9 @@ void nodesFusion(Graph &graph) {
   std::stack<std::shared_ptr<Node>> toRemove;
   for (long unsigned int i = 0; i < graph.nodes.size(); i++) {
     auto node = graph.nodes[i];
+    if (node->instructionPtr.size() == 1 &&
+        node->instructionPtr[0]->complexInstruction)
+      continue;
     while (
         node->next.size() == 1 && node->next.begin()->first->prev.size() == 1 &&
         !(node->next.begin()->first->instructionPtr.size() == 1 &&
