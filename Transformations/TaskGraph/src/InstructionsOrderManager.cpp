@@ -67,6 +67,9 @@ modifiedStringForInstruction(Rewriter &TheRewriter,
       if (addPragma)
         ssPrint << createPragmaTaskString(*subOrder, instrSubGroups.first)
                 << "\n{\n";
+      else
+        ssPrint << createPragmaTaskWait(*subOrder, instrSubGroups.first)
+                << "\n";
       for (auto instrPair : instrSubGroups.second) {
         auto instr = instrPair.first;
         ssPrint << modifiedStringForInstruction(TheRewriter, *subOrder, instr)
@@ -103,6 +106,10 @@ void modifyFile(Rewriter &TheRewriter,
       ssPrint << createPragmaTaskString(instructionsOrderManager,
                                         instructionGroupNum)
               << "\n{\n";
+    else
+      ssPrint << createPragmaTaskWait(instructionsOrderManager,
+                                      instructionGroupNum)
+              << "\n";
     llvm::errs() << ssPrint.str();
     for (auto instrPair : instructionGroupSet) {
       auto instr = instrPair.first;
@@ -144,7 +151,29 @@ bool isPragmaValid(const StmtOrder &instructionsOrderManager,
   }
   return true;
 }
+std::string createPragmaTaskWait(const StmtOrder &instructionsOrderManager,
+                                 const int &instructionGroupNum) {
+  const auto &instructionGroup =
+      instructionsOrderManager.instructionGroups.at(instructionGroupNum);
+  std::stringstream ssPrint;
+  ssPrint << "#pragma omp taskwait ";
+  auto instr = instructionGroup.begin()->first;
+  auto node = instructionsOrderManager.getNode(instr);
 
+  if (node == nullptr) {
+    llvm::errs() << "Node is null\n";
+    instr->dump();
+    llvm::errs() << instructionsOrderManager.instructionLinks.count(instr)
+                 << "\n";
+    llvm::errs() << instructionsOrderManager.nodesGroup.count(
+                        instructionsOrderManager.instructionLinks.at(instr))
+                 << "\n";
+    return "";
+  }
+  node->dump();
+  ssPrint << createDependsString(node);
+  return ssPrint.str();
+}
 std::string createPragmaTaskString(const StmtOrder &instructionsOrderManager,
                                    const int &instructionGroupNum) {
   const auto &instructionGroup =
@@ -164,14 +193,20 @@ std::string createPragmaTaskString(const StmtOrder &instructionsOrderManager,
                  << "\n";
     return "";
   }
+  ssPrint << createDependsString(node);
+  return ssPrint.str();
+}
+std::string createDependsString(const std::shared_ptr<Node> &node) {
+  std::stringstream ssPrint;
+  const auto &inOutSet = node->inOutDep;
+  const auto &inSet = node->inDep;
   // We add the first dependency to a next node to the task as inout
   // And then we add the first dependency from a previous node to this one to
   // the task as in if the dependency is not in the inout set We don't have to
   // add the dependencies from one node to another as one is sufficient As long
   // as we chose the same single one for both of them (which here is always the
   // first one)
-  const auto &inOutSet = node->inOutDep;
-  const auto &inSet = node->inDep;
+
   if (inOutSet.size() > 0) {
     ssPrint << " depend (inout:";
     for (auto it = inOutSet.begin(); it != inOutSet.end(); ++it) {

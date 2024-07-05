@@ -97,3 +97,6 @@ bool isPragmaValid(const StmtOrder &instructionsOrderManager,
                    const int &instructionGroupNum);
 std::string createPragmaTaskString(const StmtOrder &instructionsOrderManager,
                                    const int &instructionGroupNum);
+std::string createPragmaTaskWait(const StmtOrder &instructionsOrderManager,
+                                 const int &instructionGroupNum);
+std::string createDependsString(const std::shared_ptr<Node> &node);
