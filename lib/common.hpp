@@ -119,3 +119,7 @@ inline std::string getInitString(const VarDecl &v) {
 inline bool isInHeaders(SourceManager &sm, SourceLocation sl) {
   return (!(sm.isWrittenInMainFile(sl))) || sm.isInSystemHeader(sl);
 }
+// True when the statement is a loop
+inline bool isALoop(const Stmt *s) {
+  return isa<ForStmt>(s) || isa<WhileStmt>(s) || isa<DoStmt>(s);
+}
