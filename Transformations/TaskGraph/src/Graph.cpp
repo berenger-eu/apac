@@ -6,82 +6,11 @@
  * The graph is represented as a list of nodes.
  * Each node contain a single instruction
  */
-#include "generateGraph.hpp"
+#include "Graph.hpp"
 #include <fstream>
 #include <stack>
 
 int Node::idCounter = 0;
-int invisibleNodeCounter = 0;
-
-void subGenerateDotGraph(const Graph &inGraph, std::ofstream &file) {
-  file << "    invisibleNodeScope_" << invisibleNodeCounter++
-       << " [style=invis];\n";
-  for (const auto &node : inGraph.nodes) {
-    file << "    " << node->id << " [label=\"" << node->instruction;
-    for (auto instr : node->instructionPtr)
-      for (auto alias : instr->curAliases) {
-        file << "\n";
-        for (int nbStar = 0;
-             nbStar < getPtrDepthAccess(alias.first->getType(),
-                                        alias.second->getType(),
-                                        alias.first->getASTContext());
-             nbStar++)
-          file << "*";
-        file << alias.first->getNameAsString() << " : "
-             << alias.second->getNameAsString();
-      }
-    file << "\"];\n";
-    for (const auto &nextNode : node->next) {
-      std::stringstream ss;
-      for (auto iterBegin = nextNode.second.begin();
-           iterBegin != nextNode.second.end(); iterBegin++) {
-        if (iterBegin != nextNode.second.begin())
-          ss << ",";
-        ss << iterBegin->first->getNameAsString()
-           << (iterBegin->second.isRead ? "R" : "")
-           << (iterBegin->second.isWrite ? "W" : "");
-      }
-      file << "    " << node->id << " -> " << nextNode.first->id
-           << "[label=\"  " << ss.str() << "\"];\n";
-    }
-    for (auto i = 0; i < node->graph.size(); i++) {
-      auto subGraph = node->graph[i];
-      int curInstrIndex = 0, countGraph = -1;
-      for (auto instr : node->instructionPtr) {
-        if (countGraph != i) {
-          if (instr->complexInstruction)
-            countGraph++;
-          if (countGraph != i)
-            curInstrIndex++;
-        }
-      }
-      file << "    " << node->id << " -> invisibleNodeScope_"
-           << invisibleNodeCounter
-           << "[label=\""
-           //  << "instr " << curInstrIndex << " : "
-           //  << node->instructionPtr.at(curInstrIndex)->instructionString
-           << "\"];\n";
-      file << "subgraph cluster_" << node->id << "_" << i << " {\n"
-           << "label = \"subGraph" << node->id << "_" << i << "\";\n";
-      subGenerateDotGraph(*subGraph, file);
-      file << "}\n";
-    }
-  }
-}
-void GenerateDotGraph(const std::vector<Graph> &graphs,
-                      const std::string &filename) {
-  std::ofstream file(filename);
-  file << "digraph G {\n";
-  int i = 0;
-  for (auto graph : graphs) {
-    file << "subgraph cluster_f" << i << " {\n";
-    subGenerateDotGraph(graph, file);
-    file << "}\n";
-    i++;
-  }
-  file << "}\n";
-  file.close();
-}
 
 Graph InstructionToGraph(const std::vector<Instruction> &inInstructions,
                          bool isLoop) {
@@ -277,15 +206,17 @@ void updateInstructionOrderFromGraph(const Graph &graph,
 }
 
 // Generate all of the graph for a file, (generate one for each function)
-void generateGraph(const std::vector<std::vector<Instruction>> &graphVector,
-                   StmtOrder &orderManager) {
+std::vector<Graph>
+generateGraph(const std::vector<std::vector<Instruction>> &graphVector,
+              StmtOrder &orderManager) {
   std::vector<Graph> graphs;
   for (auto &functionInstructions : graphVector)
     graphs.emplace_back(InstructionToGraph(functionInstructions));
-  GenerateDotGraph(graphs, "rawGraph.dot");
+  // GenerateDotGraph(graphs, "rawGraph.dot");
   for (auto &graph : graphs) {
     optimizeGraph(graph);
     updateInstructionOrderFromGraph(graph, orderManager);
   }
-  GenerateDotGraph(graphs, "optimizedGraph.dot");
+  // GenerateDotGraph(graphs, "optimizedGraph.dot");
+  return graphs;
 }

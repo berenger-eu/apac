@@ -11,7 +11,7 @@ message(STATUS "Found LLVM libs ${LLVM_DEFINITIONS}")
 # Now build our tools
 set (COMMON_LIB ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib)
 set(INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../include ${COMMON_LIB})
-set(SOURCES Node.cpp ASTTaskGraphVisitor.cpp generateGraph.cpp AliasTable.cpp InstructionsOrderManager.cpp taskGraph.cpp)
+set(SOURCES Node.cpp OutputHandler.cpp ASTTaskGraphVisitor.cpp Graph.cpp AliasTable.cpp InstructionsOrderManager.cpp taskGraph.cpp)
 add_executable(taskGraph)
  
 target_sources(taskGraph PRIVATE ${SOURCES})

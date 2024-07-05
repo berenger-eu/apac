@@ -90,13 +90,3 @@ struct StmtOrder {
 
 void fuseInstructions(const std::vector<const Stmt *>,
                       StmtOrder &instructionsOrderManager);
-void modifyFile(Rewriter &TheRewriter,
-                const StmtOrder &instructionsOrderManager);
-
-bool isPragmaValid(const StmtOrder &instructionsOrderManager,
-                   const int &instructionGroupNum);
-std::string createPragmaTaskString(const StmtOrder &instructionsOrderManager,
-                                   const int &instructionGroupNum);
-std::string createPragmaTaskWait(const StmtOrder &instructionsOrderManager,
-                                 const int &instructionGroupNum);
-std::string createDependsString(const std::shared_ptr<Node> &node);
