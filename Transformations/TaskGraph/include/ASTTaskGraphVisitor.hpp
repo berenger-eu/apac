@@ -5,7 +5,6 @@
 #include "AliasTable.hpp"
 #include "Instruction.hpp"
 #include "InstructionsOrderManager.hpp"
-#include "PotTaskGraphInterface.hpp"
 #include "common.hpp"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/RecursiveASTVisitor.h"
@@ -18,7 +17,7 @@ public:
   ASTTaskGraphVisitor(Rewriter &R, StmtOrder &orderManager)
       : TheRewriter(R), orderManager(orderManager),
         currentOrderManager(&orderManager), aliasTable(R),
-        ignoreStmtPragma(false){};
+        ignoreStmtPragma(false) {};
   inline bool VisitStmt(Stmt *s) { return true; }
   // Traverse methods lets us stop visiting nodes that we don't need
   inline bool TraverseDeclStmt(DeclStmt *d) {
@@ -72,9 +71,6 @@ public:
   }
 
 private:
-  bool isEmptyInstruction(const Instruction &instr) {
-    return instr.dependencies.size() == 0;
-  };
   inline void addDependencyRead(Instruction &instr, const VarDecl *d) {
     for (auto &alias : aliasTable.getAliases(d)) {
       if (instr.dependencies.count(alias) == 0)
@@ -95,7 +91,7 @@ private:
             true;
     }
   }
-  bool traverseSimpleElements(Stmt *s) {
+  inline bool traverseSimpleElements(Stmt *s) {
     if (isInHeaders(TheRewriter.getSourceMgr(), s->getBeginLoc()))
       return true;
     if (!ignoreStmtPragma)
@@ -124,7 +120,9 @@ private:
   AliasTable aliasTable;
   bool ignoreStmtPragma;
 };
-
+inline bool isEmptyInstruction(const Instruction &instr) {
+  return instr.dependencies.size() == 0;
+};
 inline bool isInExceptionList(const ParmVarDecl &p) {
   return p.getType().getAsString().find("std::shared_ptr") != std::string::npos;
 }
