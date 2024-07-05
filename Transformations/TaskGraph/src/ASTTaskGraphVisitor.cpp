@@ -286,8 +286,8 @@ bool ASTTaskGraphVisitor::TraverseForStmt(ForStmt *f) {
     currentOrderManager = (outerInstrOrder->getSubStmtOrder(f)).get();
   llvm::errs() << ((outerInstrOrder->getSubStmtOrder(f)).get() == nullptr)
                << "End ForStmt\n";
-  Instruction compInstr{f, getStmtAsString(f, TheRewriter.getLangOpts()), true,
-                        0};
+  Instruction compInstr(f, getStmtAsString(f, TheRewriter.getLangOpts()), true,
+                        0);
   functionsInstructionsVector.push_back(std::vector<Instruction>());
   ignoreStmtPragma = true;
   if (!(RecursiveASTVisitor::TraverseStmt(f->getCond()) &&
@@ -324,20 +324,13 @@ bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt *i) {
   if (isInHeaders(TheRewriter.getSourceMgr(), i->getBeginLoc()))
     return true;
   bool res = true;
-  Instruction compInstr{i, getStmtAsString(i, TheRewriter.getLangOpts()), true,
-                        0};
+  Instruction compInstr(i, getStmtAsString(i, TheRewriter.getLangOpts()), true,
+                        0);
   functionsInstructionsVector.push_back(std::vector<Instruction>());
   // res=RecursiveASTVisitor::TraverseIfStmt(i);
   if (i->getThen() && isa<CompoundStmt>(i->getThen())) {
     CompoundStmt *c = cast<CompoundStmt>(i->getThen());
-    Instruction compInstr;
-    compInstr.instruction = c;
-    std::stringstream ss;
-    ss << "if";
-
-    compInstr.instructionString = ss.str();
-    compInstr.complexInstruction = true;
-    compInstr.scopedInstructionsNumber = 0;
+    Instruction compInstr(c, "if", true, 0);
     functionsInstructionsVector.push_back(std::vector<Instruction>());
     res = RecursiveASTVisitor::TraverseCompoundStmt(c);
     compInstr.scopedInstructions = functionsInstructionsVector.back();
@@ -357,14 +350,7 @@ bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt *i) {
     if (isa<CompoundStmt>(i->getElse())) {
 
       CompoundStmt *c = cast<CompoundStmt>(i->getElse());
-      Instruction compInstr;
-      compInstr.instruction = c;
-      std::stringstream ss;
-      ss << "else";
-
-      compInstr.instructionString = ss.str();
-      compInstr.complexInstruction = true;
-      compInstr.scopedInstructionsNumber = 0;
+      Instruction compInstr(c, "else", true, 0);
 
       functionsInstructionsVector.push_back(std::vector<Instruction>());
       res = RecursiveASTVisitor::TraverseCompoundStmt(c);
@@ -381,11 +367,7 @@ bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt *i) {
       functionsInstructionsVector.pop_back();
       functionsInstructionsVector.back().push_back(compInstr);
     } else {
-      Instruction instr;
-      instr.instruction = i->getElse();
-      instr.instructionString = "else";
-      compInstr.complexInstruction = true;
-      compInstr.scopedInstructionsNumber = 0;
+      Instruction instr(i->getElse(), "else", true, 0);
       functionsInstructionsVector.push_back(std::vector<Instruction>());
       res = RecursiveASTVisitor::TraverseStmt(i->getElse());
       compInstr.scopedInstructions = functionsInstructionsVector.back();

@@ -1,5 +1,5 @@
 #pragma once
-#include "PotTaskGraphInterface.hpp"
+#include "Instruction.hpp"
 #include "clang/AST/Decl.h"
 using namespace clang;
 struct Node {

@@ -3,6 +3,7 @@
 #include <string>
 
 #include "AliasTable.hpp"
+#include "Instruction.hpp"
 #include "InstructionsOrderManager.hpp"
 #include "PotTaskGraphInterface.hpp"
 #include "common.hpp"
@@ -99,7 +100,7 @@ private:
       return true;
     if (!ignoreStmtPragma)
       currentOrderManager->addInstructionToManager(s);
-    Instruction instr{s, getStmtAsString(s, TheRewriter.getLangOpts()), false};
+    Instruction instr(s, getStmtAsString(s, TheRewriter.getLangOpts()));
     handleStmt(*s, instr);
     functionsInstructionsVector.back().push_back(instr);
     return true;

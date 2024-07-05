@@ -8,9 +8,9 @@
  */
 #pragma once
 #include "AliasTable.hpp"
+#include "Instruction.hpp"
 #include "InstructionsOrderManager.hpp"
 #include "Node.hpp"
-#include "PotTaskGraphInterface.hpp"
 #include "clang/AST/Decl.h"
 #include <fstream>
 #include <functional>

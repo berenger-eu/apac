@@ -1,18 +1,11 @@
 #pragma once
+#include "NodeDependency.hpp"
 #include "clang/AST/Decl.h"
 #include "clang/AST/Stmt.h"
 #include <sstream>
 #include <unordered_set>
 #include <vector>
-enum class Access { READ, WRITE };
-struct NodeDependency {
-  bool isRead;
-  bool isWrite;
-};
-inline NodeDependency operator+(const NodeDependency &lhs,
-                                const NodeDependency &rhs) {
-  return NodeDependency{lhs.isRead || rhs.isRead, lhs.isWrite || rhs.isWrite};
-}
+
 struct AliasesDependencyHash {
   std::size_t
   operator()(const std::pair<const clang::VarDecl *, const clang::VarDecl *> &p)
@@ -44,6 +37,10 @@ struct Instruction {
   std::unordered_set<std::pair<const clang::VarDecl *, const clang::VarDecl *>,
                      AliasesDependencyHash, AliasesDependencyEqual>
       curAliases;
+  Instruction(clang::Stmt *instr = nullptr, std::string instrString = "",
+              bool isComplex = false, unsigned int scopedInstrNumber = 0)
+      : instruction(instr), instructionString(instrString),
+        complexInstruction(isComplex), scopedInstructionsNumber(0) {}
   void dumpDep() const {
     llvm::errs() << "Dependencies for instruction: " << instructionString
                  << "\n";
@@ -69,10 +66,3 @@ struct Instruction {
     dumpAliases();
   };
 };
-
-/*
-struct ComplexInstruction : Instruction {
-    std::vector<std::unique_ptr<Instruction>> scopedInstructions;
-    unsigned int scopedInstructionsNumber;  //Also takes in account number of
-instructions in ComplexInstructions
-};*/
