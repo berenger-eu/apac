@@ -180,6 +180,15 @@ const DeclRefExpr *getSingleDeclRefExprInsideExpr(const Expr *e) {
   }
   return returnValue;
 }
+const ArraySubscriptExpr *getSingleArraySubscriptExprInsideExpr(const Expr *e) {
+  const ArraySubscriptExpr *returnValue = NULL;
+  std::deque<const ArraySubscriptExpr *> dequeArraySubscriptExpr =
+      getArraySubscripts(e);
+  if (dequeArraySubscriptExpr.size() == 1) {
+    returnValue = dequeArraySubscriptExpr.front();
+  }
+  return returnValue;
+}
 bool isFullConstType(const QualType &qType) {
   const Type *typeTemp;
   bool workDone = false;
@@ -232,17 +241,17 @@ int getPtrDepthAccess(const clang::VarDecl &v, const clang::Expr &e) {
   return getPtrDepthAccess(qt1, qt2, v.getASTContext());
 }
 
-std::deque<clang::ArraySubscriptExpr *>
+std::deque<const clang::ArraySubscriptExpr *>
 getArraySubscripts(const clang::Expr *e) {
-  std::deque<clang::ArraySubscriptExpr *> queueArraySubscriptExpr;
-  Expr *curExpr;
-  std::stack<Expr *> stackExpr;
+  std::deque<const clang::ArraySubscriptExpr *> queueArraySubscriptExpr;
+  const Expr *curExpr = e;
+  std::stack<const Expr *> stackExpr;
   stackExpr.push(curExpr);
   while (!stackExpr.empty()) {
     curExpr = stackExpr.top();
     stackExpr.pop();
     if (isa<ArraySubscriptExpr>(curExpr)) {
-      ArraySubscriptExpr *ase = cast<ArraySubscriptExpr>(curExpr);
+      const ArraySubscriptExpr *ase = cast<ArraySubscriptExpr>(curExpr);
       queueArraySubscriptExpr.push_front(ase);
       stackExpr.push(ase->getBase());
     } else {
@@ -253,9 +262,10 @@ getArraySubscripts(const clang::Expr *e) {
   }
   return queueArraySubscriptExpr;
 }
-std::vector<clang::Expr *> getArraySubscriptsIndexes(const clang::Expr *e) {
-  std::vector<clang::Expr *> vectArraySubscriptExprIndexes;
-  std::deque<clang::ArraySubscriptExpr *> queueArraySubscriptExpr =
+std::vector<const clang::Expr *>
+getArraySubscriptsIndexes(const clang::Expr *e) {
+  std::vector<const clang::Expr *> vectArraySubscriptExprIndexes;
+  std::deque<const clang::ArraySubscriptExpr *> queueArraySubscriptExpr =
       getArraySubscripts(e);
   for (auto &expr : queueArraySubscriptExpr) {
     vectArraySubscriptExprIndexes.push_back(expr->getIdx());
@@ -264,7 +274,7 @@ std::vector<clang::Expr *> getArraySubscriptsIndexes(const clang::Expr *e) {
 }
 std::vector<int> getArraySubscriptsIndexesValues(const clang::Expr *e) {
   std::vector<int> vectArraySubscriptExpr;
-  std::vector<Expr *> vectExpr = getArraySubscriptsIndexes(e);
+  std::vector<const Expr *> vectExpr = getArraySubscriptsIndexes(e);
   for (auto &expr : vectExpr) {
     // TODO: Handle cases with evaluable expressions (5+4 , ...)
     if (isa<IntegerLiteral>(expr))

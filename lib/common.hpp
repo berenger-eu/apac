@@ -49,7 +49,9 @@ void getLeafs(clang::Stmt *s, std::vector<clang::Stmt *> &leafs);
 const DeclRefExpr *getSingleDeclRefExprInsideExpr(const Expr *e);
 // Returns all DeclRefExpr inside a given Expr
 std::vector<const DeclRefExpr *> getAllDeclRefExprInsideExpr(const Expr *e);
-
+// Returns the ArraySubscriptExpr inside a given Expr, none if there are
+// multiple
+const ArraySubscriptExpr *getSingleArraySubscriptExprInsideExpr(const Expr *e);
 // True when the input is a completely constant type (exemple, const int *const
 // )
 bool isFullConstType(const QualType &qType);
@@ -74,14 +76,15 @@ int getPtrDepthAccess(QualType qt1, QualType qt2, const ASTContext &aContext);
 // Returns the ArraySubscriptExpr expressions in a given Expr in the same ordre
 // they appear Warning: it won't return arrays access inside indexes, so
 // p[pi[4]] will not return pi[4]
-std::deque<clang::ArraySubscriptExpr *>
+std::deque<const clang::ArraySubscriptExpr *>
 getArraySubscripts(const clang::Expr *e);
 
 // Returns the values of the ArraySubscriptExpr expressions in a given Expr in
 // the same ordre they appear Warning: it won't return indexes of arrays inside
 // indexes, so p[pi[4]] will only return pi[4]
 
-std::vector<clang::Expr *> getArraySubscriptsIndexes(const clang::Expr *e);
+std::vector<const clang::Expr *>
+getArraySubscriptsIndexes(const clang::Expr *e);
 // Returns the values of the ArraySubscriptExpr expressions in a given Expr in
 // the same ordre they appear -1 if the value is not evaluated (because it's
 // either not evaluable or not supported) Warning: it won't return arrays access
