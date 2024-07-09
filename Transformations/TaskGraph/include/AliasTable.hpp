@@ -32,11 +32,12 @@ struct aliasArg {
 struct IndexTableMapStruct;
 using aliasesTableValues =
     std::variant<aliasArg *, std::shared_ptr<IndexTableMapStruct>>;
-
 using IndexTableMap = std::map<int, aliasesTableValues>;
 // First Key is the variable, the next key(s) will be the indexes
 struct IndexTableMapStruct {
   IndexTableMap map;
+  // current alias, for if map corresponds to tab[1][x] then alias is tab[1]
+  aliasArg alias;
   aliasesTableValues *at(const std::vector<int> &indexes) {
     // If no indexes, return nullptr
     if (indexes.empty())
@@ -63,7 +64,7 @@ using AliasTableMap = std::unordered_map<const NamedDecl *, aliasesTableValues>;
 struct AliasTableMapStruct {
   AliasTableMap map;
   aliasesTableValues *at(const NamedDecl *key,
-                         const std::vector<int> &indexes) {
+                         const std::vector<int> &indexes = std::vector<int>()) {
     // If no entry for variable, return nullptr
     if (map.count(key) == 0)
       return nullptr;
@@ -106,11 +107,10 @@ public:
                             const int &depth);
 
   inline const aliasArg *getAliasArg(const VarDecl *v) const {
-    const aliasArg *result = nullptr;
     const NamedDecl *key = getKey(v);
     if (aliasTableMap.count(key) == 0)
       return nullptr;
-    return &varAliasTable.at({result, std::vector<int>()});
+    return &aliasTableMap.at(key).at(std::vector<int>());
   }
 
 private:
@@ -122,7 +122,7 @@ private:
   void
   addElementToVarAliasTable(const VarDecl *v,
                             std::vector<int> indexes = std::vector<int>()) {
-    auto &key = getKey(v);
+    const auto &key = getKey(v);
     if (v != nullptr)
       return;
     if (aliasTableMap.count(key) == 0)
@@ -136,13 +136,13 @@ private:
     const NamedDecl *key = getKey(v);
     if (aliasTableMap.count(key) == 0)
       return nullptr;
-    return &varAliasTable.at({result, std::vector<int>()});
+    return &aliasTableMap.at(key).at(std::vector<int>());
   }
   void getReferencesAliases(const VarDecl *,
                             std::unordered_set<const VarDecl *> &) const;
   void getPointersAliases(const VarDecl *,
                           std::unordered_set<const VarDecl *> &) const;
 
-  AliasTableMap aliasTableMap;
+  AliasTableMapStruct aliasTableMap;
   Rewriter &TheRewriter;
 };
