@@ -5,6 +5,7 @@
 #include "clang/Rewrite/Core/Rewriter.h"
 #include <unordered_map>
 #include <unordered_set>
+#include <variant>
 #include <vector>
 using namespace clang;
 enum AliasType { Reference, Pointer, Variable };
@@ -28,29 +29,56 @@ struct aliasArg {
 
   virtual void dump() const;
 };
-/*
-struct pointersAliasArg : public aliasArg {
-  pointersAliasArg(const clang::VarDecl &decl,
-                   std::vector<int> indexes = std::vector<int>())
-      : aliasArg(decl, Pointer, indexes) {}
-  // Element referenced
-  std::unordered_set<aliasArg *> aliased;
-  void dump() const override;
+using aliasesTableValues =
+    std::variant<aliasArg *, std::shared_ptr<IndexTableMapStruct>>;
+struct IndexTableMapStruct;
+using IndexTableMap = std::map<int, aliasesTableValues>;
+// First Key is the variable, the next key(s) will be the indexes
+struct IndexTableMapStruct {
+  IndexTableMap map;
+  aliasesTableValues *at(const std::vector &<int> indexes) {
+    // If no indexes, return nullptr
+    if (indexes.empty())
+      return nullptr;
+    // If only one index, return the value
+    if (indexes.size == 1 && map.count(indexes[0]))
+      return &map.at(indexes[0]);
+    // If the value is an IndexTableMapStruct, we look through it using indexes
+    else if (map.count(indexes[0])) {
+      if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
+              map.at(indexes[0])))
+        return map.at(indexes[0])
+            ->at(std::vector<int>(indexes.begin() + 1, indexes.end()));
+    }
+    // Otherwise, the value is simple variable and we're trying to access an
+    // index, so we return nullptr
+    else
+      return nullptr;
+  }
 };
-struct referenceAliasArg : public aliasArg {
-  referenceAliasArg(const clang::VarDecl &decl,
-                    std::vector<int> indexes = std::vector<int>())
-      : aliasArg(decl, Reference, indexes) {}
-  // Element referenced
-  std::unordered_set<aliasArg *> aliased;
-  void dump() const override;
+struct AliasTableMapStruct;
+using AliasTableMap = std::unordered_map<const NamedDecl *, aliasesTableValues>;
+struct AliasTableMapStruct {
+  AliasTableMap map;
+  aliasesTableValues *at(const NamedDecl *key,
+                         const std::vector &<int> indexes) {
+    // If no entry for variable, return nullptr
+    if (map.count(key) == 0)
+      return nullptr;
+    // If no indexes, return the value
+    if (indexes.empty()) {
+      map.at(key);
+    }
+    // If the value is an aliasArg (and not an array, so no indexes), return
+    // nullptr
+    else if (std::holds_alternative<aliasArg *>(map.at(key)))
+      return nullptr;
+    // The value is an array, so we look through it using indexes
+    else
+      return std::get<std::shared_ptr<IndexTableMapStruct>>(map.at(key))
+          ->at(indexes);
+  }
 };
-*/
-
-typedef std::unordered_map<
-    const NamedDecl *, std::unordered_map<std::vector<int>, struct aliasArg>>
-    AliasTableMap;
-
 class AliasTable {
 public:
   AliasTable(Rewriter &R) : TheRewriter(R) {}
