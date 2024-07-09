@@ -29,25 +29,27 @@ struct aliasArg {
 
   virtual void dump() const;
 };
+struct IndexTableMapStruct;
 using aliasesTableValues =
     std::variant<aliasArg *, std::shared_ptr<IndexTableMapStruct>>;
-struct IndexTableMapStruct;
+
 using IndexTableMap = std::map<int, aliasesTableValues>;
 // First Key is the variable, the next key(s) will be the indexes
 struct IndexTableMapStruct {
   IndexTableMap map;
-  aliasesTableValues *at(const std::vector &<int> indexes) {
+  aliasesTableValues *at(const std::vector<int> &indexes) {
     // If no indexes, return nullptr
     if (indexes.empty())
       return nullptr;
     // If only one index, return the value
-    if (indexes.size == 1 && map.count(indexes[0]))
+    if (indexes.size() == 1 && map.count(indexes[0]))
       return &map.at(indexes[0]);
     // If the value is an IndexTableMapStruct, we look through it using indexes
     else if (map.count(indexes[0])) {
       if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
               map.at(indexes[0])))
-        return map.at(indexes[0])
+        return std::get<std::shared_ptr<IndexTableMapStruct>>(
+                   map.at(indexes[0]))
             ->at(std::vector<int>(indexes.begin() + 1, indexes.end()));
     }
     // Otherwise, the value is simple variable and we're trying to access an
@@ -61,7 +63,7 @@ using AliasTableMap = std::unordered_map<const NamedDecl *, aliasesTableValues>;
 struct AliasTableMapStruct {
   AliasTableMap map;
   aliasesTableValues *at(const NamedDecl *key,
-                         const std::vector &<int> indexes) {
+                         const std::vector<int> &indexes) {
     // If no entry for variable, return nullptr
     if (map.count(key) == 0)
       return nullptr;
