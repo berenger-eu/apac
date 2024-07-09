@@ -185,6 +185,9 @@ OutputHandler::createPragmaTaskWait(const StmtOrder &instructionsOrderManager,
     return "";
   }
   node->dump();
+  std::string dependString = createDependsString(node);
+  if (dependString.length() == 0)
+    return "";
   ssPrint << createDependsString(node);
   return ssPrint.str();
 }
