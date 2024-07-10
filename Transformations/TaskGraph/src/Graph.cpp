@@ -186,9 +186,9 @@ void updateInstructionOrderNode(
   for (auto instr : node->instructionPtr)
     vectStmts.push_back(instr->instruction);
   fuseInstructions(vectStmts, orderManager);
-  for (int i = 0; i < node->graph.size(); i++) {
+  for (long unsigned int i = 0; i < node->graph.size(); i++) {
     auto subGraph = node->graph[i];
-    int count = -1;
+    long unsigned int count = -1;
     for (auto instr : node->instructionPtr)
       if (instr->complexInstruction && ++count == i)
         updateInstructionOrderFromGraph(

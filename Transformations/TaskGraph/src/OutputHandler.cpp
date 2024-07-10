@@ -32,9 +32,9 @@ void OutputHandler::subGenerateDotGraph(const Graph &inGraph,
       file << "    " << node->id << " -> " << nextNode.first->id
            << "[label=\"  " << ss.str() << "\"];\n";
     }
-    for (auto i = 0; i < node->graph.size(); i++) {
+    for (long unsigned int i = 0; i < node->graph.size(); i++) {
       auto subGraph = node->graph[i];
-      int curInstrIndex = 0, countGraph = -1;
+      long unsigned int curInstrIndex = 0, countGraph = -1;
       for (auto instr : node->instructionPtr) {
         if (countGraph != i) {
           if (instr->complexInstruction)

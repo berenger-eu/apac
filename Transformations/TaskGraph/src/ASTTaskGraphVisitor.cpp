@@ -83,7 +83,6 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator &uop,
   const DeclRefExpr *d;
   if ((d = getSingleDeclRefExprInsideExpr(subExpr)) != nullptr) {
     // and we increment or decrement it, then it's a read and a write
-    int depth;
     const VarDecl *v = cast<VarDecl>(d->getDecl());
     std::unordered_set<const VarDecl *> aliases;
 
