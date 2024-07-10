@@ -2,126 +2,33 @@
 
 using namespace clang;
 
-void aliasArg::dump() const {
-  llvm::errs() << "AliasArg: " << declaration.getNameAsString() << "\n";
-  switch (type) {
-  case Reference:
-    llvm::errs() << "Type: Reference\n";
-    break;
-  case Pointer:
-    llvm::errs() << "Type: Pointer\n";
-    break;
-  case Variable:
-    llvm::errs() << "Type: Variable\n";
-    break;
-  default:
-    llvm::errs() << "Type: Unknown\n";
-    break;
-  }
-  llvm::errs() << "Pointers: ";
-  for (const auto &ptr : pointers)
-    llvm::errs() << ptr->declaration.getNameAsString() << " ";
-  llvm::errs() << "\n";
-  llvm::errs() << "References: ";
-  for (const auto &ref : references)
-    llvm::errs() << ref->declaration.getNameAsString() << " ";
-  llvm::errs() << "\n";
-  if (type == Reference || type == Pointer) {
-    llvm::errs() << "Aliased: ";
-    for (const auto &aliased : aliased)
-      llvm::errs() << aliased->declaration.getNameAsString() << " ";
-    llvm::errs() << "\n";
-  }
-}
-
 std::unordered_set<const VarDecl *> AliasTable::getAliased(const VarDecl *v) {
   std::unordered_set<const VarDecl *> aliases;
-  std::stack<aliasArg *> stack;
+  std::stack<std::shared_ptr<aliasArg>> stack;
   auto alias = getAliasArg(v);
   if (alias != nullptr)
     stack.push(alias);
   while (!stack.empty()) {
-    const aliasArg *cur = stack.top();
+    const auto cur = stack.top();
     stack.pop();
     if (aliases.count(&cur->declaration) != 0)
       continue;
     aliases.insert(&cur->declaration);
-    if (cur->type == Reference) {
-      const referenceAliasArg *ref =
-          static_cast<const referenceAliasArg *>(cur);
-      for (const auto &alias : ref->aliased)
+    if (cur->type == Reference || cur->type == Pointer)
+      for (const auto &alias : cur->aliased)
         stack.push(alias);
-    } else if (cur->type == Pointer) {
-      const pointersAliasArg *ptr = static_cast<const pointersAliasArg *>(cur);
-      for (const auto &alias : ptr->aliased)
-        stack.push(alias);
-    }
   }
 
   return aliases;
 }
-void AliasTable::addAliasReference(const VarDecl *var, const VarDecl *ref) {
-  if (var != nullptr && ref != nullptr) {
-    referenceAliasArg *tableValueRef = getRefAliasArg(ref);
-    aliasArg *tableValueVar = getAliasArg(var);
-    if (tableValueRef == nullptr) {
-      std::vector<int> keyIndexes;
-      refAliasTable.insert(
-          {{getKey(ref), keyIndexes}, referenceAliasArg(*ref)});
-      tableValueRef = getRefAliasArg(ref);
-    }
-    if (tableValueVar == nullptr) {
-      std::vector<int> keyIndexes;
-      varAliasTable.insert(
-          {{getKey(var), keyIndexes}, aliasArg(*var, AliasType::Variable)});
-      tableValueVar = getAliasArg(var);
-    }
-    tableValueVar->references.insert(tableValueRef);
-    tableValueRef->aliased.insert(tableValueVar);
-  }
-}
-void AliasTable::addAliasPtr(const VarDecl *var, const VarDecl *ptr) {
-  if (var != nullptr && ptr != nullptr) {
-    pointersAliasArg *tableValuePtr = getPtrAliasArg(ptr);
-    aliasArg *tableValueVar = getAliasArg(var);
-    if (tableValuePtr == nullptr) {
-      ptrAliasTable.insert(
-          {{getKey(ptr), std::vector<int>()}, pointersAliasArg{*ptr}});
-      tableValuePtr = getPtrAliasArg(ptr);
-    }
-    if (isPointerQualType(var->getType())) {
-      if (tableValueVar == nullptr) {
-        ptrAliasTable.insert(
-            {{getKey(var), std::vector<int>()}, pointersAliasArg{*var}});
-        tableValueVar = getAliasArg(var);
-      }
-    } else {
-      if (tableValueVar == nullptr) {
-        varAliasTable.insert({{getKey(var), std::vector<int>()},
-                              aliasArg{*var, AliasType::Variable}});
-        tableValueVar = getAliasArg(var);
-      }
-    }
-    if (getPtrDepthAccess(var->getType(), ptr->getType(),
-                          var->getASTContext()) != 0) {
-      tableValueVar->pointers.insert(tableValuePtr);
-      tableValuePtr->aliased.insert(tableValueVar);
-    } else if (tableValueVar->type == Pointer) {
-      pointersAliasArg *tableValuePtr2 =
-          static_cast<pointersAliasArg *>(tableValueVar);
-      for (const auto &varAliased : tableValuePtr2->aliased) {
-        tableValuePtr->aliased.insert(varAliased);
-        varAliased->pointers.insert(tableValuePtr);
-      }
-    }
-  }
-}
+void AliasTable::addAliasReference(const VarDecl *var, const VarDecl *ref) {}
+void AliasTable::addAliasPtr(const VarDecl *var, const VarDecl *ptr) {}
 void AliasTable::removeDependencyPtr(const VarDecl *ptr) {
   if (ptr != nullptr) {
-    pointersAliasArg *tableValuePtr = getPtrAliasArg(ptr);
+    auto tableValuePtr = getAliasArg(ptr);
     if (tableValuePtr) {
       for (const auto &varAliased : tableValuePtr->aliased) {
-        aliasArg *tableValueVar = getAliasArg(&varAliased->declaration);
+        auto tableValueVar = getAliasArg(&varAliased->declaration);
         tableValueVar->pointers.erase(tableValuePtr);
       }
       tableValuePtr->aliased.clear();
@@ -131,25 +38,39 @@ void AliasTable::removeDependencyPtr(const VarDecl *ptr) {
 const std::unordered_set<const VarDecl *>
 AliasTable::getAliases(const VarDecl *v) const {
   std::unordered_set<const VarDecl *> aliases, prevAliases;
-  aliases.insert(v);
-  int oldSize = 1;
-  int newsize = 1;
-  do {
-    oldSize = newsize;
-    for (const auto &alias : aliases) {
-      getReferencesAliases(alias, prevAliases);
-      // getPointersAliases(alias,aliases);
-      const referenceAliasArg *refAlias = getRefAliasArg(alias);
-      if (refAlias)
-        for (const auto &ref : refAlias->aliased)
-          aliases.insert(&ref->declaration);
-    }
-    for (const auto &prevAlias : prevAliases)
-      aliases.insert(prevAlias);
-    newsize = aliases.size();
-  } while (newsize != oldSize);
+
   return aliases;
 };
+
+std::shared_ptr<const aliasArg>
+AliasTable::getAliasArg(const VarDecl *v) const {
+  // const aliasArg *result = nullptr;
+  const NamedDecl *key = getKey(v);
+  if (aliasTableMap.count(key) == 0)
+    return nullptr;
+  if (std::holds_alternative<std::shared_ptr<aliasArg>>(*aliasTableMap.at(key)))
+    return std::get<std::shared_ptr<aliasArg>>(*aliasTableMap.at(key));
+  else {
+    // TODO: Remove this later (if no issues arrise)
+    llvm::errs() << "Error in getAliasArg\n";
+    v->dump();
+    return nullptr;
+  }
+}
+std::shared_ptr<aliasArg> AliasTable::getAliasArg(const VarDecl *v) {
+  const NamedDecl *key = getKey(v);
+  if (aliasTableMap.count(key) == 0)
+    return nullptr;
+  if (std::holds_alternative<std::shared_ptr<aliasArg>>(*aliasTableMap.at(key)))
+    return std::get<std::shared_ptr<aliasArg>>(*aliasTableMap.at(key));
+  else {
+    // TODO: Remove this later (if no issues arrise)
+    llvm::errs() << "Error in getAliasArgConst\n";
+    v->dump();
+    return nullptr;
+  }
+}
+
 void AliasTable::getReferencesAliases(
     const VarDecl *v, std::unordered_set<const VarDecl *> &aliases) const {
   auto refAlias = getAliasArg(v);
@@ -167,10 +88,9 @@ void AliasTable::getPointersAliases(
 
 void AliasTable::getModifiedVariables(
     std::unordered_set<const VarDecl *> &setResults, const int &depth) {
-
   if (depth > 0) {
     int curDepth = 0;
-    std::unordered_set<const aliasArg *> curSet, precSet;
+    std::unordered_set<std::shared_ptr<aliasArg>> curSet, precSet;
     for (auto &dep : setResults)
       curSet.insert(getAliasArg(dep));
     while (curDepth < depth) {
@@ -180,13 +100,10 @@ void AliasTable::getModifiedVariables(
         if (dep == nullptr)
           continue;
         if (dep->type == Reference)
-          const referenceAliasArg *ref =
-              static_cast<const referenceAliasArg *>(dep);
+          ;
         else if (dep->type == Pointer) {
-          const pointersAliasArg *dep2 =
-              static_cast<const pointersAliasArg *>(dep);
-          if (dep2->aliased.size())
-            for (auto &ptr : dep2->aliased)
+          if (dep->aliased.size())
+            for (auto &ptr : dep->aliased)
               curSet.insert(ptr);
         }
       }
@@ -203,7 +120,7 @@ void AliasTable::getModifiedVariables(
       dumpRefTable();
       (*setResults.begin())->dump();
     }
-    std::unordered_set<const aliasArg *> curSet, tempAliased;
+    std::unordered_set<std::shared_ptr<const aliasArg>> curSet, tempAliased;
     for (auto &dep : setResults)
       if (getAliasArg(dep) != nullptr)
         curSet.insert(getAliasArg(dep));
@@ -218,9 +135,7 @@ void AliasTable::getModifiedVariables(
       for (auto &dep : tempAliased) {
         // If its a reference, then add the aliased variables
         if (dep->type == Reference) {
-          const referenceAliasArg *ref =
-              static_cast<const referenceAliasArg *>(dep);
-          for (auto &alias : ref->aliased)
+          for (auto &alias : dep->aliased)
             tempAliased.insert(alias);
         }
         // We add references to the current variable to the set of modified
@@ -267,17 +182,25 @@ void AliasTable::dumpPtrTable() const {
 void AliasTable::dumpPrep(std::string *varTable, std::string *refTable,
                           std::string *ptrTable) const {
   std::stringstream ssVar, ssRef, ssPtr;
-  for (auto &alias : aliasTableMap) {
-    for (auto &alias2 : alias.second) {
-      if (varTable != nullptr && alias2.second.type == AliasType::Variable) {
-        ssVar << alias2.second.declaration.getNameAsString() << " ";
-      } else if (refTable != nullptr &&
-                 alias2.second.type == AliasType::Reference) {
-        ssRef << alias2.second.declaration.getNameAsString() << " ";
-      } else if (ptrTable != nullptr &&
-                 alias2.second.type == AliasType::Pointer) {
-        ssPtr << alias2.second.declaration.getNameAsString() << " ";
-      }
+  for (auto &elem : aliasTableMap.map) {
+    if (std::holds_alternative<std::shared_ptr<aliasArg>>(elem.second)) {
+      auto alias = std::get<std::shared_ptr<aliasArg>>(elem.second);
+      if (varTable != nullptr && alias->type == Variable)
+        ssVar << alias->declaration.getNameAsString() << " ";
+      else if (refTable != nullptr && alias->type == Reference)
+        ssRef << alias->declaration.getNameAsString() << " ";
+      else if (ptrTable != nullptr && alias->type == Pointer)
+        ssPtr << alias->declaration.getNameAsString() << " ";
+    } else if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
+                   elem.second)) {
+      auto alias = std::get<std::shared_ptr<IndexTableMapStruct>>(elem.second);
+      alias->dumpPrep(varTable, refTable, ptrTable);
+      if (varTable != nullptr)
+        ssVar << *varTable;
+      if (refTable != nullptr)
+        ssRef << *refTable;
+      if (ptrTable != nullptr)
+        ssPtr << *ptrTable;
     }
   }
   if (varTable != nullptr)
@@ -286,5 +209,4 @@ void AliasTable::dumpPrep(std::string *varTable, std::string *refTable,
     *refTable = ssRef.str();
   if (ptrTable != nullptr)
     *ptrTable = ssPtr.str();
-  llvm::errs() << "\n";
 }
