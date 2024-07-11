@@ -42,12 +42,13 @@ private:
   inline const NamedDecl *getKey(const VarDecl *v) const {
     return v->getCanonicalDecl();
   }
-  void
-  addElementToVarAliasTable(const VarDecl *v,
-                            std::vector<int> indexes = std::vector<int>()) {
+  void addElementToAliasTable(const VarDecl *v, const AliasType &type,
+                              std::vector<int> indexes = std::vector<int>()) {
     // const auto &key = getKey(v);
-    if (v != nullptr)
-      aliasTableMap.insert({aliasArg(*v, Variable, indexes), indexes});
+    if (v != nullptr) {
+      llvm::errs() << "Adding element to alias table\n";
+      aliasTableMap.insert({aliasArg(*v, type, indexes), indexes});
+    }
   }
 
   std::shared_ptr<aliasArg> getAliasArg(const VarDecl *v);

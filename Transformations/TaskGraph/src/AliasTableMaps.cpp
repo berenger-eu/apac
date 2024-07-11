@@ -183,7 +183,6 @@ void AliasTableMapStruct::insert(
   const NamedDecl *key = elem->declaration.getCanonicalDecl();
 
   if (indexes.empty()) {
-
     if (map.count(key) == 0)
       map.insert({key, elem});
     else if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
@@ -193,8 +192,9 @@ void AliasTableMapStruct::insert(
       if (element->alias == nullptr)
         element->alias = elem;
     }
-  } else if (map.count(key) == 0)
+  } else if (map.count(key) == 0) {
     map.insert({key, std::make_shared<IndexTableMapStruct>()});
-  std::get<std::shared_ptr<IndexTableMapStruct>>(map.at(key))
-      ->map.insert({indexes[0], elem});
+    std::get<std::shared_ptr<IndexTableMapStruct>>(map.at(key))
+        ->map.insert({indexes[0], elem});
+  }
 }
