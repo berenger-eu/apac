@@ -16,6 +16,8 @@ public:
 
   void inline dump() const {
     std::string varTable, refTable, ptrTable;
+    llvm::errs() << "Map Size : " << aliasTableMap.map.size()
+                 << "\nDumping Alias Table\n";
     dumpPrep(&varTable, &refTable, &ptrTable);
     llvm::errs() << "Var Table \n\n"
                  << varTable << "\nRef Table\n\n"
@@ -30,11 +32,15 @@ public:
   std::unordered_set<const VarDecl *> getAliased(const VarDecl *v);
   void removeDependencyPtr(const VarDecl *ptr);
   void addAliasReference(const VarDecl *var, const VarDecl *ref);
-  void addAliasPtr(const VarDecl *var, const VarDecl *ptr);
+  void addAliasPtr(const Expr *var, const Expr *ptr);
+  void addAliasPtr(const VarDecl *var, const std::vector<int> &,
+                   const VarDecl *ptr, const std::vector<int> &, const int &);
   void getModifiedVariables(std::unordered_set<const VarDecl *> &setResults,
                             const int &depth);
 
-  std::shared_ptr<const aliasArg> getAliasArg(const VarDecl *v) const;
+  std::shared_ptr<const aliasArg>
+  getAliasArg(const VarDecl *v,
+              const std::vector<int> & = std::vector<int>()) const;
 
 private:
   void dumpPrep(std::string *varTable, std::string *refTable,
@@ -51,7 +57,9 @@ private:
     }
   }
 
-  std::shared_ptr<aliasArg> getAliasArg(const VarDecl *v);
+  std::shared_ptr<aliasArg>
+  getAliasArg(const VarDecl *v,
+              const std::vector<int> &indexes = std::vector<int>());
   void getReferencesAliases(const VarDecl *,
                             std::unordered_set<const VarDecl *> &) const;
   void getPointersAliases(const VarDecl *,

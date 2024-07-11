@@ -213,10 +213,6 @@ generateGraph(const std::vector<std::vector<Instruction>> &graphVector,
   for (auto &functionInstructions : graphVector)
     graphs.emplace_back(InstructionToGraph(functionInstructions));
   // GenerateDotGraph(graphs, "rawGraph.dot");
-  for (auto &graph : graphs) {
-    optimizeGraph(graph);
-    updateInstructionOrderFromGraph(graph, orderManager);
-  }
   // GenerateDotGraph(graphs, "optimizedGraph.dot");
   return graphs;
 }

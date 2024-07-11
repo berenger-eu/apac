@@ -45,36 +45,72 @@ void AliasTable::addAliasReference(const VarDecl *var, const VarDecl *ref) {
   }
   llvm::errs() << "Done adding alias reference\n";
 }
-void AliasTable::addAliasPtr(const VarDecl *var, const VarDecl *ptr) {
+void AliasTable::addAliasPtr(const Expr *var, const Expr *ptr) {
   if (var != nullptr && ptr != nullptr) {
-    auto tableValuePtr = getAliasArg(ptr);
-    auto tableValueVar = getAliasArg(var);
+    std::vector<int> keyIndexesVar, keyIndexesPtr;
+    const VarDecl *varDecl = nullptr, *ptrDecl = nullptr;
+    if (isa<ArraySubscriptExpr>(var)) {
+      const ArraySubscriptExpr *ase = cast<ArraySubscriptExpr>(var);
+      if (isa<DeclRefExpr>(ase->getBase())) {
+        varDecl = cast<VarDecl>(cast<DeclRefExpr>(ase->getBase())->getDecl());
+      }
+      keyIndexesVar = getArraySubscriptsIndexesValues(ase->getIdx());
+    }
+    if (isa<ArraySubscriptExpr>(ptr)) {
+      const ArraySubscriptExpr *ase = cast<ArraySubscriptExpr>(ptr);
+      if (isa<DeclRefExpr>(ase->getBase())) {
+        ptrDecl = cast<VarDecl>(cast<DeclRefExpr>(ase->getBase())->getDecl());
+      }
+      keyIndexesPtr = getArraySubscriptsIndexesValues(ase->getIdx());
+    }
+    if (varDecl != nullptr && ptrDecl != nullptr) {
+      addAliasPtr(varDecl, keyIndexesVar, ptrDecl, keyIndexesPtr,
+                  getPtrDepthAccess(var->getType(), ptr->getType(),
+                                    varDecl->getASTContext()));
+    }
+  }
+  llvm::errs() << "Done adding alias ptr\n";
+}
+void AliasTable::addAliasPtr(const VarDecl *var,
+                             const std::vector<int> &indexesVar,
+                             const VarDecl *ptr,
+                             const std::vector<int> &indexesPtr,
+                             const int &depth) {
+  if (var != nullptr && ptr != nullptr) {
+    auto tableValuePtr = getAliasArg(ptr, indexesPtr);
+    auto tableValueVar = getAliasArg(var, indexesVar);
+    llvm::errs() << "Got alias args\n";
     if (tableValuePtr == nullptr) {
-      addElementToAliasTable(ptr, AliasType::Pointer);
-      tableValuePtr = getAliasArg(ptr);
+      addElementToAliasTable(ptr, AliasType::Pointer, indexesPtr);
+      tableValuePtr = getAliasArg(ptr, indexesPtr);
     }
     if (isPointerQualType(var->getType())) {
       if (tableValueVar == nullptr) {
-        addElementToAliasTable(var, AliasType::Pointer);
-        tableValueVar = getAliasArg(var);
+        addElementToAliasTable(var, AliasType::Pointer, indexesVar);
+        tableValueVar = getAliasArg(var, indexesVar);
       }
     } else {
       if (tableValueVar == nullptr) {
-        addElementToAliasTable(var, AliasType::Variable);
-        tableValueVar = getAliasArg(var);
+        addElementToAliasTable(var, AliasType::Variable, indexesVar);
+        tableValueVar = getAliasArg(var, indexesVar);
       }
     }
-    if (getPtrDepthAccess(var->getType(), ptr->getType(),
-                          var->getASTContext()) != 0) {
+    llvm::errs() << "Got alias arg ptr\n";
+    if (depth != 0) {
+      llvm::errs() << "Got alias arg ptr\n";
+
       tableValueVar->pointers.insert(tableValuePtr);
       tableValuePtr->aliased.insert(tableValueVar);
     } else if (tableValueVar->type == Pointer) {
+      llvm::errs() << "Got alias arg ptr\n";
+
       for (const auto &varAliased : tableValueVar->aliased) {
         tableValuePtr->aliased.insert(varAliased);
         varAliased->pointers.insert(tableValuePtr);
       }
     }
   }
+  llvm::errs() << "Done adding alias ptr\n";
 }
 void AliasTable::removeDependencyPtr(const VarDecl *ptr) {
   if (ptr != nullptr) {
@@ -112,7 +148,8 @@ AliasTable::getAliases(const VarDecl *v) const {
 };
 
 std::shared_ptr<const aliasArg>
-AliasTable::getAliasArg(const VarDecl *v) const {
+AliasTable::getAliasArg(const VarDecl *v,
+                        const std::vector<int> &indexes) const {
   // const aliasArg *result = nullptr;
   const NamedDecl *key = getKey(v);
   if (aliasTableMap.count(key) == 0)
@@ -126,7 +163,8 @@ AliasTable::getAliasArg(const VarDecl *v) const {
     return nullptr;
   }
 }
-std::shared_ptr<aliasArg> AliasTable::getAliasArg(const VarDecl *v) {
+std::shared_ptr<aliasArg>
+AliasTable::getAliasArg(const VarDecl *v, const std::vector<int> &indexes) {
   const NamedDecl *key = getKey(v);
   if (aliasTableMap.count(key) == 0)
     return nullptr;
