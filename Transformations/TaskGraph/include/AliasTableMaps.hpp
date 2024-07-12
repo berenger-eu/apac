@@ -1,6 +1,6 @@
 #pragma once
+#include "AliasArg.hpp"
 #include "ElementsRepresentationStruct.hpp"
-
 #include "common.hpp"
 #include "clang/AST/Decl.h"
 
@@ -12,27 +12,6 @@
 
 using namespace clang;
 
-enum AliasType { Reference, Pointer, Variable };
-struct pointersAliasArg;
-struct referenceAliasArg;
-struct aliasArg {
-  const clang::VarDecl &declaration;
-  // Type of Alias arg
-  const AliasType type;
-  const std::vector<int> indexes;
-  // Elements that point to current element
-  std::unordered_set<std::shared_ptr<aliasArg>> pointers;
-  // Elements that references current element
-  std::unordered_set<std::shared_ptr<aliasArg>> references;
-  // Elements aliased(mostly only for pointers and references)
-  std::unordered_set<std::shared_ptr<aliasArg>> aliased;
-
-  aliasArg(const clang::VarDecl &decl, AliasType t,
-           std::vector<int> indexes = std::vector<int>())
-      : declaration(decl), type(t), indexes(indexes) {}
-
-  void dump() const;
-};
 struct IndexTableMapStruct;
 using aliasesTableValues = std::variant<std::shared_ptr<aliasArg>,
                                         std::shared_ptr<IndexTableMapStruct>>;

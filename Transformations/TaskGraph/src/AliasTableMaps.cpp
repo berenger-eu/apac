@@ -1,37 +1,5 @@
 #include "AliasTableMaps.hpp"
 
-void aliasArg::dump() const {
-  llvm::errs() << "AliasArg: " << declaration.getNameAsString() << "\n";
-  switch (type) {
-  case Reference:
-    llvm::errs() << "Type: Reference\n";
-    break;
-  case Pointer:
-    llvm::errs() << "Type: Pointer\n";
-    break;
-  case Variable:
-    llvm::errs() << "Type: Variable\n";
-    break;
-  default:
-    llvm::errs() << "Type: Unknown\n";
-    break;
-  }
-  llvm::errs() << "Pointers: ";
-  for (const auto &ptr : pointers)
-    llvm::errs() << ptr->declaration.getNameAsString() << " ";
-  llvm::errs() << "\n";
-  llvm::errs() << "References: ";
-  for (const auto &ref : references)
-    llvm::errs() << ref->declaration.getNameAsString() << " ";
-  llvm::errs() << "\n";
-  if (type == Reference || type == Pointer) {
-    llvm::errs() << "Aliased: ";
-    for (const auto &aliased : aliased)
-      llvm::errs() << aliased->declaration.getNameAsString() << " ";
-    llvm::errs() << "\n";
-  }
-}
-
 aliasesTableValues *IndexTableMapStruct::at(const std::vector<int> &indexes) {
   // If no indexes, return nullptr
   if (indexes.empty())

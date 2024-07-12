@@ -7,7 +7,6 @@
  * Each node contain a single instruction
  */
 #pragma once
-#include "AliasTable.hpp"
 #include "Instruction.hpp"
 #include "InstructionsOrderManager.hpp"
 #include "Node.hpp"

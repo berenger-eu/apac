@@ -1,4 +1,5 @@
 #pragma once
+#include "AliasArg.hpp"
 #include "NodeDependency.hpp"
 #include "clang/AST/Decl.h"
 #include "clang/AST/Stmt.h"
