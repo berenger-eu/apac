@@ -28,17 +28,19 @@ public:
   void dumpRefTable() const;
   void dumpVarTable() const;
 
-  const std::unordered_set<const VarDecl *> getAliases(const VarDecl *v) const;
+  const std::unordered_set<std::shared_ptr<aliasArg>>
+  getAliases(const VarDecl *v) const;
   std::unordered_set<const VarDecl *> getAliased(const VarDecl *v);
   void removeDependencyPtr(const VarDecl *ptr);
   void addAliasReference(const VarDecl *var, const VarDecl *ref);
-  void addAliasPtr(const Expr *var, const Expr *ptr);
+  void addAliasPtr(std::shared_ptr<aliasArg> &var,
+                   std::shared_ptr<aliasArg> &ptr);
   void addAliasPtr(const VarDecl *var, const std::vector<int> &,
                    const VarDecl *ptr, const std::vector<int> &, const int &);
   void getModifiedVariables(std::unordered_set<const VarDecl *> &setResults,
                             const int &depth);
 
-  std::shared_ptr<const aliasArg>
+  std::shared_ptr<aliasArg>
   getAliasArg(const VarDecl *v,
               const std::vector<int> & = std::vector<int>()) const;
 
@@ -60,10 +62,12 @@ private:
   std::shared_ptr<aliasArg>
   getAliasArg(const VarDecl *v,
               const std::vector<int> &indexes = std::vector<int>());
-  void getReferencesAliases(const VarDecl *,
-                            std::unordered_set<const VarDecl *> &) const;
-  void getPointersAliases(const VarDecl *,
-                          std::unordered_set<const VarDecl *> &) const;
+  void
+  getReferencesAliases(std::shared_ptr<aliasArg>,
+                       std::unordered_set<std::shared_ptr<aliasArg>> &) const;
+  void
+  getPointersAliases(std::shared_ptr<aliasArg>,
+                     std::unordered_set<std::shared_ptr<aliasArg>> &) const;
 
   AliasTableMapStruct aliasTableMap;
   Rewriter &TheRewriter;

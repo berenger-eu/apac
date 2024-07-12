@@ -17,7 +17,7 @@ public:
   ASTTaskGraphVisitor(Rewriter &R, StmtOrder &orderManager)
       : TheRewriter(R), orderManager(orderManager),
         currentOrderManager(&orderManager), aliasTable(R),
-        ignoreStmtPragma(false) {};
+        ignoreStmtPragma(false){};
   inline bool VisitStmt(Stmt *s) { return true; }
   // Traverse methods lets us stop visiting nodes that we don't need
   inline bool TraverseDeclStmt(DeclStmt *d) {
@@ -74,21 +74,17 @@ private:
   inline void addDependencyRead(Instruction &instr, const VarDecl *d) {
     for (auto &alias : aliasTable.getAliases(d)) {
       if (instr.dependencies.count(alias) == 0)
-        instr.dependencies.insert(
-            {alias->getCanonicalDecl(), NodeDependency{true, false}});
+        instr.dependencies.insert({alias, NodeDependency{true, false}});
       else
-        instr.dependencies.find(alias->getCanonicalDecl())->second.isRead =
-            true;
+        instr.dependencies.find(alias)->second.isRead = true;
     }
   }
   inline void addDependencyWrite(Instruction &instr, const VarDecl *d) {
     for (auto &alias : aliasTable.getAliases(d)) {
-      if (instr.dependencies.count(alias->getCanonicalDecl()) == 0)
-        instr.dependencies.insert(
-            {alias->getCanonicalDecl(), NodeDependency{false, true}});
+      if (instr.dependencies.count(alias) == 0)
+        instr.dependencies.insert({alias, NodeDependency{false, true}});
       else
-        instr.dependencies.find(alias->getCanonicalDecl())->second.isWrite =
-            true;
+        instr.dependencies.find(alias)->second.isWrite = true;
     }
   }
   inline bool traverseSimpleElements(Stmt *s) {

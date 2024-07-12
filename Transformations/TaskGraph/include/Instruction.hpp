@@ -30,11 +30,14 @@ struct Instruction {
   bool complexInstruction;
   unsigned int scopedInstructionsNumber; // Also takes in account number of
                                          // instructions in ComplexInstructions
-  std::unordered_map<const clang::NamedDecl *, NodeDependency> dependencies;
+  // Use the aliasArg as its adress is unique and will contain all available
+  // information about the variable (more than necessary)
+  std::unordered_map<std::shared_ptr<aliasArg>, NodeDependency> dependencies;
   std::vector<Instruction> scopedInstructions;
   // Contains pairs of variables
   // first element is the alias used in the instruction, second is the variable
   // that is aliased
+  // TODO : Modify to use aliasArg (for arrays)
   std::unordered_set<std::pair<const clang::VarDecl *, const clang::VarDecl *>,
                      AliasesDependencyHash, AliasesDependencyEqual>
       curAliases;
@@ -49,7 +52,7 @@ struct Instruction {
       std::stringstream ss;
       ss << (dep.second.isRead ? "READ " : "")
          << (dep.second.isWrite ? "WRITE " : "") << " "
-         << dep.first->getNameAsString();
+         << dep.first->dumpAsStr();
       llvm::errs() << ss.str() << "\n";
     }
   }
