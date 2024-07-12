@@ -125,13 +125,16 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator &bop,
     const DeclRefExpr *d = getSingleDeclRefExprInsideExpr(bop.getLHS());
     if (d) {
       const VarDecl *v = cast<VarDecl>(d->getDecl());
-      std::unordered_set<const VarDecl *> aliases;
+      std::unordered_set<const VarDecl *> aliasesLeft;
       // setLeftVars.insert(v);
       llvm::errs() << "LHS: ";
-      computeAliasesForRHS(bop.getLHS(), aliases, curInstr);
-      llvm::errs() << "Size of aliases: " << aliases.size() << "\n";
+      computeAliasesForRHS(bop.getLHS(), aliasesLeft, curInstr);
+      llvm::errs() << "Size of aliases: " << aliasesLeft.size() << "\n";
       // aliasTable.getModifiedVariables(setLeftVars,depth);
       if (isPointerQualType(bop.getLHS()->getType())) {
+        // Separate this part in a different function to make it more
+        // understandable
+
         // If a single pointer is aliased, then we know that its aliased
         // elements will change If there are multiple, it's because we can't be
         // sure which one is aliased, so we can't remove the dependencies
@@ -173,12 +176,16 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator &bop,
           for (auto &alias : aliasesRHS)
             aliasTable.addAliasPtr(alias, aliasLeft);
       }
-      for (auto &alias : aliases) {
+      // It's an assignment, so all aliases are written
+      for (auto &alias : aliasesLeft) {
         addDependencyWrite(curInstr, alias);
         if (isa<CompoundAssignOperator>(bop))
           addDependencyRead(curInstr, alias);
       }
       int depth = getPtrDepthAccess(*v, *bop.getLHS());
+      // If we have a pointer, then the aliases are related to the pointed
+      // values when depth > 0 So we have to add a read dependency on the
+      // pointer itself
       if (depth > 0)
         addDependencyRead(curInstr, v);
 

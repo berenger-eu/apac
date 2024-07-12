@@ -45,8 +45,7 @@ void AliasTable::addAliasReference(const VarDecl *var, const VarDecl *ref) {
   }
   llvm::errs() << "Done adding alias reference\n";
 }
-void AliasTable::addAliasPtr(std::shared_ptr<aliasArg> &var,
-                             std::shared_ptr<aliasArg> &ptr) {
+void AliasTable::addAliasPtr(const Expr *var, const Expr *ptr) {
   if (var != nullptr && ptr != nullptr) {
     std::vector<int> keyIndexesVar, keyIndexesPtr;
     const VarDecl *varDecl = nullptr, *ptrDecl = nullptr;
