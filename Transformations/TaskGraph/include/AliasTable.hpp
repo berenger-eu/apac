@@ -31,17 +31,25 @@ public:
   const std::unordered_set<std::shared_ptr<aliasArg>>
   getAliases(const VarDecl *v) const;
   std::unordered_set<const VarDecl *> getAliased(const VarDecl *v);
-  void removeDependencyPtr(const VarDecl *ptr);
-  void addAliasReference(const VarDecl *var, const VarDecl *ref);
+  void removeDependencyPtr(std::shared_ptr<aliasArg> &ptr);
+  void addAliasReference(std::shared_ptr<aliasArg> &var,
+                         std::shared_ptr<aliasArg> &ref);
+  // TODO: split function ?
+  void addAliasPtr(std::shared_ptr<aliasArg> &var,
+                   std::shared_ptr<aliasArg> &ptr);
   void addAliasPtr(const Expr *var, const Expr *ptr);
   void addAliasPtr(const VarDecl *var, const std::vector<int> &,
                    const VarDecl *ptr, const std::vector<int> &, const int &);
-  void getModifiedVariables(std::unordered_set<const VarDecl *> &setResults,
-                            const int &depth);
+  void getModifiedVariables(
+      std::unordered_set<std::shared_ptr<aliasArg>> &setResults,
+      const int &depth);
 
   std::shared_ptr<aliasArg>
   getAliasArg(const VarDecl *v,
               const std::vector<int> & = std::vector<int>()) const;
+  std::shared_ptr<aliasArg>
+  getAliasArg(const VarDecl *v,
+              const std::vector<int> &indexes = std::vector<int>());
 
 private:
   void dumpPrep(std::string *varTable, std::string *refTable,
@@ -58,9 +66,6 @@ private:
     }
   }
 
-  std::shared_ptr<aliasArg>
-  getAliasArg(const VarDecl *v,
-              const std::vector<int> &indexes = std::vector<int>());
   void
   getReferencesAliases(std::shared_ptr<aliasArg>,
                        std::unordered_set<std::shared_ptr<aliasArg>> &) const;

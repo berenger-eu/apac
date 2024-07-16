@@ -23,8 +23,8 @@ public:
 
   // Parse all the file
   virtual void HandleTranslationUnit(ASTContext &Ctx) {
-    VisitorTaskGraph.TraverseAST(Ctx);
-    VisitorTaskGraph.getAliasTable().dump();
+    // VisitorTaskGraph.TraverseAST(Ctx);
+    // VisitorTaskGraph.getAliasTable().dump();
     /*
       auto graphs = generateGraph(VisitorTaskGraph.functionsInstructionsVector,
                                   orderManager);
