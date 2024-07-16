@@ -17,7 +17,7 @@ public:
   ASTTaskGraphVisitor(Rewriter &R, StmtOrder &orderManager)
       : TheRewriter(R), orderManager(orderManager),
         currentOrderManager(&orderManager), aliasTable(R),
-        ignoreStmtPragma(false){};
+        ignoreStmtPragma(false) {};
   inline bool VisitStmt(Stmt *s) { return true; }
   // Traverse methods lets us stop visiting nodes that we don't need
   inline bool TraverseDeclStmt(DeclStmt *d) {
@@ -108,7 +108,7 @@ private:
   void handleMemberCallExpr(const CXXMemberCallExpr &, Instruction &,
                             bool isWrite = false);
   void computeAliasesForRHS(const Expr *bop,
-                            std::unordered_set<const VarDecl *> &,
+                            std::unordered_set<std::shared_ptr<aliasArg>> &,
                             Instruction &instr);
   Rewriter &TheRewriter;
   StmtOrder &orderManager;
