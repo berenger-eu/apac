@@ -29,8 +29,9 @@ public:
   void dumpVarTable() const;
 
   const std::unordered_set<std::shared_ptr<aliasArg>>
-  getAliases(const VarDecl *v) const;
-  std::unordered_set<const VarDecl *> getAliased(const VarDecl *v);
+  getAliases(std::shared_ptr<aliasArg> &v) const;
+  std::unordered_set<std::shared_ptr<aliasArg>>
+  getAliased(std::shared_ptr<aliasArg> &v);
   void removeDependencyPtr(std::shared_ptr<aliasArg> &ptr);
   void addAliasReference(std::shared_ptr<aliasArg> &var,
                          std::shared_ptr<aliasArg> &ref);

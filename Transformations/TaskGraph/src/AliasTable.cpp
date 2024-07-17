@@ -2,21 +2,21 @@
 
 using namespace clang;
 
-std::unordered_set<const VarDecl *> AliasTable::getAliased(const VarDecl *v) {
-  std::unordered_set<const VarDecl *> aliases;
-  std::stack<std::shared_ptr<aliasArg>> stack;
-  auto alias = getAliasArg(v);
-  if (alias != nullptr)
-    stack.push(alias);
-  while (!stack.empty()) {
-    const auto cur = stack.top();
-    stack.pop();
-    if (aliases.count(&cur->declaration) != 0)
+std::unordered_set<std::shared_ptr<aliasArg>>
+AliasTable::getAliased(std::shared_ptr<aliasArg> &v) {
+  std::unordered_set<std::shared_ptr<aliasArg>> aliases;
+  std::stack<std::shared_ptr<aliasArg>> aliasStack;
+  if (v != nullptr)
+    aliasStack.push(v);
+  while (!aliasStack.empty()) {
+    const auto cur = aliasStack.top();
+    aliasStack.pop();
+    if (aliases.count(cur) != 0)
       continue;
-    aliases.insert(&cur->declaration);
+    aliases.insert(cur);
     if (cur->type == Reference || cur->type == Pointer)
       for (const auto &alias : cur->aliased)
-        stack.push(alias);
+        aliasStack.push(alias);
   }
 
   return aliases;
@@ -136,9 +136,9 @@ void AliasTable::removeDependencyPtr(std::shared_ptr<aliasArg> &ptr) {
   }
 }
 const std::unordered_set<std::shared_ptr<aliasArg>>
-AliasTable::getAliases(const VarDecl *v) const {
+AliasTable::getAliases(std::shared_ptr<aliasArg> &v) const {
   std::unordered_set<std::shared_ptr<aliasArg>> aliases, prevAliases;
-  aliases.insert(getAliasArg(v));
+  aliases.insert(v);
   int oldSize = 0;
   int newsize = aliases.size();
   while (newsize != oldSize) {
