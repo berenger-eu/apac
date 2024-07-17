@@ -49,13 +49,14 @@ void AliasTable::addAliasReference(std::shared_ptr<aliasArg> &var,
   }
   llvm::errs() << "Done adding alias reference\n";
 }
-void AliasTable::addAliasPtr(std::shared_ptr<aliasArg> &var,
-                             std::shared_ptr<aliasArg> &ptr) {
+void AliasTable::addAliasPtr(std::shared_ptr<aliasArg> var,
+                             std::shared_ptr<aliasArg> ptr) {
   if (var != nullptr && ptr != nullptr) {
     var->pointers.insert(ptr);
     ptr->aliased.insert(var);
   }
 }
+/*
 void AliasTable::addAliasPtr(const Expr *var, const Expr *ptr) {
   if (var != nullptr && ptr != nullptr) {
     std::vector<int> keyIndexesVar, keyIndexesPtr;
@@ -126,7 +127,8 @@ void AliasTable::addAliasPtr(const VarDecl *var,
   }
   llvm::errs() << "Done adding alias ptr\n";
 }
-void AliasTable::removeDependencyPtr(std::shared_ptr<aliasArg> &ptr) {
+*/
+void AliasTable::removeDependencyPtr(const std::shared_ptr<aliasArg> &ptr) {
   if (ptr != nullptr) {
     for (const auto &varAliased : ptr->aliased) {
       auto tableValueVar = getAliasArg(&varAliased->declaration);

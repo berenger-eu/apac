@@ -71,7 +71,8 @@ public:
   }
 
 private:
-  inline void addDependencyRead(Instruction &instr, const VarDecl *d) {
+  inline void addDependencyRead(Instruction &instr,
+                                std::shared_ptr<aliasArg> d) {
     for (auto &alias : aliasTable.getAliases(d)) {
       if (instr.dependencies.count(alias) == 0)
         instr.dependencies.insert({alias, NodeDependency{true, false}});
@@ -79,7 +80,8 @@ private:
         instr.dependencies.find(alias)->second.isRead = true;
     }
   }
-  inline void addDependencyWrite(Instruction &instr, const VarDecl *d) {
+  inline void addDependencyWrite(Instruction &instr,
+                                 std::shared_ptr<aliasArg> d) {
     for (auto &alias : aliasTable.getAliases(d)) {
       if (instr.dependencies.count(alias) == 0)
         instr.dependencies.insert({alias, NodeDependency{false, true}});

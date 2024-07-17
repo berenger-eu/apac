@@ -8,17 +8,16 @@
 #include <vector>
 
 struct AliasesDependencyHash {
-  std::size_t
-  operator()(const std::pair<const clang::VarDecl *, const clang::VarDecl *> &p)
-      const {
-    return std::hash<const clang::VarDecl *>{}(p.first) ^
-           std::hash<const clang::VarDecl *>{}(p.second);
+  std::size_t operator()(const std::pair<std::shared_ptr<aliasArg>,
+                                         std::shared_ptr<aliasArg>> &p) const {
+    return std::hash<std::shared_ptr<aliasArg>>{}(p.first) ^
+           std::hash<std::shared_ptr<aliasArg>>{}(p.second);
   }
 };
 struct AliasesDependencyEqual {
   bool operator()(
-      const std::pair<const clang::VarDecl *, const clang::VarDecl *> &p1,
-      const std::pair<const clang::VarDecl *, const clang::VarDecl *> &p2)
+      const std::pair<std::shared_ptr<aliasArg>, std::shared_ptr<aliasArg>> &p1,
+      const std::pair<std::shared_ptr<aliasArg>, std::shared_ptr<aliasArg>> &p2)
       const {
     return p1.first == p2.first && p1.second == p2.second;
   }
@@ -38,8 +37,9 @@ struct Instruction {
   // first element is the alias used in the instruction, second is the variable
   // that is aliased
   // TODO : Modify to use aliasArg (for arrays)
-  std::unordered_set<std::pair<const clang::VarDecl *, const clang::VarDecl *>,
-                     AliasesDependencyHash, AliasesDependencyEqual>
+  std::unordered_set<
+      std::pair<std::shared_ptr<aliasArg>, std::shared_ptr<aliasArg>>,
+      AliasesDependencyHash, AliasesDependencyEqual>
       curAliases;
   Instruction(clang::Stmt *instr = nullptr, std::string instrString = "",
               bool isComplex = false, unsigned int scopedInstrNumber = 0)
@@ -60,8 +60,7 @@ struct Instruction {
     llvm::errs() << "Aliases for instruction: " << instructionString << "\n";
     for (const auto &alias : curAliases) {
       std::stringstream ss;
-      ss << alias.first->getNameAsString() << " : "
-         << alias.second->getNameAsString();
+      ss << alias.first->dumpAsStr() << " : " << alias.second->dumpAsStr();
       llvm::errs() << ss.str() << "\n";
     }
   }
