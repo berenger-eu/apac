@@ -36,9 +36,9 @@ Graph InstructionToGraph(const std::vector<Instruction> &inInstructions,
       node->dependencies.insert(dep);
     }
   }
-  std::unordered_map<const clang::Decl *, std::set<std::shared_ptr<Node>>>
+  std::unordered_map<std::shared_ptr<aliasArg>, std::set<std::shared_ptr<Node>>>
       dataUsedInRead;
-  std::unordered_map<const clang::Decl *, std::shared_ptr<Node>>
+  std::unordered_map<std::shared_ptr<aliasArg>, std::shared_ptr<Node>>
       dataUsedInWrite;
 
   for (long unsigned int i = 0; i < inInstructions.size(); ++i) {

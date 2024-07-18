@@ -28,7 +28,7 @@ void OutputHandler::subGenerateDotGraph(const Graph &inGraph,
            iterBegin != nextNode.second.end(); iterBegin++) {
         if (iterBegin != nextNode.second.begin())
           ss << ",";
-        ss << iterBegin->first->getNameAsString()
+        ss << iterBegin->first->varAsString()
            << (iterBegin->second.isRead ? "R" : "")
            << (iterBegin->second.isWrite ? "W" : "");
       }
@@ -234,7 +234,7 @@ OutputHandler::createDependsString(const std::shared_ptr<Node> &node) const {
     for (auto it = inOutSet.begin(); it != inOutSet.end(); ++it) {
       if (it != inOutSet.begin())
         ssPrint << ",";
-      ssPrint << (*it)->getNameAsString();
+      ssPrint << (*it)->varAsString();
     }
     ssPrint << ") ";
   }
@@ -243,7 +243,7 @@ OutputHandler::createDependsString(const std::shared_ptr<Node> &node) const {
     for (auto it = inSet.begin(); it != inSet.end(); ++it) {
       if (it != inSet.begin())
         ssPrint << ",";
-      ssPrint << (*it)->getNameAsString();
+      ssPrint << (*it)->varAsString();
     }
     ssPrint << ") ";
   }

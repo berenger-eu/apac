@@ -5,26 +5,26 @@ void Node::dump() {
     instr->dump();
   }
   for (const auto &dep : dependencies) {
-    llvm::errs() << "Dep: " << dep.first->getNameAsString()
+    llvm::errs() << "Dep: " << dep.first->varAsString()
                  << " Read: " << dep.second.isRead
                  << " Write: " << dep.second.isWrite << "\n";
   }
   for (const auto &dep : inOutDep) {
-    llvm::errs() << "InOutDep: " << dep->getNameAsString() << "\n";
+    llvm::errs() << "InOutDep: " << dep->varAsString() << "\n";
   }
   for (const auto &dep : inDep) {
-    llvm::errs() << "InDep: " << dep->getNameAsString() << "\n";
+    llvm::errs() << "InDep: " << dep->varAsString() << "\n";
   }
   llvm::errs() << "\n";
 }
 
 void Node::addLink(std::shared_ptr<Node> curN, std::shared_ptr<Node> n,
-                   bool isRead, bool isWrite, const NamedDecl *arg) {
+                   bool isRead, bool isWrite, std::shared_ptr<aliasArg> arg) {
   if (arg == nullptr)
     return;
   if (this->next.count(n) == 0)
     this->next.insert(
-        {n, std::unordered_map<const NamedDecl *, NodeDependency>()});
+        {n, std::unordered_map<std::shared_ptr<aliasArg>, NodeDependency>()});
   if (this->next.at(n).count(arg) == 0) {
     this->next.at(n).insert({arg, {isRead, isWrite}});
     n->prev.insert(curN);
