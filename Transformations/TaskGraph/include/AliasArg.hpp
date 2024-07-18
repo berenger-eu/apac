@@ -21,10 +21,16 @@ struct aliasArg {
   aliasArg(const clang::VarDecl &decl, AliasType t,
            std::vector<int> indexes = std::vector<int>())
       : declaration(decl), type(t), indexes(indexes) {}
-
+  std::string varAsString() const {
+    std::stringstream ssRes;
+    ssRes << declaration.getNameAsString();
+    for (const auto &index : indexes)
+      ssRes << "[" << index << "]";
+    return ssRes.str();
+  }
   std::string dumpAsStr() const {
     std::stringstream ssRes;
-    ssRes << "AliasArg: " << declaration.getNameAsString() << "\n";
+    ssRes << "AliasArg: " << varAsString() << "\n";
     switch (type) {
     case Reference:
       ssRes << "Type: Reference\n";
