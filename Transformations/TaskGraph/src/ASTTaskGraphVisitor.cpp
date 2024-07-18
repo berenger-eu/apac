@@ -198,8 +198,14 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator &bop,
     const Expr *declOrArrayExpr;
     if (array)
       declOrArrayExpr = array;
-    else
+    else if (d)
       declOrArrayExpr = d;
+    // TODO:Error for member expr
+    else {
+      bop.dump();
+      llvm::errs() << "Err: No Array or Decl ?\n";
+      return;
+    }
     std::unordered_set<std::shared_ptr<aliasArg>> aliasesLeft;
     // setLeftVars.insert(v);
     llvm::errs() << "LHS: ";
