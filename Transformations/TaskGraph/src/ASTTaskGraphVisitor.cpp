@@ -109,13 +109,13 @@ void ASTTaskGraphVisitor::handleCXXOperatorCallExpr(
         handleStmt(*c.getArg(1), instr);
         return;
       }
-      const Expr* declOrArray;
-      if(array)
-        declOrArray=array;
+      const Expr *declOrArray;
+      if (array)
+        declOrArray = array;
       else if (d)
-        declOrArray=d;
-      else{
-        llvm::errs()<<"Error: no decl or arrayExpr";
+        declOrArray = d;
+      else {
+        llvm::errs() << "Error: no decl or arrayExpr";
         return;
       }
       AliasType type;
@@ -160,6 +160,13 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator &uop,
     arrayOrDeclExpr = array;
   else
     arrayOrDeclExpr = d;
+  int depth = (getPtrDepthAccess(arrayOrDeclExpr->getType(), subExpr->getType(),
+                                 mainVariable->getASTContext()));
+  if (getPtrDepthAccess(arrayOrDeclExpr->getType(), uop.getType(),
+                        mainVariable->getASTContext()) == -1) {
+    handleStmt(*subExpr, curInstr, false, false);
+    return;
+  }
   std::unordered_set<std::shared_ptr<aliasArg>> aliases;
   computeAliasesForRHS(&uop, aliases, curInstr);
   for (auto alias : aliases)
@@ -170,8 +177,7 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator &uop,
     for (auto &alias : aliases)
       addDependencyWrite(curInstr, alias);
 
-  if ((getPtrDepthAccess(arrayOrDeclExpr->getType(), subExpr->getType(),
-                         mainVariable->getASTContext())) > 0)
+  if (depth > 0)
     addDependencyRead(
         curInstr, aliasTable.getOrAddAliasArg(mainVariable, Pointer, indexes));
 

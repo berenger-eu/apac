@@ -106,7 +106,8 @@ private:
   void handleBinaryOperator(const BinaryOperator &, Instruction &,
                             bool isWrite = false);
   void handleCallExpr(const CallExpr &, Instruction &, bool isWrite = false);
-  void handleStmt(const Stmt &st, Instruction &, bool isWrite = false);
+  void handleStmt(const Stmt &st, Instruction &, bool isWrite = false,
+                  bool isRead = true);
   void handleMemberCallExpr(const CXXMemberCallExpr &, Instruction &,
                             bool isWrite = false);
   void computeAliasesForRHS(const Expr *bop,
