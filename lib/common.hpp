@@ -63,7 +63,8 @@ int getPtrDepthAccess(const clang::VarDecl &v, const clang::Expr &e);
 // Get the depth of the pointer access
 //-1 when qt2 is a pointer to qt1, 0 when qt1 is qt2, 1 when qt1 is a pointer to
 // qt2, ...
-int getPtrDepthAccess(QualType qt1, QualType qt2, const ASTContext &aContext);
+int getPtrDepthAccess(QualType pointerType, QualType variableType,
+                      const ASTContext &aContext);
 
 // Inline Function
 

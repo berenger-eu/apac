@@ -245,8 +245,6 @@ void AliasTable::getModifiedVariables(
   else if (depth == 0) {
     if (setResults.size() == 1 && (*setResults.begin())->type == Reference) {
       llvm::errs() << "RefCase\n\n";
-      dumpRefTable();
-      (*setResults.begin())->dump();
     }
     std::unordered_set<std::shared_ptr<aliasArg>> curSet, tempAliased;
     for (auto &dep : setResults)
@@ -281,9 +279,7 @@ void AliasTable::getModifiedVariables(
       curSet.insert(alias);
     for (auto &dep : curSet)
       setResults.insert(dep);
-    for (auto &dep : setResults)
-      dep->dump();
-    llvm::errs() << "done\n";
+
   } else if (depth == -1)
     setResults.clear();
 }

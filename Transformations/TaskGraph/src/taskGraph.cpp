@@ -24,7 +24,13 @@ public:
   // Parse all the file
   virtual void HandleTranslationUnit(ASTContext &Ctx) {
     VisitorTaskGraph.TraverseAST(Ctx);
-    // VisitorTaskGraph.getAliasTable().dump();
+    for (auto instr : VisitorTaskGraph.functionsInstructionsVector)
+      for (auto instrI : instr)
+        instrI.dump();
+
+    llvm::errs() << "Print\n\n";
+    VisitorTaskGraph.getAliasTable().dump();
+    llvm::errs() << "Print\n\n";
 
     auto graphs = generateGraph(VisitorTaskGraph.functionsInstructionsVector,
                                 orderManager);
