@@ -109,11 +109,19 @@ void ASTTaskGraphVisitor::handleCXXOperatorCallExpr(
         handleStmt(*c.getArg(1), instr);
         return;
       }
-
+      const Expr* declOrArray;
+      if(array)
+        declOrArray=array;
+      else if (d)
+        declOrArray=d;
+      else{
+        llvm::errs()<<"Error: no decl or arrayExpr";
+        return;
+      }
       AliasType type;
-      if (isPointerQualType(c.getArg(1)->getType()))
+      if (isPointerQualType(declOrArray->getType()))
         type = Pointer;
-      else if (isReferenceQualType(c.getArg(1)->getType()))
+      else if (isReferenceQualType(declOrArray->getType()))
         type = Reference;
       else
         type = Variable;
