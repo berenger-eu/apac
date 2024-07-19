@@ -56,6 +56,14 @@ void AliasTable::addAliasPtr(std::shared_ptr<aliasArg> var,
     ptr->aliased.insert(var);
   }
 }
+void AliasTable::addAliasedToElement(std::shared_ptr<aliasArg> toAddAliaser,
+                                     std::shared_ptr<aliasArg> targetAlias) {
+  for (auto &aliasedElem : toAddAliaser->aliased) {
+    targetAlias->aliased.insert(aliasedElem);
+    aliasedElem->pointers.insert(targetAlias);
+  }
+}
+
 /*
 void AliasTable::addAliasPtr(const Expr *var, const Expr *ptr) {
   if (var != nullptr && ptr != nullptr) {
