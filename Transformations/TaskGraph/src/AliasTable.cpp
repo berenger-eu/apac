@@ -306,10 +306,17 @@ void AliasTable::dumpPrep(std::string *varTable, std::string *refTable,
       auto alias = std::get<std::shared_ptr<aliasArg>>(elem.second);
       if (varTable != nullptr && alias->type == Variable)
         ssVar << alias->declaration.getNameAsString() << " ";
-      else if (refTable != nullptr && alias->type == Reference)
-        ssRef << alias->declaration.getNameAsString() << " ";
-      else if (ptrTable != nullptr && alias->type == Pointer)
-        ssPtr << alias->declaration.getNameAsString() << " ";
+      else if (refTable != nullptr && alias->type == Reference) {
+        ssRef << alias->declaration.getNameAsString() << " : ";
+        for (auto aliased : alias->aliased)
+          ssRef << aliased->declaration.getNameAsString() << " ";
+        ssRef << "\n";
+      } else if (ptrTable != nullptr && alias->type == Pointer) {
+        ssPtr << alias->declaration.getNameAsString() << " : ";
+        for (auto aliased : alias->aliased)
+          ssPtr << aliased->declaration.getNameAsString() << " ";
+        ssPtr << "\n";
+      }
     } else if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
                    elem.second)) {
       auto alias = std::get<std::shared_ptr<IndexTableMapStruct>>(elem.second);
