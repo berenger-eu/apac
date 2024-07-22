@@ -53,21 +53,21 @@ void IndexTableMapStruct::dumpPrep(std::string *varTable, std::string *refTable,
   std::stringstream ssVar, ssRef, ssPtr;
   if (alias != nullptr) {
     if (alias->type == Variable && varTable != nullptr)
-      ssVar << alias->declaration.getNameAsString() << " ";
+      ssVar << alias->varAsString() << " ";
     else if (alias->type == Reference && refTable != nullptr)
-      ssRef << alias->declaration.getNameAsString() << " ";
+      ssRef << alias->varAsString() << " ";
     else if (alias->type == Pointer && ptrTable != nullptr)
-      ssPtr << alias->declaration.getNameAsString() << " ";
+      ssPtr << alias->varAsString() << " ";
   }
   for (auto &elem : map) {
     if (std::holds_alternative<std::shared_ptr<aliasArg>>(elem.second)) {
       auto alias = std::get<std::shared_ptr<aliasArg>>(elem.second);
       if (varTable != nullptr && alias->type == Variable)
-        ssVar << alias->declaration.getNameAsString() << " ";
+        ssVar << alias->varAsString() << " ";
       else if (refTable != nullptr && alias->type == Reference)
-        ssRef << alias->declaration.getNameAsString() << " ";
+        ssRef << alias->varAsString() << " ";
       else if (ptrTable != nullptr && alias->type == Pointer)
-        ssPtr << alias->declaration.getNameAsString() << " ";
+        ssPtr << alias->varAsString() << " ";
     } else if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
                    elem.second)) {
       auto alias = std::get<std::shared_ptr<IndexTableMapStruct>>(elem.second);

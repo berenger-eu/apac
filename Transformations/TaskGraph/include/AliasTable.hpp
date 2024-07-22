@@ -43,8 +43,9 @@ void addAliasPtr(const Expr *var, const Expr *ptr);
 void addAliasPtr(const VarDecl *var, const std::vector<int> &,
   const VarDecl *ptr, const std::vector<int> &, const int &);
   */
-  //Used to add aliased element of right AliasArg to left AliasArg
-  void addAliasedToElement(std::shared_ptr<aliasArg>,std::shared_ptr<aliasArg>);
+  // Used to add aliased element of right AliasArg to left AliasArg
+  void addAliasedToElement(std::shared_ptr<aliasArg>,
+                           std::shared_ptr<aliasArg>);
   void getModifiedVariables(
       std::unordered_set<std::shared_ptr<aliasArg>> &setResults,
       const int &depth);

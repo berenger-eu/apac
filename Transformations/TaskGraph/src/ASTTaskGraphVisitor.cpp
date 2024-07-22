@@ -428,7 +428,21 @@ void ASTTaskGraphVisitor::handleStmt(const Stmt &st, Instruction &instr,
       if (isWrite)
         addDependencyWrite(instr, alias);
     } else if (isa<ArraySubscriptExpr>(curExp)) {
-      ;
+      AliasType type;
+      if (isPointerQualType(curExp.getType()))
+        type = Pointer;
+      else if (isReferenceQualType(curExp.getType()))
+        type = Reference;
+      else
+        type = Variable;
+      auto subExpr = getSingleDeclRefExprInsideExpr(
+          cast<ArraySubscriptExpr>(curExp).getBase());
+      if (subExpr) {
+        auto base = cast<VarDecl>(subExpr->getDecl());
+        auto res =
+            getArraySubscriptsIndexesValues(&cast<ArraySubscriptExpr>(curExp));
+        aliasTable.getOrAddAliasArg(base, type);
+      }
     }
     // Ignored expressions case
     else if (isa<IntegerLiteral>(curExp)) {
