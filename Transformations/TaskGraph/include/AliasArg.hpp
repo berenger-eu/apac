@@ -6,6 +6,14 @@
 #include <vector>
 using namespace clang;
 enum AliasType { Reference, Pointer, Variable };
+inline AliasType getAliasType(const Expr *exp) {
+  const auto &qType = exp->getType();
+  if (isPointerQualType(qType))
+    return Pointer;
+  else if (isReferenceQualType(qType))
+    return Reference;
+  return Variable;
+}
 struct aliasArg {
   const clang::VarDecl &declaration;
   // Type of Alias arg
