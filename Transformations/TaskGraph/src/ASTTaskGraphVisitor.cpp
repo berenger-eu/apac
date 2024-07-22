@@ -33,7 +33,8 @@ void ASTTaskGraphVisitor::computeAliasesForRHS(
     aliases.insert(mainAlias);
     depth = getPtrDepthAccess(*v, *rhs);
     // We retrive the pointed values or the references
-    aliasTable.getModifiedVariables(aliases, depth);
+    if (depth != -1)
+      aliasTable.getModifiedVariables(aliases, depth);
     for (auto &alias : aliases)
       if (mainAlias != alias)
         instr.curAliases.insert({mainAlias, alias});
