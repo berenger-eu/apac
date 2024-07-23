@@ -16,7 +16,19 @@ void ASTTaskGraphVisitor::computeAliasesForRHS(
   //(*p), the variable is p, but in reality we access *p, so we need to look for
   // the aliases of *p
   if (a) {
-    ;
+    const VarDecl *base =
+        cast<VarDecl>(getSingleDeclRefExprInsideExpr(a->getBase())->getDecl());
+    const auto indexes = getArraySubscriptsIndexesValues(a);
+    llvm::errs() << "test\n";
+    const auto mainAlias =
+        aliasTable.getOrAddAliasArg(base, getAliasType(a), indexes);
+    aliases.insert(mainAlias);
+    mainAlias->dump();
+    llvm::errs() << "123: " << mainAlias->varAsString() << "\n";
+    llvm::errs() << "Indexes: ";
+    for (auto &index : indexes)
+      llvm::errs() << index << " ";
+    llvm::errs() << "\n";
   } else if (d) {
     // Aliases will be values that refer (or might refer) to the same memory
     // location
