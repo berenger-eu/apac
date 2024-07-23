@@ -64,6 +64,10 @@ void addAliasPtr(const VarDecl *var, const std::vector<int> &,
   inline std::shared_ptr<aliasArg>
   getOrAddAliasArg(const VarDecl *v, const AliasType &type,
                    const std::vector<int> &indexes = std::vector<int>()) {
+    // If variable does not exist in table add it
+    if (getAliasArg(v) == nullptr)
+      addElementToAliasTable(v, type);
+    // If element (variable and indexes) does not exist in table add it
     if (getAliasArg(v, indexes) == nullptr)
       addElementToAliasTable(v, type, indexes);
 
