@@ -174,8 +174,10 @@ AliasTable::getAliasArg(const VarDecl *v,
   const NamedDecl *key = getKey(v);
   std::shared_ptr<aliasArg> result = nullptr;
   if (aliasTableMap.count(key) == 0)
+    ;
   auto tableValue = aliasTableMap.at(key, indexes);
   if (tableValue == nullptr)
+    ;
   else if (std::holds_alternative<std::shared_ptr<aliasArg>>(*tableValue)) {
     result =
         std::get<std::shared_ptr<aliasArg>>(*aliasTableMap.at(key, indexes));
@@ -198,21 +200,21 @@ AliasTable::getAliasArg(const VarDecl *v, const std::vector<int> &indexes) {
   const NamedDecl *key = getKey(v);
   std::shared_ptr<aliasArg> result = nullptr;
   if (aliasTableMap.count(key) == 0)
+    ;
   auto tableValue = aliasTableMap.at(key, indexes);
   if (tableValue == nullptr)
+    ;
   else if (std::holds_alternative<std::shared_ptr<aliasArg>>(*tableValue)) {
     llvm::errs() << "Found alias arg123:" << indexes.size() << "\n";
     result =
         std::get<std::shared_ptr<aliasArg>>(*aliasTableMap.at(key, indexes));
-  }
-else if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
-               *aliasTableMap.at(key, indexes))) {
-  llvm::errs() << "Found alias arg1234:" << indexes.size() << "\n";
-  result = std::get<std::shared_ptr<IndexTableMapStruct>>(
-               *aliasTableMap.at(key, indexes))
-               ->alias;
-}
-  else {
+  } else if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
+                 *aliasTableMap.at(key, indexes))) {
+    llvm::errs() << "Found alias arg1234:" << indexes.size() << "\n";
+    result = std::get<std::shared_ptr<IndexTableMapStruct>>(
+                 *aliasTableMap.at(key, indexes))
+                 ->alias;
+  } else {
     // TODO: Remove this later (if no issues arrise)
     llvm::errs() << "Error in getAliasArgConst\n";
     v->dump();
