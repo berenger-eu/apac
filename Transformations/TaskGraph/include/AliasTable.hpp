@@ -69,6 +69,8 @@ void addAliasPtr(const VarDecl *var, const std::vector<int> &,
 
     return getAliasArg(v, indexes);
   }
+  const AliasTableMapStruct &getAliasTable() const { return aliasTableMap; }
+  int getNbElements() const { return aliasTableMap.nbElements(); }
 
 private:
   void dumpPrep(std::string *varTable, std::string *refTable,

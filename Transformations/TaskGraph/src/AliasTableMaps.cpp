@@ -37,6 +37,18 @@ IndexTableMapStruct::at(const std::vector<int> &indexes) const {
   // index, so we return nullptr
   return nullptr;
 }
+int IndexTableMapStruct::nbElements() const {
+  int res = 0;
+  for (auto &elem : map) {
+    if (std::holds_alternative<std::shared_ptr<aliasArg>>(elem.second))
+      res++;
+    else if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
+                 elem.second))
+      res += std::get<std::shared_ptr<IndexTableMapStruct>>(elem.second)
+                 ->nbElements();
+  }
+  return res;
+}
 int IndexTableMapStruct::count(const std::vector<int> &indexes) const {
   if (indexes.empty())
     return 0;
@@ -131,6 +143,18 @@ AliasTableMapStruct::at(const NamedDecl *key,
   else
     return std::get<std::shared_ptr<IndexTableMapStruct>>(map.at(key))
         ->at(indexes);
+}
+int AliasTableMapStruct::nbElements() const {
+  int res = 0;
+  for (auto &elem : map) {
+    if (std::holds_alternative<std::shared_ptr<aliasArg>>(elem.second))
+      res++;
+    else if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
+                 elem.second))
+      res += std::get<std::shared_ptr<IndexTableMapStruct>>(elem.second)
+                 ->nbElements();
+  }
+  return res;
 }
 int AliasTableMapStruct::count(const NamedDecl *key,
                                const std::vector<int> &indexes) const {

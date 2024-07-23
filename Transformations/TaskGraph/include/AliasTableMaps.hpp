@@ -25,7 +25,7 @@ struct IndexTableMapStruct {
   aliasesTableValues *at(const std::vector<int> &indexes);
   const aliasesTableValues *at(const std::vector<int> &indexes) const;
   int count(const std::vector<int> &indexes) const;
-
+  int nbElements() const;
   void dumpPrep(std::string *varTable, std::string *refTable,
                 std::string *ptrTable) const;
 };
@@ -39,6 +39,7 @@ struct AliasTableMapStruct {
   const aliasesTableValues *
   at(const NamedDecl *key,
      const std::vector<int> &indexes = std::vector<int>()) const;
+  int nbElements() const;
   int count(const NamedDecl *key,
             const std::vector<int> &indexes = std::vector<int>()) const;
   void insert(const std::pair<aliasArg, std::vector<int> &> pair);
