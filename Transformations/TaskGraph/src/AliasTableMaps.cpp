@@ -111,40 +111,46 @@ Alias Table (key is NamedDecl, value is either aliasArg or IndexTableMapStruct)
 
 aliasesTableValues *AliasTableMapStruct::at(const NamedDecl *key,
                                             const std::vector<int> &indexes) {
+  aliasesTableValues *result = nullptr;
   // If no entry for variable, return nullptr
   if (map.count(key) == 0)
-    return nullptr;
+    llvm::errs() << "No entry for variable\n";
   // If no indexes, return the value
   if (indexes.empty()) {
-    return &map.at(key);
+    result = &map.at(key);
   }
   // If the value is an aliasArg (and not an array, so no indexes), return
   // nullptr
   else if (std::holds_alternative<std::shared_ptr<aliasArg>>(map.at(key)))
-    return nullptr;
+    llvm::errs() << "No indexes found in table\n";
   // The value is an array, so we look through it using indexes
-  else
-    return std::get<std::shared_ptr<IndexTableMapStruct>>(map.at(key))
+  else {
+
+    result = std::get<std::shared_ptr<IndexTableMapStruct>>(map.at(key))
         ->at(indexes);
+  }
+  return result;
 }
 const aliasesTableValues *
 AliasTableMapStruct::at(const NamedDecl *key,
                         const std::vector<int> &indexes) const {
+  const aliasesTableValues *result = nullptr;
   // If no entry for variable, return nullptr
   if (map.count(key) == 0)
-    return nullptr;
+    ;
   // If no indexes, return the value
   if (indexes.empty()) {
-    return &map.at(key);
+    result = &map.at(key);
   }
   // If the value is an aliasArg (and not an array, so no indexes), return
   // nullptr
   else if (std::holds_alternative<std::shared_ptr<aliasArg>>(map.at(key)))
-    return nullptr;
+    ;
   // The value is an array, so we look through it using indexes
   else
-    return std::get<std::shared_ptr<IndexTableMapStruct>>(map.at(key))
+    result = std::get<std::shared_ptr<IndexTableMapStruct>>(map.at(key))
         ->at(indexes);
+  return result;
 }
 int AliasTableMapStruct::nbElements() const {
   int res = 0;
