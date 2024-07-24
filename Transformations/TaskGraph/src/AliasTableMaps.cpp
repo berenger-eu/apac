@@ -192,9 +192,17 @@ void AliasTableMapStruct::insert(
       if (element->alias == nullptr)
         element->alias = elem;
     }
-  } else if (map.count(key) == 0) {
+  }
+  // When adding an array element to the table
+  else {
+
+    if (map.count(key) == 0)
     map.insert({key, std::make_shared<IndexTableMapStruct>()});
-    std::get<std::shared_ptr<IndexTableMapStruct>>(map.at(key))
-        ->map.insert({indexes[0], elem});
+    else if (std::holds_alternative<std::shared_ptr<aliasArg>>(map.at(key))) {
+      auto element = std::make_shared<IndexTableMapStruct>();
+      element->alias = std::get<std::shared_ptr<aliasArg>>(map.at(key));
+      map.at(key) = element;
+    }
+    std::get<std::shared_ptr<IndexTableMapStruct>>(map.at(key))->insert(pair);
   }
 }
