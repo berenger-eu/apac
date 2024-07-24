@@ -16,7 +16,7 @@ public:
 
   void inline dump() const {
     std::string varTable, refTable, ptrTable;
-    llvm::errs() << "Map Size : " << aliasTableMap.map.size()
+    llvm::errs() << "Map Size : " << getNbElements()
                  << "\nDumping Alias Table\n";
     dumpPrep(&varTable, &refTable, &ptrTable);
     llvm::errs() << "Var Table \n\n"

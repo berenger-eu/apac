@@ -39,6 +39,8 @@ IndexTableMapStruct::at(const std::vector<int> &indexes) const {
 }
 int IndexTableMapStruct::nbElements() const {
   int res = 0;
+  if (alias != nullptr)
+    res++;
   for (auto &elem : map) {
     if (std::holds_alternative<std::shared_ptr<aliasArg>>(elem.second))
       res++;
