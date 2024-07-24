@@ -28,6 +28,7 @@ struct IndexTableMapStruct {
   int nbElements() const;
   void dumpPrep(std::string *varTable, std::string *refTable,
                 std::string *ptrTable) const;
+  void insert(const std::pair<aliasArg, std::vector<int> &> pair);
 };
 struct AliasTableMapStruct;
 using AliasTableMap = std::unordered_map<const NamedDecl *, aliasesTableValues>;

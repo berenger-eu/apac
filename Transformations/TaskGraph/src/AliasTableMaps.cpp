@@ -62,6 +62,42 @@ int IndexTableMapStruct::count(const std::vector<int> &indexes) const {
       ->count(std::vector<int>(indexes.begin() + 1, indexes.end()));
 }
 
+void IndexTableMapStruct::insert(
+    const std::pair<aliasArg, std::vector<int> &> pair) {
+  auto elem = std::make_shared<aliasArg>(pair.first);
+  auto indexes = pair.second;
+  if (indexes.empty()) {
+    if (alias == nullptr)
+      alias = elem;
+  } else {
+    auto curMap = &map;
+    for (long unsigned int i = 0; i < indexes.size() - 1; i++) {
+      if (curMap->count(indexes[i]) == 0)
+        curMap->insert({indexes[i], std::make_shared<IndexTableMapStruct>()});
+      else if (std::holds_alternative<std::shared_ptr<aliasArg>>(
+                   curMap->at(indexes[i]))) {
+        auto element = std::make_shared<IndexTableMapStruct>();
+        element->alias =
+            std::get<std::shared_ptr<aliasArg>>(curMap->at(indexes[i]));
+        curMap->at(indexes[i]) = element;
+      }
+      curMap = &std::get<std::shared_ptr<IndexTableMapStruct>>(
+                    curMap->at(indexes[i]))
+                    ->map;
+    }
+    if (curMap->count(indexes.back()) == 0)
+      curMap->insert({indexes.back(), elem});
+    else if (std::holds_alternative<std::shared_ptr<aliasArg>>(
+                 curMap->at(indexes.back()))) {
+      auto element = std::make_shared<IndexTableMapStruct>();
+      element->alias =
+          std::get<std::shared_ptr<aliasArg>>(curMap->at(indexes.back()));
+      curMap->at(indexes.back()) = element;
+    } else
+      std::get<std::shared_ptr<IndexTableMapStruct>>(curMap->at(indexes.back()))
+          ->alias = elem;
+  }
+}
 void IndexTableMapStruct::dumpPrep(std::string *varTable, std::string *refTable,
                                    std::string *ptrTable) const {
   std::stringstream ssVar, ssRef, ssPtr;
