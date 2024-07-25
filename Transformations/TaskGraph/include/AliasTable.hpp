@@ -65,16 +65,32 @@ void addAliasPtr(const VarDecl *var, const std::vector<int> &,
   getOrAddAliasArg(const VarDecl *v, const AliasType &type,
                    const std::vector<int> &indexes = std::vector<int>()) {
     // If variable does not exist in table add it
+    llvm::errs() << "nbElements: " << aliasTableMap.nbElements() << "\n";
     if (getAliasArg(v) == nullptr)
       addElementToAliasTable(v, type);
+    llvm::errs() << "nbElements2: " << aliasTableMap.nbElements() << "\n";
     // If element (variable and indexes) does not exist in table add it
     if (getAliasArg(v, indexes) == nullptr)
       addElementToAliasTable(v, type, indexes);
-
+    llvm::errs() << "nbElements3: " << aliasTableMap.nbElements() << "\n";
     return getAliasArg(v, indexes);
   }
   const AliasTableMapStruct &getAliasTable() const { return aliasTableMap; }
   int getNbElements() const { return aliasTableMap.nbElements(); }
+  // Get "parents" of an array elements
+  // For example if we give it tab[1][2], it will return tab[1] and tab
+  std::vector<std::shared_ptr<aliasArg>>
+      getArrayElementParents(std::shared_ptr<aliasArg>) const;
+  // Get "children" of an array element
+  // For example if we give it tab[1], it will return tab[1][0], tab[1][1], ...
+  // (as long as they are in the table)
+  std::vector<std::shared_ptr<aliasArg>>
+      getArrayElementChildren(std::shared_ptr<aliasArg>) const;
+  // Get all the elements related to an array
+  // For example if we give it tab[1], it will return tab, all tab[1][i] and all
+  // tab[i] ...
+  std::vector<std::shared_ptr<aliasArg>>
+      getArrayElementRelated(std::shared_ptr<aliasArg>) const;
 
 private:
   void dumpPrep(std::string *varTable, std::string *refTable,

@@ -303,6 +303,80 @@ void AliasTable::getModifiedVariables(
     setResults.clear();
 }
 
+std::vector<std::shared_ptr<aliasArg>>
+    AliasTable::getArrayElementChildren const {
+  std::vector<std::shared_ptr<aliasArg>> children;
+  if (elem != nullptr) {
+    auto curElem = aliasTableMap.at(getKey(&elem->declaration), elem->indexes);
+    std::stack<const aliasesTableValues *> toVisit;
+    toVisit.push(curElem);
+    while (!toVisit.empty()) {
+      auto cur = toVisit.top();
+      toVisit.pop();
+      if (std::holds_alternative<std::shared_ptr<aliasArg>>(*cur)) {
+        children.push_back(std::get<std::shared_ptr<aliasArg>>(*cur));
+      } else if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
+                     *cur)) {
+        auto curMap = std::get<std::shared_ptr<IndexTableMapStruct>>(*cur);
+        for (auto &subAlias : curMap->map) {
+          toVisit.push(&subAlias.second);
+        }
+      }
+    }
+  }
+  return children;
+}
+
+std::vector<std::shared_ptr<aliasArg>>
+AliasTable::getArrayElementParents(std::shared_ptr<aliasArg> elem) const {
+  std::vector<std::shared_ptr<aliasArg>> parents;
+  if (elem != nullptr) {
+    auto curElem = aliasTableMap.at(getKey(&elem->declaration));
+    std::stack<const aliasesTableValues *> toVisit;
+    toVisit.push(curElem);
+    while (!toVisit.empty()) {
+      auto cur = toVisit.top();
+      toVisit.pop();
+      if (std::holds_alternative<std::shared_ptr<aliasArg>>(*cur)) {
+        parents.push_back(std::get<std::shared_ptr<aliasArg>>(*cur));
+      } else if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
+                     *cur)) {
+        auto curMap = std::get<std::shared_ptr<IndexTableMapStruct>>(*cur);
+        parents.push_back(curMap->alias);
+        for (auto &subAlias : curMap->map) {
+          toVisit.push(&subAlias.second);
+        }
+      }
+    }
+  }
+  return parents;
+}
+
+std::vector<std::shared_ptr<aliasArg>>
+AliasTable::getArrayElementRelated(std::shared_ptr<aliasArg> elem) const {
+  std::vector<std::shared_ptr<aliasArg>> related;
+  if (elem != nullptr) {
+    auto curElem = aliasTableMap.at(getKey(&elem->declaration));
+    std::stack<const aliasesTableValues *> toVisit;
+    toVisit.push(curElem);
+    while (!toVisit.empty()) {
+      auto cur = toVisit.top();
+      toVisit.pop();
+      if (std::holds_alternative<std::shared_ptr<aliasArg>>(*cur)) {
+        related.push_back(std::get<std::shared_ptr<aliasArg>>(*cur));
+      } else if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
+                     *cur)) {
+        auto curMap = std::get<std::shared_ptr<IndexTableMapStruct>>(*cur);
+        related.push_back(curMap->alias);
+        for (auto &subAlias : curMap->map) {
+          toVisit.push(&subAlias.second);
+        }
+      }
+    }
+  }
+  return related;
+}
+
 void AliasTable::dumpVarTable() const {
   std::string varTable;
   dumpPrep(&varTable, nullptr, nullptr);
