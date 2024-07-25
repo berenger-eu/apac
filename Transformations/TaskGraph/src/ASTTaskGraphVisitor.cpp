@@ -299,14 +299,8 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator &bop,
     // If we have a pointer, then the aliases are related to the pointed
     // values when depth > 0 So we have to add a read dependency on the
     // pointer itself
-    AliasType type;
-    if (isPointerQualType(bop.getLHS()->getType()))
-      type = Pointer;
-    else if (isReferenceQualType(bop.getLHS()->getType()))
-      type = Reference;
-    else
-      type = Variable;
-    auto aliasMain = aliasTable.getOrAddAliasArg(mainVariable, type, indexes);
+    auto aliasMain = aliasTable.getOrAddAliasArg(
+        mainVariable, getAliasType(bop.getLHS()), indexes);
     if (depth > 0)
       addDependencyRead(curInstr, aliasMain);
     handleStmt(*bop.getRHS(), curInstr);
@@ -453,7 +447,13 @@ void ASTTaskGraphVisitor::handleStmt(const Stmt &st, Instruction &instr,
         auto base = cast<VarDecl>(subExpr->getDecl());
         auto res =
             getArraySubscriptsIndexesValues(&cast<ArraySubscriptExpr>(curExp));
-        aliasTable.getOrAddAliasArg(base, type);
+        auto alias = aliasTable.getOrAddAliasArg(
+            base, getAliasType(&curExp),
+            getArraySubscriptsIndexesValues(&cast<ArraySubscriptExpr>(curExp)));
+        if (isRead)
+          addDependencyRead(instr, alias);
+        if (isWrite)
+          addDependencyWrite(instr, alias);
       }
     }
     // Ignored expressions case
