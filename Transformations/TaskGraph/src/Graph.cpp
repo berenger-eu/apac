@@ -13,7 +13,7 @@
 int Node::idCounter = 0;
 
 Graph InstructionToGraph(const std::vector<Instruction> &inInstructions,
-                         bool isLoop) {
+                         const AliasTable &aliasTable, bool isLoop) {
   Graph graph;
 
   for (const auto &curInstruction : inInstructions) {
@@ -26,11 +26,11 @@ Graph InstructionToGraph(const std::vector<Instruction> &inInstructions,
     graph.nodes.push_back(node);
     if (curInstruction.complexInstruction) {
       if (isa<ForStmt>(curInstruction.instruction))
-        node->graph.emplace_back(std::make_shared<Graph>(
-            InstructionToGraph(curInstruction.scopedInstructions, true)));
+        node->graph.emplace_back(std::make_shared<Graph>(InstructionToGraph(
+            curInstruction.scopedInstructions, aliasTable, true)));
       else
-        node->graph.emplace_back(std::make_shared<Graph>(
-            InstructionToGraph(curInstruction.scopedInstructions, isLoop)));
+        node->graph.emplace_back(std::make_shared<Graph>(InstructionToGraph(
+            curInstruction.scopedInstructions, aliasTable, isLoop)));
     }
     for (const auto &dep : curInstruction.dependencies) {
       node->dependencies.insert(dep);
@@ -44,38 +44,44 @@ Graph InstructionToGraph(const std::vector<Instruction> &inInstructions,
   for (long unsigned int i = 0; i < inInstructions.size(); ++i) {
     auto node = graph.nodes[i];
     for (const auto &dep : inInstructions[i].dependencies) {
-      bool readFound = false;
-      if (dep.second.isRead) {
-        if (dataUsedInWrite.find(dep.first) != dataUsedInWrite.end()) {
-          if ((*dataUsedInWrite.find(dep.first)).second->id != node->id) {
-            auto depNode = dataUsedInWrite[dep.first];
-            depNode->addReadLink(depNode, node, dep.first);
-          }
-        }
-        readFound = true;
-      }
-      if (dep.second.isWrite) {
-        if (dataUsedInRead.find(dep.first) != dataUsedInRead.end()) {
-          auto it = dataUsedInRead.find(dep.first);
-          for (const auto &depNode : it->second) {
-            if (depNode->id == node->id) {
-              continue;
-            }
-            depNode->addWriteLink(depNode, node, dep.first);
-          }
+      for (const auto &depArrayElem :
+           aliasTable.getArrayElementAll(dep.first)) {
 
-          dataUsedInRead.erase(dep.first);
-        } else if (dataUsedInWrite.find(dep.first) != dataUsedInWrite.end()) {
-          auto it = dataUsedInWrite.find(dep.first);
-          if (it->second->id != node->id) {
-            auto depNode = dataUsedInWrite[dep.first];
-            depNode->addWriteLink(depNode, node, dep.first);
+        bool readFound = false;
+
+        if (dep.second.isRead) {
+          if (dataUsedInWrite.find(depArrayElem) != dataUsedInWrite.end()) {
+            if ((*dataUsedInWrite.find(depArrayElem)).second->id != node->id) {
+              auto depNode = dataUsedInWrite[depArrayElem];
+              depNode->addReadLink(depNode, node, depArrayElem);
+            }
           }
+          readFound = true;
         }
-        dataUsedInWrite[dep.first] = node;
+        if (dep.second.isWrite) {
+          if (dataUsedInRead.find(depArrayElem) != dataUsedInRead.end()) {
+            auto it = dataUsedInRead.find(depArrayElem);
+            for (const auto &depNode : it->second) {
+              if (depNode->id == node->id) {
+                continue;
+              }
+              depNode->addWriteLink(depNode, node, depArrayElem);
+            }
+
+            dataUsedInRead.erase(depArrayElem);
+          } else if (dataUsedInWrite.find(depArrayElem) !=
+                     dataUsedInWrite.end()) {
+            auto it = dataUsedInWrite.find(depArrayElem);
+            if (it->second->id != node->id) {
+              auto depNode = dataUsedInWrite[depArrayElem];
+              depNode->addWriteLink(depNode, node, depArrayElem);
+            }
+          }
+          dataUsedInWrite[depArrayElem] = node;
+        }
+        if (readFound)
+          dataUsedInRead[depArrayElem].insert(node);
       }
-      if (readFound)
-        dataUsedInRead[dep.first].insert(node);
     }
   }
 
@@ -208,10 +214,10 @@ void updateInstructionOrderFromGraph(const Graph &graph,
 // Generate all of the graph for a file, (generate one for each function)
 std::vector<Graph>
 generateGraph(const std::vector<std::vector<Instruction>> &graphVector,
-              StmtOrder &orderManager) {
+              StmtOrder &orderManager, const AliasTable &aliasTable) {
   std::vector<Graph> graphs;
   for (auto &functionInstructions : graphVector)
-    graphs.emplace_back(InstructionToGraph(functionInstructions));
+    graphs.emplace_back(InstructionToGraph(functionInstructions, aliasTable));
   // GenerateDotGraph(graphs, "rawGraph.dot");
   // GenerateDotGraph(graphs, "optimizedGraph.dot");
   return graphs;

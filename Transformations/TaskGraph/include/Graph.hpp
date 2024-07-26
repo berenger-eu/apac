@@ -7,6 +7,7 @@
  * Each node contain a single instruction
  */
 #pragma once
+#include "AliasTable.hpp"
 #include "Instruction.hpp"
 #include "InstructionsOrderManager.hpp"
 #include "Node.hpp"
@@ -57,7 +58,8 @@ void updateInstructionOrderNode(const std::shared_ptr<Node> &, StmtOrder &,
 void updateInstructionOrderFromGraph(const Graph &, StmtOrder &);
 
 // Translate a list of instructions to a graph
-Graph InstructionToGraph(const std::vector<Instruction> &, bool isLoop = false);
+Graph InstructionToGraph(const std::vector<Instruction> &, const AliasTable &,
+                         bool isLoop = false);
 
 // Print the graph, mostly to debug
 void PrintGraph(const Graph &);
@@ -76,4 +78,4 @@ void transitiveReduction(Graph &graph);
 
 // Generate all of the graph for a file, (generate one for each function)
 std::vector<Graph> generateGraph(const std::vector<std::vector<Instruction>> &,
-                                 StmtOrder &);
+                                 StmtOrder &, const AliasTable &);

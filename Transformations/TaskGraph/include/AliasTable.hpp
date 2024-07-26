@@ -91,6 +91,16 @@ void addAliasPtr(const VarDecl *var, const std::vector<int> &,
   // tab[i] ...
   std::vector<std::shared_ptr<aliasArg>>
       getArrayElementRelated(std::shared_ptr<aliasArg>) const;
+  // Get parents and children of an element
+  inline std::unordered_set<std::shared_ptr<aliasArg>>
+  getArrayElementAll(std::shared_ptr<aliasArg> v) const {
+    std::unordered_set<std::shared_ptr<aliasArg>> result;
+    auto parents = getArrayElementParents(v);
+    auto children = getArrayElementChildren(v);
+    result.insert(parents.begin(), parents.end());
+    result.insert(children.begin(), children.end());
+    return result;
+  }
 
 private:
   void dumpPrep(std::string *varTable, std::string *refTable,

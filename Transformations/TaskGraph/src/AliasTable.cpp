@@ -304,7 +304,7 @@ void AliasTable::getModifiedVariables(
 }
 
 std::vector<std::shared_ptr<aliasArg>>
-    AliasTable::getArrayElementChildren const {
+AliasTable::getArrayElementChildren(std::shared_ptr<aliasArg> elem) const {
   std::vector<std::shared_ptr<aliasArg>> children;
   if (elem != nullptr) {
     auto curElem = aliasTableMap.at(getKey(&elem->declaration), elem->indexes);
@@ -338,13 +338,25 @@ AliasTable::getArrayElementParents(std::shared_ptr<aliasArg> elem) const {
       auto cur = toVisit.top();
       toVisit.pop();
       if (std::holds_alternative<std::shared_ptr<aliasArg>>(*cur)) {
-        parents.push_back(std::get<std::shared_ptr<aliasArg>>(*cur));
+        auto alias = std::get<std::shared_ptr<aliasArg>>(*cur);
+        if (alias->indexes.size() > elem->indexes.size() ||
+            alias->indexes[alias->indexes.size() - 1] ==
+                elem->indexes[alias->indexes.size() - 1]) {
+          parents.push_back(alias);
+        }
+        parents.push_back(alias);
       } else if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
                      *cur)) {
         auto curMap = std::get<std::shared_ptr<IndexTableMapStruct>>(*cur);
-        parents.push_back(curMap->alias);
-        for (auto &subAlias : curMap->map) {
-          toVisit.push(&subAlias.second);
+        auto alias = curMap->alias;
+        if (alias->indexes.size() > elem->indexes.size() ||
+            alias->indexes[alias->indexes.size() - 1] ==
+                elem->indexes[alias->indexes.size() - 1]) {
+
+          parents.push_back(curMap->alias);
+          for (auto &subAlias : curMap->map) {
+            toVisit.push(&subAlias.second);
+          }
         }
       }
     }
