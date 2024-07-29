@@ -40,13 +40,11 @@ Graph InstructionToGraph(const std::vector<Instruction> &inInstructions,
       dataUsedInRead;
   std::unordered_map<std::shared_ptr<aliasArg>, std::shared_ptr<Node>>
       dataUsedInWrite;
-
   for (long unsigned int i = 0; i < inInstructions.size(); ++i) {
     auto node = graph.nodes[i];
     for (const auto &dep : inInstructions[i].dependencies) {
       for (const auto &depArrayElem :
-           aliasTable.getArrayElementAll(dep.first)) {
-
+           aliasTable.getArrayElementRelated(dep.first)) {
         bool readFound = false;
 
         if (dep.second.isRead) {
@@ -88,7 +86,6 @@ Graph InstructionToGraph(const std::vector<Instruction> &inInstructions,
   for (const auto &node : graph.nodes)
     if (node->prev.empty())
       graph.roots.push_back(node);
-
   return graph;
 }
 

@@ -305,6 +305,7 @@ void AliasTable::getModifiedVariables(
 
 std::vector<std::shared_ptr<aliasArg>>
 AliasTable::getArrayElementChildren(std::shared_ptr<aliasArg> elem) const {
+
   std::vector<std::shared_ptr<aliasArg>> children;
   if (elem != nullptr) {
     auto curElem = aliasTableMap.at(getKey(&elem->declaration), elem->indexes);
@@ -336,22 +337,28 @@ AliasTable::getArrayElementParents(std::shared_ptr<aliasArg> elem) const {
     toVisit.push(curElem);
     while (!toVisit.empty()) {
       auto cur = toVisit.top();
+      if (cur == nullptr)
+        continue;
       toVisit.pop();
       if (std::holds_alternative<std::shared_ptr<aliasArg>>(*cur)) {
         auto alias = std::get<std::shared_ptr<aliasArg>>(*cur);
-        if (alias->indexes.size() > elem->indexes.size() ||
-            alias->indexes[alias->indexes.size() - 1] ==
-                elem->indexes[alias->indexes.size() - 1]) {
+        if (!alias->indexes.empty() &&
+            (alias->indexes.size() > elem->indexes.size() ||
+             alias->indexes.at(alias->indexes.size() - 1) ==
+                 elem->indexes[alias->indexes.size() - 1])) {
+
           parents.push_back(alias);
         }
-        parents.push_back(alias);
-      } else if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
-                     *cur)) {
+      }
+
+      else if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
+                   *cur)) {
         auto curMap = std::get<std::shared_ptr<IndexTableMapStruct>>(*cur);
         auto alias = curMap->alias;
-        if (alias->indexes.size() > elem->indexes.size() ||
-            alias->indexes[alias->indexes.size() - 1] ==
-                elem->indexes[alias->indexes.size() - 1]) {
+        if (!alias->indexes.empty() &&
+            (alias->indexes.size() > elem->indexes.size() ||
+             alias->indexes[alias->indexes.size() - 1] ==
+                 elem->indexes[alias->indexes.size() - 1])) {
 
           parents.push_back(curMap->alias);
           for (auto &subAlias : curMap->map) {
@@ -365,7 +372,7 @@ AliasTable::getArrayElementParents(std::shared_ptr<aliasArg> elem) const {
 }
 
 std::vector<std::shared_ptr<aliasArg>>
-AliasTable::getArrayElementRelated(std::shared_ptr<aliasArg> elem) const {
+AliasTable::getArrayElementAll(std::shared_ptr<aliasArg> elem) const {
   std::vector<std::shared_ptr<aliasArg>> related;
   if (elem != nullptr) {
     auto curElem = aliasTableMap.at(getKey(&elem->declaration));

@@ -90,10 +90,10 @@ void addAliasPtr(const VarDecl *var, const std::vector<int> &,
   // For example if we give it tab[1], it will return tab, all tab[1][i] and all
   // tab[i] ...
   std::vector<std::shared_ptr<aliasArg>>
-      getArrayElementRelated(std::shared_ptr<aliasArg>) const;
+      getArrayElementAll(std::shared_ptr<aliasArg>) const;
   // Get parents and children of an element
   inline std::unordered_set<std::shared_ptr<aliasArg>>
-  getArrayElementAll(std::shared_ptr<aliasArg> v) const {
+  getArrayElementRelated(std::shared_ptr<aliasArg> v) const {
     std::unordered_set<std::shared_ptr<aliasArg>> result;
     auto parents = getArrayElementParents(v);
     auto children = getArrayElementChildren(v);
