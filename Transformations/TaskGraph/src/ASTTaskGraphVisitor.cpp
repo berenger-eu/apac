@@ -455,6 +455,7 @@ void ASTTaskGraphVisitor::handleStmt(const Stmt &st, Instruction &instr,
         if (isWrite)
           addDependencyWrite(instr, alias);
       }
+      handleStmt(*cast<ArraySubscriptExpr>(curExp).getIdx(), instr);
     }
     // Ignored expressions case
     else if (isa<IntegerLiteral>(curExp)) {
