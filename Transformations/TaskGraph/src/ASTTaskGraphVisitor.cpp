@@ -407,20 +407,20 @@ void ASTTaskGraphVisitor::handleStmt(const Stmt &st, Instruction &instr,
     if (cast<ReturnStmt>(st).getRetValue())
       handleStmt(*(cast<ReturnStmt>(st).getRetValue()), instr, isWrite);
   } else if (isa<Expr>(st)) {
-    const Expr &curExp = *(cast<Expr>(st).IgnoreParenImpCasts());
+    auto curExp = (cast<Expr>(st).IgnoreParenImpCasts());
     if (isa<CXXOperatorCallExpr>(curExp))
-      handleCXXOperatorCallExpr(cast<CXXOperatorCallExpr>(curExp), instr,
+      handleCXXOperatorCallExpr(*cast<CXXOperatorCallExpr>(curExp), instr,
                                 isWrite);
     else if (isa<UnaryOperator>(curExp))
-      handleUnaryOperator(cast<UnaryOperator>(curExp), instr, isWrite);
+      handleUnaryOperator(*cast<UnaryOperator>(curExp), instr, isWrite);
     else if (isa<BinaryOperator>(curExp))
-      handleBinaryOperator(cast<BinaryOperator>(curExp), instr, isWrite);
+      handleBinaryOperator(*cast<BinaryOperator>(curExp), instr, isWrite);
     else if (isa<CXXMemberCallExpr>(curExp))
-      handleMemberCallExpr(cast<CXXMemberCallExpr>(curExp), instr, isWrite);
+      handleMemberCallExpr(*cast<CXXMemberCallExpr>(curExp), instr, isWrite);
     else if (isa<CallExpr>(curExp))
-      handleCallExpr(cast<CallExpr>(curExp), instr, isWrite);
+      handleCallExpr(*cast<CallExpr>(curExp), instr, isWrite);
     else if (isa<DeclRefExpr>(curExp)) {
-      const VarDecl *v = cast<VarDecl>(cast<DeclRefExpr>(curExp).getDecl());
+      const VarDecl *v = cast<VarDecl>(cast<DeclRefExpr>(curExp)->getDecl());
       AliasType type;
       if (isPointerQualType(v->getType()))
         type = Pointer;
@@ -434,28 +434,22 @@ void ASTTaskGraphVisitor::handleStmt(const Stmt &st, Instruction &instr,
       if (isWrite)
         addDependencyWrite(instr, alias);
     } else if (isa<ArraySubscriptExpr>(curExp)) {
-      AliasType type;
-      if (isPointerQualType(curExp.getType()))
-        type = Pointer;
-      else if (isReferenceQualType(curExp.getType()))
-        type = Reference;
-      else
-        type = Variable;
-      auto subExpr = getSingleDeclRefExprInsideExpr(
-          cast<ArraySubscriptExpr>(curExp).getBase());
-      if (subExpr) {
-        auto base = cast<VarDecl>(subExpr->getDecl());
-        auto res =
-            getArraySubscriptsIndexesValues(&cast<ArraySubscriptExpr>(curExp));
+      auto arrayExpr = getSingleArraySubscriptExprInsideExpr(curExp);
+      if (arrayExpr) {
+        auto baseExpr = getSingleDeclRefExprInsideExpr(arrayExpr->getBase());
+        auto base = cast<VarDecl>(baseExpr->getDecl());
+        auto indexes =
+            getArraySubscriptsIndexesValues(cast<ArraySubscriptExpr>(curExp));
         auto alias = aliasTable.getOrAddAliasArg(
-            base, getAliasType(&curExp),
-            getArraySubscriptsIndexesValues(&cast<ArraySubscriptExpr>(curExp)));
+            base, getAliasType(curExp),
+            getArraySubscriptsIndexesValues(cast<ArraySubscriptExpr>(curExp)));
         if (isRead)
           addDependencyRead(instr, alias);
         if (isWrite)
           addDependencyWrite(instr, alias);
       }
-      handleStmt(*cast<ArraySubscriptExpr>(curExp).getIdx(), instr);
+
+      handleStmt(*cast<ArraySubscriptExpr>(curExp)->getIdx(), instr);
     }
     // Ignored expressions case
     else if (isa<IntegerLiteral>(curExp)) {
@@ -463,10 +457,10 @@ void ASTTaskGraphVisitor::handleStmt(const Stmt &st, Instruction &instr,
     } else {
       llvm::errs() << "Unhandled expression\n";
       llvm::errs() << TheRewriter.getSourceMgr()
-                          .getPresumedLoc(curExp.getBeginLoc())
+                          .getPresumedLoc(curExp->getBeginLoc())
                           .getFilename()
                    << ":";
-      curExp.dump();
+      curExp->dump();
     }
   }
 }

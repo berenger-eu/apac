@@ -275,13 +275,21 @@ getArraySubscriptsIndexes(const clang::Expr *e) {
 std::vector<int> getArraySubscriptsIndexesValues(const clang::Expr *e) {
   std::vector<int> vectArraySubscriptExpr;
   std::vector<const Expr *> vectExpr = getArraySubscriptsIndexes(e);
-  for (auto &expr : vectExpr) {
-    // TODO: Handle cases with evaluable expressions (5+4 , ...)
-    if (isa<IntegerLiteral>(expr))
-      vectArraySubscriptExpr.push_back(
-          cast<IntegerLiteral>(expr)->getValue().getSExtValue());
-    else
-      vectArraySubscriptExpr.push_back(-1);
+  if (isa<ArraySubscriptExpr>(e)) {
+    auto arraySubscriptExpr = cast<ArraySubscriptExpr>(e);
+    if (getSingleDeclRefExprInsideExpr(arraySubscriptExpr->getBase())) {
+      auto base = cast<VarDecl>(
+          getSingleDeclRefExprInsideExpr(arraySubscriptExpr->getBase())
+              ->getDecl());
+      for (auto &expr : vectExpr) {
+        // TODO: Handle cases with evaluable expressions (5+4 , ...)
+        Expr::EvalResult result;
+        if (expr->EvaluateAsInt(result, base->getASTContext()))
+          vectArraySubscriptExpr.push_back(result.Val.getInt().getSExtValue());
+        else
+          vectArraySubscriptExpr.push_back(-1);
+      }
+    }
   }
   return vectArraySubscriptExpr;
 }
