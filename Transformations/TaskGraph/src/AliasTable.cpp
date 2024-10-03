@@ -303,10 +303,10 @@ void AliasTable::getModifiedVariables(
     setResults.clear();
 }
 
-std::vector<std::shared_ptr<aliasArg>>
+std::unordered_set<std::shared_ptr<aliasArg>>
 AliasTable::getArrayElementChildren(std::shared_ptr<aliasArg> elem) const {
 
-  std::vector<std::shared_ptr<aliasArg>> children;
+  std::unordered_set<std::shared_ptr<aliasArg>> children;
   if (elem != nullptr) {
     auto curElem = aliasTableMap.at(getKey(&elem->declaration), elem->indexes);
     std::stack<const aliasesTableValues *> toVisit;
@@ -315,7 +315,7 @@ AliasTable::getArrayElementChildren(std::shared_ptr<aliasArg> elem) const {
       auto cur = toVisit.top();
       toVisit.pop();
       if (std::holds_alternative<std::shared_ptr<aliasArg>>(*cur)) {
-        children.push_back(std::get<std::shared_ptr<aliasArg>>(*cur));
+        children.insert(std::get<std::shared_ptr<aliasArg>>(*cur));
       } else if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
                      *cur)) {
         auto curMap = std::get<std::shared_ptr<IndexTableMapStruct>>(*cur);
