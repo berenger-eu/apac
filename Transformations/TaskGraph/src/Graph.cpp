@@ -195,12 +195,10 @@ void updateInstructionOrderNode(
     long unsigned int count = -1;
     for (auto instr : node->instructionPtr)
       if (instr->complexInstruction && ++count == i) {
-
         auto subOrder = orderManager.getSubStmtOrder(instr->instruction);
         assert(subOrder != nullptr);
+        updateInstructionOrderFromGraph(*subGraph, *subOrder);
       }
-    updateInstructionOrderFromGraph(
-        *subGraph, *orderManager.getSubStmtOrder(instr->instruction));
   }
   orderManager.addNodeToGroup(node);
 }
