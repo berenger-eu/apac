@@ -32,6 +32,7 @@ public:
     VisitorTaskGraph.getAliasTable().dump();
     llvm::errs() << "Print\n\n";
 
+    orderManager.dump();
     auto graphs = generateGraph(VisitorTaskGraph.functionsInstructionsVector,
                                 orderManager, VisitorTaskGraph.getAliasTable());
 

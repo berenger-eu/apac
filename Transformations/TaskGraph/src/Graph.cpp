@@ -191,11 +191,16 @@ void updateInstructionOrderNode(
   fuseInstructions(vectStmts, orderManager);
   for (long unsigned int i = 0; i < node->graph.size(); i++) {
     auto subGraph = node->graph[i];
+    assert(subGraph != nullptr);
     long unsigned int count = -1;
     for (auto instr : node->instructionPtr)
-      if (instr->complexInstruction && ++count == i)
-        updateInstructionOrderFromGraph(
-            *subGraph, *orderManager.getSubStmtOrder(instr->instruction));
+      if (instr->complexInstruction && ++count == i) {
+
+        auto subOrder = orderManager.getSubStmtOrder(instr->instruction);
+        assert(subOrder != nullptr);
+      }
+    updateInstructionOrderFromGraph(
+        *subGraph, *orderManager.getSubStmtOrder(instr->instruction));
   }
   orderManager.addNodeToGroup(node);
 }
