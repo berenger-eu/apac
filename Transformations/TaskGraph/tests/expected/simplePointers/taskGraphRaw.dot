@@ -4,6 +4,7 @@ subgraph cluster_f0 {
     0 [label="a = 4;"];
     0 -> 2[label="  aRW"];
     1 [label="p = &a;"];
+    1 -> 5[label="  pR"];
     1 -> 2[label="  pR"];
     2 [label="(*p)++;
 *p : a"];

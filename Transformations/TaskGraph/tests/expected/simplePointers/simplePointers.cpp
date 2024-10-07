@@ -21,7 +21,7 @@ int main() {
 #pragma omp task depend(inout : j)
   { j = 4; }
 
-#pragma omp task depend(in : a, j)
+#pragma omp task depend(in : p, a, j)
   {
     j = *p;
     j = a;
