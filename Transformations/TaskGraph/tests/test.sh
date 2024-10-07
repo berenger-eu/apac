@@ -11,7 +11,7 @@ countTotal=0
 
 curPath="$(realpath $(dirname "$0"))"
 taskGraph="$curPath/../../../build/taskGraph"
-expectedPath="$curPath/expected"
+expectedFolder="$curPath/expected"
 resultPath="$curPath/results"
 testsPath="$curPath/autotests"
 
@@ -24,7 +24,7 @@ for file in $testsPath/*.cpp; do
     fileName=$(basename "$file" /)
     folderName=$(basename "$fileName" .cpp)
     folderResultPath="$resultPath/$folderName"
-
+    expectedPath="$expectedFolder/$folderName"
     # Check if the file exists and is a regular file
     if [ -f "$file" ]; then
         ((countTotal++))
