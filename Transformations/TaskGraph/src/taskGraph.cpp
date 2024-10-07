@@ -27,7 +27,12 @@ public:
     auto graphs = generateGraph(VisitorTaskGraph.functionsInstructionsVector,
                                 orderManager);
     OutputHandler outputHandler(TheRewriter);
-    outputHandler.GenerateDotGraph(graphs, "taskGraph.dot");
+    outputHandler.GenerateDotGraph(graphs, "taskGraphRaw.dot");
+    for (auto &graph : graphs) {
+      optimizeGraph(graph);
+      updateInstructionOrderFromGraph(graph, orderManager);
+    }
+    outputHandler.GenerateDotGraph(graphs, "taskGraphOpt.dot");
     outputHandler.modifyFile(orderManager);
   }
 
