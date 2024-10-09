@@ -9,9 +9,8 @@ aliasesTableValues *IndexTableMapStruct::at(const std::vector<int> &indexes) {
     return &map.at(indexes[0]);
   // If the value is an IndexTableMapStruct, we look through it using indexes
   else if (map.count(indexes[0])) {
-    if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
-            map.at(indexes[0])))
-      return std::get<std::shared_ptr<IndexTableMapStruct>>(map.at(indexes[0]))
+    if (isSubArray(map.at(indexes[0])))
+      return getSubArray(map.at(indexes[0]))
           ->at(std::vector<int>(indexes.begin() + 1, indexes.end()));
   }
   // Otherwise, the value is simple variable and we're trying to access an
@@ -28,8 +27,7 @@ IndexTableMapStruct::at(const std::vector<int> &indexes) const {
     return &map.at(indexes[0]);
   // If the value is an IndexTableMapStruct, we look through it using indexes
   else if (map.count(indexes[0])) {
-    if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
-            map.at(indexes[0])))
+    if (isSubArray(map.at(indexes[0])))
       return std::get<std::shared_ptr<IndexTableMapStruct>>(map.at(indexes[0]))
           ->at(std::vector<int>(indexes.begin() + 1, indexes.end()));
   }
@@ -42,12 +40,10 @@ int IndexTableMapStruct::nbElements() const {
   if (alias != nullptr)
     res++;
   for (auto &elem : map) {
-    if (std::holds_alternative<std::shared_ptr<aliasArg>>(elem.second))
+    if (isAliasArg(elem.second))
       res++;
-    else if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
-                 elem.second))
-      res += std::get<std::shared_ptr<IndexTableMapStruct>>(elem.second)
-                 ->nbElements();
+    else if (isSubArray(elem.second))
+      res += getSubArray(elem.second)->nbElements();
   }
   return res;
 }
@@ -58,7 +54,7 @@ int IndexTableMapStruct::count(const std::vector<int> &indexes) const {
     return (map.count(indexes[0]) > 0);
   if (map.count(indexes[0]) == 0)
     return 0;
-  return std::get<std::shared_ptr<IndexTableMapStruct>>(map.at(indexes[0]))
+  return getSubArray(map.at(indexes[0]))
       ->count(std::vector<int>(indexes.begin() + 1, indexes.end()));
 }
 
@@ -74,28 +70,21 @@ void IndexTableMapStruct::insert(
     for (long unsigned int i = 0; i < indexes.size() - 1; i++) {
       if (curMap->count(indexes[i]) == 0)
         curMap->insert({indexes[i], std::make_shared<IndexTableMapStruct>()});
-      else if (std::holds_alternative<std::shared_ptr<aliasArg>>(
-                   curMap->at(indexes[i]))) {
+      else if (isAliasArg(curMap->at(indexes[i]))) {
         auto element = std::make_shared<IndexTableMapStruct>();
-        element->alias =
-            std::get<std::shared_ptr<aliasArg>>(curMap->at(indexes[i]));
+        element->alias = getAliasArg(curMap->at(indexes[i]));
         curMap->at(indexes[i]) = element;
       }
-      curMap = &std::get<std::shared_ptr<IndexTableMapStruct>>(
-                    curMap->at(indexes[i]))
-                    ->map;
+      curMap = &getSubArray(curMap->at(indexes[i]))->map;
     }
     if (curMap->count(indexes.back()) == 0)
       curMap->insert({indexes.back(), elem});
-    else if (std::holds_alternative<std::shared_ptr<aliasArg>>(
-                 curMap->at(indexes.back()))) {
+    else if (isSubArray(curMap->at(indexes.back()))) {
       auto element = std::make_shared<IndexTableMapStruct>();
-      element->alias =
-          std::get<std::shared_ptr<aliasArg>>(curMap->at(indexes.back()));
+      element->alias = getAliasArg(curMap->at(indexes.back()));
       curMap->at(indexes.back()) = element;
     } else
-      std::get<std::shared_ptr<IndexTableMapStruct>>(curMap->at(indexes.back()))
-          ->alias = elem;
+      getSubArray(curMap->at(indexes.back()))->alias = elem;
   }
 }
 void IndexTableMapStruct::dumpPrep(std::string *varTable, std::string *refTable,
@@ -110,17 +99,16 @@ void IndexTableMapStruct::dumpPrep(std::string *varTable, std::string *refTable,
       ssPtr << alias->varAsString() << " ";
   }
   for (auto &elem : map) {
-    if (std::holds_alternative<std::shared_ptr<aliasArg>>(elem.second)) {
-      auto alias = std::get<std::shared_ptr<aliasArg>>(elem.second);
+    if (isAliasArg(elem.second)) {
+      auto alias = getAliasArg(elem.second);
       if (varTable != nullptr && alias->type == Variable)
         ssVar << alias->varAsString() << " ";
       else if (refTable != nullptr && alias->type == Reference)
         ssRef << alias->varAsString() << " ";
       else if (ptrTable != nullptr && alias->type == Pointer)
         ssPtr << alias->varAsString() << " ";
-    } else if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
-                   elem.second)) {
-      auto alias = std::get<std::shared_ptr<IndexTableMapStruct>>(elem.second);
+    } else if (isSubArray(elem.second)) {
+      auto alias = getSubArray(elem.second);
       alias->dumpPrep(varTable, refTable, ptrTable);
       if (varTable != nullptr)
         ssVar << *varTable;
@@ -157,13 +145,12 @@ aliasesTableValues *AliasTableMapStruct::at(const NamedDecl *key,
   }
   // If the value is an aliasArg (and not an array, so no indexes), return
   // nullptr
-  else if (std::holds_alternative<std::shared_ptr<aliasArg>>(map.at(key)))
+  else if (isAliasArg(map.at(key)))
     llvm::errs() << "No indexes found in table\n";
   // The value is an array, so we look through it using indexes
   else {
 
-    result = std::get<std::shared_ptr<IndexTableMapStruct>>(map.at(key))
-        ->at(indexes);
+    result = getSubArray(map.at(key))->at(indexes);
   }
   return result;
 }
@@ -180,23 +167,20 @@ AliasTableMapStruct::at(const NamedDecl *key,
   }
   // If the value is an aliasArg (and not an array, so no indexes), return
   // nullptr
-  else if (std::holds_alternative<std::shared_ptr<aliasArg>>(map.at(key)))
+  else if (isAliasArg(map.at(key)))
     ;
   // The value is an array, so we look through it using indexes
   else
-    result = std::get<std::shared_ptr<IndexTableMapStruct>>(map.at(key))
-        ->at(indexes);
+    result = getSubArray(map.at(key))->at(indexes);
   return result;
 }
 int AliasTableMapStruct::nbElements() const {
   int res = 0;
   for (auto &elem : map) {
-    if (std::holds_alternative<std::shared_ptr<aliasArg>>(elem.second))
+    if (isAliasArg(elem.second))
       res++;
-    else if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
-                 elem.second))
-      res += std::get<std::shared_ptr<IndexTableMapStruct>>(elem.second)
-                 ->nbElements();
+    else if (isSubArray(elem.second))
+      res += getSubArray(elem.second)->nbElements();
   }
   return res;
 }
@@ -205,10 +189,9 @@ int AliasTableMapStruct::count(const NamedDecl *key,
   if (indexes.empty())
     return map.count(key);
   else if (map.count(key) != 0) {
-    if (std::holds_alternative<std::shared_ptr<aliasArg>>(map.at(key)))
+    if (isAliasArg(map.at(key)))
       return 0;
-    return std::get<std::shared_ptr<IndexTableMapStruct>>(map.at(key))
-        ->count(indexes);
+    return getSubArray(map.at(key))->count(indexes);
   }
   return 0;
 }
@@ -221,10 +204,8 @@ void AliasTableMapStruct::insert(
   if (indexes.empty()) {
     if (map.count(key) == 0)
       map.insert({key, elem});
-    else if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
-                 map.at(key))) {
-      auto element =
-          std::get<std::shared_ptr<IndexTableMapStruct>>(map.at(key));
+    else if (isSubArray(map.at(key))) {
+      auto element = getSubArray(map.at(key));
       if (element->alias == nullptr)
         element->alias = elem;
     }
@@ -233,12 +214,12 @@ void AliasTableMapStruct::insert(
   else {
 
     if (map.count(key) == 0)
-    map.insert({key, std::make_shared<IndexTableMapStruct>()});
-    else if (std::holds_alternative<std::shared_ptr<aliasArg>>(map.at(key))) {
+      map.insert({key, std::make_shared<IndexTableMapStruct>()});
+    else if (isAliasArg(map.at(key))) {
       auto element = std::make_shared<IndexTableMapStruct>();
-      element->alias = std::get<std::shared_ptr<aliasArg>>(map.at(key));
+      element->alias = getAliasArg(map.at(key));
       map.at(key) = element;
     }
-    std::get<std::shared_ptr<IndexTableMapStruct>>(map.at(key))->insert(pair);
+    getSubArray(map.at(key))->insert(pair);
   }
 }

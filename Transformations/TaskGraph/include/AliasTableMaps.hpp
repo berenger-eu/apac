@@ -24,24 +24,43 @@ struct IndexTableMapStruct {
 
   aliasesTableValues *at(const std::vector<int> &indexes);
   const aliasesTableValues *at(const std::vector<int> &indexes) const;
+
   int count(const std::vector<int> &indexes) const;
   int nbElements() const;
+  void insert(const std::pair<aliasArg, std::vector<int> &> pair);
+
   void dumpPrep(std::string *varTable, std::string *refTable,
                 std::string *ptrTable) const;
-  void insert(const std::pair<aliasArg, std::vector<int> &> pair);
 };
 struct AliasTableMapStruct;
 using AliasTableMap = std::unordered_map<const NamedDecl *, aliasesTableValues>;
 
 struct AliasTableMapStruct {
   AliasTableMap map;
+
   aliasesTableValues *at(const NamedDecl *key,
                          const std::vector<int> &indexes = std::vector<int>());
   const aliasesTableValues *
   at(const NamedDecl *key,
      const std::vector<int> &indexes = std::vector<int>()) const;
+
   int nbElements() const;
   int count(const NamedDecl *key,
             const std::vector<int> &indexes = std::vector<int>()) const;
   void insert(const std::pair<aliasArg, std::vector<int> &> pair);
 };
+inline bool isSubArray(const aliasesTableValues &value) {
+  return std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(value);
+}
+inline std::shared_ptr<IndexTableMapStruct>
+getSubArray(const aliasesTableValues &value) {
+  assert(isSubArray(value));
+  return std::get<std::shared_ptr<IndexTableMapStruct>>(value);
+}
+inline bool isAliasArg(const aliasesTableValues &value) {
+  return std::holds_alternative<std::shared_ptr<aliasArg>>(value);
+}
+inline std::shared_ptr<aliasArg> getAliasArg(const aliasesTableValues &value) {
+  assert(isAliasArg(value));
+  return std::get<std::shared_ptr<aliasArg>>(value);
+}
