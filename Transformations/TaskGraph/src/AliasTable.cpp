@@ -177,12 +177,10 @@ AliasTable::getAliasArg(const VarDecl *v,
     auto tableValue = aliasTableMap.at(key, indexes);
     if (tableValue == nullptr)
       ;
-    else if (std::holds_alternative<std::shared_ptr<aliasArg>>(*tableValue)) {
-      result = std::get<std::shared_ptr<aliasArg>>(*tableValue);
-    } else if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
-                   *tableValue)) {
-      result =
-          std::get<std::shared_ptr<IndexTableMapStruct>>(*tableValue)->alias;
+    else if (isVariantAliasArg(*tableValue)) {
+      result = getVariantAliasArg(*tableValue);
+    } else if (isVariantSubArray(*tableValue)) {
+      result = getVariantSubArray(*tableValue)->alias;
     } else {
       // TODO: Remove this later (if no issues arrise)
       llvm::errs() << "Error in getAliasArg\n";
@@ -201,12 +199,10 @@ AliasTable::getAliasArg(const VarDecl *v, const std::vector<int> &indexes) {
     auto tableValue = aliasTableMap.at(key, indexes);
     if (tableValue == nullptr)
       ;
-    else if (std::holds_alternative<std::shared_ptr<aliasArg>>(*tableValue)) {
-      result = std::get<std::shared_ptr<aliasArg>>(*tableValue);
-    } else if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
-                   *tableValue)) {
-      result =
-          std::get<std::shared_ptr<IndexTableMapStruct>>(*tableValue)->alias;
+    else if (isVariantAliasArg(*tableValue)) {
+      result = getVariantAliasArg(*tableValue);
+    } else if (isVariantSubArray(*tableValue)) {
+      result = getVariantSubArray(*tableValue)->alias;
     } else {
       // TODO: Remove this later (if no issues arrise)
       llvm::errs() << "Error in getAliasArg\n";
@@ -314,11 +310,10 @@ AliasTable::getArrayElementChildren(std::shared_ptr<aliasArg> elem) const {
     while (!toVisit.empty()) {
       auto cur = toVisit.top();
       toVisit.pop();
-      if (std::holds_alternative<std::shared_ptr<aliasArg>>(*cur)) {
-        children.insert(std::get<std::shared_ptr<aliasArg>>(*cur));
-      } else if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
-                     *cur)) {
-        auto curMap = std::get<std::shared_ptr<IndexTableMapStruct>>(*cur);
+      if (isVariantAliasArg(*cur)) {
+        children.insert(getVariantAliasArg(*cur));
+      } else if (isVariantSubArray(*cur)) {
+        auto curMap = getVariantSubArray(*cur);
         for (auto &subAlias : curMap->map) {
           toVisit.push(&subAlias.second);
         }
@@ -340,8 +335,8 @@ AliasTable::getArrayElementParents(std::shared_ptr<aliasArg> elem) const {
       if (cur == nullptr)
         continue;
       toVisit.pop();
-      if (std::holds_alternative<std::shared_ptr<aliasArg>>(*cur)) {
-        auto alias = std::get<std::shared_ptr<aliasArg>>(*cur);
+      if (isVariantAliasArg(*cur)) {
+        auto alias = getVariantAliasArg(*cur);
         if (!alias->indexes.empty() &&
             (alias->indexes.size() > elem->indexes.size() ||
              alias->indexes.at(alias->indexes.size() - 1) ==
@@ -351,9 +346,8 @@ AliasTable::getArrayElementParents(std::shared_ptr<aliasArg> elem) const {
         }
       }
 
-      else if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
-                   *cur)) {
-        auto curMap = std::get<std::shared_ptr<IndexTableMapStruct>>(*cur);
+      else if (isVariantSubArray(*cur)) {
+        auto curMap = getVariantSubArray(*cur);
         auto alias = curMap->alias;
         if (!alias->indexes.empty() &&
             (alias->indexes.size() > elem->indexes.size() ||
@@ -381,11 +375,10 @@ AliasTable::getArrayElementAll(std::shared_ptr<aliasArg> elem) const {
     while (!toVisit.empty()) {
       auto cur = toVisit.top();
       toVisit.pop();
-      if (std::holds_alternative<std::shared_ptr<aliasArg>>(*cur)) {
-        related.push_back(std::get<std::shared_ptr<aliasArg>>(*cur));
-      } else if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
-                     *cur)) {
-        auto curMap = std::get<std::shared_ptr<IndexTableMapStruct>>(*cur);
+      if (isVariantAliasArg(*cur)) {
+        related.push_back(getVariantAliasArg(*cur));
+      } else if (isVariantSubArray(*cur)) {
+        auto curMap = getVariantSubArray(*cur);
         related.push_back(curMap->alias);
         for (auto &subAlias : curMap->map) {
           toVisit.push(&subAlias.second);
@@ -418,8 +411,8 @@ void AliasTable::dumpPrep(std::string *varTable, std::string *refTable,
                           std::string *ptrTable) const {
   std::stringstream ssVar, ssRef, ssPtr;
   for (auto &elem : aliasTableMap.map) {
-    if (std::holds_alternative<std::shared_ptr<aliasArg>>(elem.second)) {
-      auto alias = std::get<std::shared_ptr<aliasArg>>(elem.second);
+    if (isVariantAliasArg(elem.second)) {
+      auto alias = getVariantAliasArg(elem.second);
       if (varTable != nullptr && alias->type == Variable)
         ssVar << alias->varAsString() << " ";
       else if (refTable != nullptr && alias->type == Reference) {
@@ -433,13 +426,11 @@ void AliasTable::dumpPrep(std::string *varTable, std::string *refTable,
           ssPtr << aliased->varAsString() << " ";
         ssPtr << "\n";
       }
-    } else if (std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(
-                   elem.second)) {
-      auto alias = std::get<std::shared_ptr<IndexTableMapStruct>>(elem.second);
+    } else if (isVariantSubArray(elem.second)) {
+      auto alias = getVariantSubArray(elem.second);
       for (auto &subAlias : alias->map) {
-        if (std::holds_alternative<std::shared_ptr<aliasArg>>(
-                subAlias.second)) {
-          auto aliasBis = std::get<std::shared_ptr<aliasArg>>(subAlias.second);
+        if (isVariantAliasArg(subAlias.second)) {
+          auto aliasBis = getVariantAliasArg(subAlias.second);
         }
       }
       alias->dumpPrep(varTable, refTable, ptrTable);

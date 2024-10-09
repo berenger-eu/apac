@@ -49,18 +49,19 @@ struct AliasTableMapStruct {
             const std::vector<int> &indexes = std::vector<int>()) const;
   void insert(const std::pair<aliasArg, std::vector<int> &> pair);
 };
-inline bool isSubArray(const aliasesTableValues &value) {
+inline bool isVariantSubArray(const aliasesTableValues &value) {
   return std::holds_alternative<std::shared_ptr<IndexTableMapStruct>>(value);
 }
 inline std::shared_ptr<IndexTableMapStruct>
-getSubArray(const aliasesTableValues &value) {
-  assert(isSubArray(value));
+getVariantSubArray(const aliasesTableValues &value) {
+  assert(isVariantSubArray(value));
   return std::get<std::shared_ptr<IndexTableMapStruct>>(value);
 }
-inline bool isAliasArg(const aliasesTableValues &value) {
+inline bool isVariantAliasArg(const aliasesTableValues &value) {
   return std::holds_alternative<std::shared_ptr<aliasArg>>(value);
 }
-inline std::shared_ptr<aliasArg> getAliasArg(const aliasesTableValues &value) {
-  assert(isAliasArg(value));
+inline std::shared_ptr<aliasArg>
+getVariantAliasArg(const aliasesTableValues &value) {
+  assert(isVariantAliasArg(value));
   return std::get<std::shared_ptr<aliasArg>>(value);
 }
