@@ -364,7 +364,54 @@ AliasTable::getArrayElementParents(std::shared_ptr<aliasArg> elem) const {
   }
   return parents;
 }
-
+std::unordered_set<std::shared_ptr<aliasArg>>
+AliasTable::getArrayElementDependencies(std::shared_ptr<aliasArg> elem) const {
+  std::unordered_set<std::shared_ptr<aliasArg>> dependencies;
+  if (elem != nullptr) {
+    auto indexes = elem->indexes;
+    const VarDecl *variableArg = &elem->declaration;
+    auto curElem = aliasTableMap.at(getKey(&elem->declaration));
+    if (isVariantSubArray(*curElem))
+      dependencies.insert(getVariantSubArray(*curElem)->alias);
+    else if (isVariantAliasArg(*curElem))
+      dependencies.insert(getVariantAliasArg(*curElem));
+    std::stack<const aliasesTableValues *> toVisit;
+    toVisit.push(curElem);
+    auto curIndex = indexes.begin();
+    std::stack<const aliasesTableValues *> nextToVisit;
+    for (auto index : indexes)
+      llvm::errs() << index << " ";
+    llvm::errs() << "DoneIndex\n";
+    while (!toVisit.empty() && curIndex != indexes.end()) {
+      auto curTableValue = toVisit.top();
+      toVisit.pop();
+      auto curChildren = getDirectChildren(*curTableValue, *curIndex);
+      for (auto child : curChildren)
+        nextToVisit.push(&child);
+      if (toVisit.empty()) {
+        toVisit.swap(nextToVisit);
+        curIndex++;
+      }
+    }
+  }
+  return dependencies;
+}
+std::vector<aliasesTableValues>
+AliasTable::getDirectChildren(const aliasesTableValues elem,
+                              const int &depth) const {
+  assert(depth >= -1);
+  std::vector<aliasesTableValues> children;
+  if (isVariantSubArray(elem)) {
+    auto curMap = getVariantSubArray(elem);
+    if (depth == -1)
+      for (auto &childElem : curMap->map)
+        children.push_back(childElem.second);
+    else if (curMap->map.count(depth)) {
+      children.push_back(curMap->map.at(depth));
+    }
+  }
+  return children;
+}
 std::vector<std::shared_ptr<aliasArg>>
 AliasTable::getArrayElementAll(std::shared_ptr<aliasArg> elem) const {
   std::vector<std::shared_ptr<aliasArg>> related;

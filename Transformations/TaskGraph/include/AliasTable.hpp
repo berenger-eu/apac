@@ -86,6 +86,8 @@ void addAliasPtr(const VarDecl *var, const std::vector<int> &,
   // (as long as they are in the table)
   std::unordered_set<std::shared_ptr<aliasArg>>
       getArrayElementChildren(std::shared_ptr<aliasArg>) const;
+  std::vector<aliasesTableValues> getDirectChildren(aliasesTableValues,
+                                                    const int &depth) const;
   // Get all the elements related to an array
   // For example if we give it tab[1], it will return tab, all tab[1][i] and all
   // tab[i] ...
@@ -95,10 +97,14 @@ void addAliasPtr(const VarDecl *var, const std::vector<int> &,
   inline std::unordered_set<std::shared_ptr<aliasArg>>
   getArrayElementRelated(std::shared_ptr<aliasArg> v) const {
     std::unordered_set<std::shared_ptr<aliasArg>> result;
-    auto parents = getArrayElementParents(v);
-    auto children = getArrayElementChildren(v);
-    result.insert(parents.begin(), parents.end());
-    result.insert(children.begin(), children.end());
+    result = getArrayElementDependencies(v);
+    /*
+        llvm::errs() << "Getting parents\n";
+        auto parents = getArrayElementParents(v);
+        auto children = getArrayElementChildren(v);
+        result.insert(parents.begin(), parents.end());
+        result.insert(children.begin(), children.end());
+    */
     return result;
   }
 
@@ -123,7 +129,8 @@ private:
   void
   getPointersAliases(std::shared_ptr<aliasArg>,
                      std::unordered_set<std::shared_ptr<aliasArg>> &) const;
-
+  std::unordered_set<std::shared_ptr<aliasArg>>
+  getArrayElementDependencies(std::shared_ptr<aliasArg> elem) const;
   AliasTableMapStruct aliasTableMap;
   Rewriter &TheRewriter;
 };
