@@ -1,5 +1,57 @@
 #include "ASTTaskGraphVisitor.hpp"
 
+void ASTTaskGraphVisitor::addDependenciesRead(Instruction &instr,
+                                              const Expr *e) {
+  // Two cases : DeclRefExpr (variables) and ArraySubscriptExpr (arrays)
+  // Main goal of the function is to handle new read dependencies related to use
+  // of arrays (e.g. tab[5] = tab[a]+x), here "a" can be detected as a read
+  // dependency with this function)
+  auto allDeclRefVar = getAllReadDeclRefExprInsideExpr(e);
+  for (auto d : allDeclRefVar) {
+    const VarDecl *v = cast<VarDecl>(d->getDecl());
+    auto alias = aliasTable.getOrAddAliasArg(v, getAliasType(v));
+    addDependencyRead(instr, alias);
+  }
+  // TODO : Handle ArraySubscriptExpr (only for cases such as tab[ tab [5] ],
+  // where tab[5] would not be detected otherwise) But tab[-1] (the outer access
+  // to tab) would be detected
+}
+std::vector<const DeclRefExpr *>
+getAllReadDeclRefExprInsideExpr(const Expr *e) {
+  if (!e) {
+    return std::vector<const DeclRefExpr *>();
+  }
+  std::vector<const DeclRefExpr *> vectDeclRefExpr;
+  std::queue<const Expr *> vectNodes;
+  bool stopIter = false;
+  vectNodes.push(e);
+  while (!vectNodes.empty()) {
+    const Expr *s = vectNodes.front();
+    // If we have a unary operator, we ignore it if it is a dereference of a
+    // single variable (so &a, but not &tab[a])
+    if (isa<UnaryOperator>(s)) {
+      const auto u = cast<UnaryOperator>(s);
+      if (u->getOpcode() == UO_AddrOf &&
+          isa<DeclRefExpr>(u->getSubExpr()->IgnoreImpCasts())) {
+        stopIter = true;
+      }
+    }
+    if (stopIter) {
+      stopIter = false;
+    } else if (isa<DeclRefExpr>(s) &&
+               isa<VarDecl>(cast<DeclRefExpr>(s)->getDecl())) {
+      vectDeclRefExpr.push_back(cast<DeclRefExpr>(s));
+    } else {
+      for (auto it = s->child_begin(); it != s->child_end(); ++it) {
+        if (isa<Expr>(*it)) {
+          vectNodes.push(cast<Expr>(*it));
+        }
+      }
+    }
+    vectNodes.pop();
+  }
+  return vectDeclRefExpr;
+}
 void ASTTaskGraphVisitor::computeAliasesForRHS(
     const Expr *expression,
     std::unordered_set<std::shared_ptr<aliasArg>> &aliases,
@@ -403,11 +455,24 @@ void ASTTaskGraphVisitor::handleStmt(const Stmt &st, Instruction &instr,
                                      bool isWrite, bool isRead) {
   // Simple switch case to call the respective handle method, except for
   // DeclRefExpr which is a variable so it is a read
+  // Dependency on return statement
   if (isa<ReturnStmt>(st)) {
     if (cast<ReturnStmt>(st).getRetValue())
       handleStmt(*(cast<ReturnStmt>(st).getRetValue()), instr, isWrite);
-  } else if (isa<Expr>(st)) {
+  }
+
+  else if (isa<Expr>(st)) {
+
     auto curExp = (cast<Expr>(st).IgnoreParenImpCasts());
+    if (isa<DeclRefExpr>(curExp)) {
+      const VarDecl *v = cast<VarDecl>(cast<DeclRefExpr>(curExp)->getDecl());
+      auto alias = aliasTable.getOrAddAliasArg(v, getAliasType(v));
+      if (isRead)
+        addDependencyRead(instr, alias);
+      if (isWrite)
+        addDependencyWrite(instr, alias);
+    } else {
+      addDependenciesRead(instr, curExp);
     if (isa<CXXOperatorCallExpr>(curExp))
       handleCXXOperatorCallExpr(*cast<CXXOperatorCallExpr>(curExp), instr,
                                 isWrite);
@@ -419,30 +484,19 @@ void ASTTaskGraphVisitor::handleStmt(const Stmt &st, Instruction &instr,
       handleMemberCallExpr(*cast<CXXMemberCallExpr>(curExp), instr, isWrite);
     else if (isa<CallExpr>(curExp))
       handleCallExpr(*cast<CallExpr>(curExp), instr, isWrite);
-    else if (isa<DeclRefExpr>(curExp)) {
-      const VarDecl *v = cast<VarDecl>(cast<DeclRefExpr>(curExp)->getDecl());
-      AliasType type;
-      if (isPointerQualType(v->getType()))
-        type = Pointer;
-      else if (isReferenceQualType(v->getType()))
-        type = Reference;
-      else
-        type = Variable;
-      auto alias = aliasTable.getOrAddAliasArg(v, type);
-      if (isRead)
-        addDependencyRead(instr, alias);
-      if (isWrite)
-        addDependencyWrite(instr, alias);
-    } else if (isa<ArraySubscriptExpr>(curExp)) {
+      else if (isa<ArraySubscriptExpr>(curExp)) {
       auto arrayExpr = getSingleArraySubscriptExprInsideExpr(curExp);
       if (arrayExpr) {
         auto baseExpr = getSingleDeclRefExprInsideExpr(arrayExpr->getBase());
         auto base = cast<VarDecl>(baseExpr->getDecl());
         auto indexes =
             getArraySubscriptsIndexesValues(cast<ArraySubscriptExpr>(curExp));
+          // We don't use the type of the base but the type of the expression
+          // (tab will be a pointer but tab[0] might not be one)
         auto alias = aliasTable.getOrAddAliasArg(
             base, getAliasType(curExp),
-            getArraySubscriptsIndexesValues(cast<ArraySubscriptExpr>(curExp)));
+              getArraySubscriptsIndexesValues(
+                  cast<ArraySubscriptExpr>(curExp)));
         if (isRead)
           addDependencyRead(instr, alias);
         if (isWrite)
@@ -461,6 +515,7 @@ void ASTTaskGraphVisitor::handleStmt(const Stmt &st, Instruction &instr,
                           .getFilename()
                    << ":";
       curExp->dump();
+      }
     }
   }
 }

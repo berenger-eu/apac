@@ -71,6 +71,9 @@ public:
   }
 
 private:
+  // Add all read dependencies of an expression to the instruction
+  void addDependenciesRead(Instruction &instr, const Expr *e);
+
   inline void addDependencyRead(Instruction &instr,
                                 std::shared_ptr<aliasArg> d) {
     for (auto &alias : aliasTable.getAliases(d)) {
@@ -125,3 +128,6 @@ inline bool isEmptyInstruction(const Instruction &instr) {
 inline bool isInExceptionList(const ParmVarDecl &p) {
   return p.getType().getAsString().find("std::shared_ptr") != std::string::npos;
 }
+// Get all the variables that are read in an expression (similar to
+// getAllDeclRefExprInsideExpr but with some exceptions such as a in &a)
+std::vector<const DeclRefExpr *> getAllReadDeclRefExprInsideExpr(const Expr *e);
