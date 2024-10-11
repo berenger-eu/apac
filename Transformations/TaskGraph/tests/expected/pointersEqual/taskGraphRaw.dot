@@ -11,6 +11,7 @@ subgraph cluster_f0 {
     3 [label="pb = &b;"];
     3 -> 6[label="  pbR"];
     4 [label="p = pa;"];
+    4 -> 6[label="  pRW"];
     4 -> 5[label="  pR"];
     5 [label="*p = 5;
 *p : a"];
