@@ -14,6 +14,14 @@ inline AliasType getAliasType(const Expr *exp) {
     return Reference;
   return Variable;
 }
+inline AliasType getAliasType(const ValueDecl *v) {
+  const auto &qType = v->getType();
+  if (isPointerQualType(qType))
+    return Pointer;
+  else if (isReferenceQualType(qType))
+    return Reference;
+  return Variable;
+}
 struct aliasArg {
   const clang::VarDecl &declaration;
   // Type of Alias arg
