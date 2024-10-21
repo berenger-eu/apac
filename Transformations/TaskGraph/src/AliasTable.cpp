@@ -301,7 +301,23 @@ void AliasTable::getModifiedVariables(
 
 std::unordered_set<std::shared_ptr<aliasArg>>
 AliasTable::getArrayElementChildren(std::shared_ptr<aliasArg> elem) const {
-
+  auto allElem = getArrayElementDependencies(elem);
+  llvm::errs() << "Got array element dependencies\n";
+  llvm::errs() << "All elem size: " << allElem.size() << "\n";
+  elem->dump();
+  llvm::errs() << "\n";
+  std::unordered_set<std::shared_ptr<aliasArg>> children;
+  for (auto &curElem : allElem) {
+    llvm::errs() << "CurElem\n";
+    curElem->dump();
+    if (curElem->indexes.size() >= elem->indexes.size()) {
+      llvm::errs() << "Inserting\n";
+      children.insert(curElem);
+    }
+  }
+  llvm::errs() << "Done getting array element children\n";
+  llvm::errs() << "Children size: " << children.size() << "\n";
+  /*
   std::unordered_set<std::shared_ptr<aliasArg>> children;
   if (elem != nullptr) {
     auto curElem = aliasTableMap.at(getKey(&elem->declaration), elem->indexes);
@@ -320,11 +336,20 @@ AliasTable::getArrayElementChildren(std::shared_ptr<aliasArg> elem) const {
       }
     }
   }
+  */
   return children;
 }
 
 std::vector<std::shared_ptr<aliasArg>>
 AliasTable::getArrayElementParents(std::shared_ptr<aliasArg> elem) const {
+  auto allElements = getArrayElementDependencies(elem);
+  std::vector<std::shared_ptr<aliasArg>> parents;
+  for (auto &curElem : allElements) {
+    if (curElem->indexes.size() < elem->indexes.size()) {
+      parents.push_back(elem);
+    }
+  }
+  /*
   std::vector<std::shared_ptr<aliasArg>> parents;
   if (elem != nullptr) {
     auto curElem = aliasTableMap.at(getKey(&elem->declaration));
@@ -361,7 +386,7 @@ AliasTable::getArrayElementParents(std::shared_ptr<aliasArg> elem) const {
         }
       }
     }
-  }
+  }*/
   return parents;
 }
 std::unordered_set<std::shared_ptr<aliasArg>>
@@ -386,8 +411,13 @@ AliasTable::getArrayElementDependencies(std::shared_ptr<aliasArg> elem) const {
       auto curTableValue = toVisit.top();
       toVisit.pop();
       auto curChildren = getDirectChildren(*curTableValue, *curIndex);
-      for (auto child : curChildren)
+      for (auto child : curChildren) {
+        if (isVariantSubArray(child))
+          dependencies.insert(getVariantSubArray(child)->alias);
+        else if (isVariantAliasArg(child))
+          dependencies.insert(getVariantAliasArg(child));
         nextToVisit.push(&child);
+      }
       if (toVisit.empty()) {
         toVisit.swap(nextToVisit);
         curIndex++;
