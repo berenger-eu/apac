@@ -40,11 +40,35 @@ Graph InstructionToGraph(const std::vector<Instruction> &inInstructions,
       dataUsedInRead;
   std::unordered_map<std::shared_ptr<aliasArg>, std::shared_ptr<Node>>
       dataUsedInWrite;
+  // Iterate over all instructions
   for (long unsigned int i = 0; i < inInstructions.size(); ++i) {
     auto node = graph.nodes[i];
+    // Iterate over all dependencies of the current instruction
     for (const auto &dep : inInstructions[i].dependencies) {
+      // Parent elements are read only (if considered write, it would ignore
+      // current precision level) Example, a[1]=4;a[2]=1; if a is considered
+      // write, then a[1] and a[2] can't be parallelized If considered read,
+      // then a[1] and a[2] can be parallelized (and both elements are still
+      // write) Children elements are considered write (if the element is write)
+      auto &depElem = dep.first;
       for (const auto &depArrayElem :
-           aliasTable.getArrayElementRelated(dep.first)) {
+           aliasTable.getArrayElementParents(dep.first)) {
+        bool readFound = false;
+
+        if (dep.second.isRead) {
+          if (dataUsedInWrite.find(depArrayElem) != dataUsedInWrite.end()) {
+            if ((*dataUsedInWrite.find(depArrayElem)).second->id != node->id) {
+              auto depNode = dataUsedInWrite[depArrayElem];
+              depNode->addReadLink(depNode, node, depArrayElem);
+            }
+          }
+          readFound = true;
+        }
+        if (readFound)
+          dataUsedInRead[depArrayElem].insert(node);
+      }
+      for (const auto &depArrayElem :
+           aliasTable.getArrayElementChildren(dep.first)) {
         bool readFound = false;
 
         if (dep.second.isRead) {
