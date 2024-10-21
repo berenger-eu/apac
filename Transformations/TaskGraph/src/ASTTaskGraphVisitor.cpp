@@ -278,8 +278,7 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator &bop,
 
       std::unordered_set<std::shared_ptr<aliasArg>> aliasesRHS;
       computeAliasesForRHS(bop.getRHS(), aliasesRHS, curInstr);
-
-      const Expr *declOrArrayExprRHS;
+      const Expr *declOrArrayExprRHS = nullptr;
       if (getSingleArraySubscriptExprInsideExpr(bop.getRHS()))
         declOrArrayExprRHS =
             getSingleArraySubscriptExprInsideExpr(bop.getRHS());
