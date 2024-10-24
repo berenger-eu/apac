@@ -328,10 +328,10 @@ std::vector<int> getArraySubscriptsIndexesValues(const clang::Expr *e) {
   std::vector<const Expr *> vectExpr = getArraySubscriptsIndexes(e);
   if (isa<ArraySubscriptExpr>(e)) {
     auto arraySubscriptExpr = cast<ArraySubscriptExpr>(e);
-    if (getSingleDeclRefExprInsideExpr(arraySubscriptExpr->getBase())) {
-      auto base = cast<VarDecl>(
-          getSingleDeclRefExprInsideExpr(arraySubscriptExpr->getBase())
-              ->getDecl());
+    if (getSingleDeclRefExprInsideExpr(
+            getArrayBaseDeclRefExpr(arraySubscriptExpr))) {
+      auto base =
+          cast<VarDecl>(getArrayBaseDeclRefExpr(arraySubscriptExpr)->getDecl());
       for (auto &expr : vectExpr) {
         // TODO: Handle cases with evaluable expressions (5+4 , ...)
         Expr::EvalResult result;

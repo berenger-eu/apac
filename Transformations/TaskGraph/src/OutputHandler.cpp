@@ -9,13 +9,15 @@ void OutputHandler::subGenerateDotGraph(const Graph &inGraph,
     for (auto instr : node->instructionPtr)
       for (auto alias : instr->curAliases) {
         file << "\n";
+        const int depth =
+            getPtrDepthAccess(alias.first->declaration.getType(),
+                              alias.second->declaration.getType(),
+                              alias.first->declaration.getASTContext());
         for (int nbStar = 0;
              // TODO : getPtrDepthAccess, result of ptr stored when creating
              // alias?
-             nbStar <
-             getPtrDepthAccess(alias.first->declaration.getType(),
-                               alias.second->declaration.getType(),
-                               alias.first->declaration.getASTContext());
+             nbStar < depth;
+
              nbStar++)
           file << "*";
         file << alias.first->varAsString() << " : "

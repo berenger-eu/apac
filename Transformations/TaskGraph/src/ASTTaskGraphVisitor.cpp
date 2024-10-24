@@ -63,14 +63,13 @@ void ASTTaskGraphVisitor::computeAliasesForRHS(
   const DeclRefExpr *d = getSingleDeclRefExprInsideExpr(rhs);
   const auto a = getSingleArraySubscriptExprInsideExpr(rhs);
   // We look for variables aliased in a given expression
-  // If we access a variable, then we found the aliases of the variable really
+  // If we access a variable, then we find the aliases of the variable really
   // accessed
   //(*p), the variable is p, but in reality we access *p, so we need to look
   // for
   // the aliases of *p
   if (a) {
-    const VarDecl *base =
-        cast<VarDecl>(getSingleDeclRefExprInsideExpr(a->getBase())->getDecl());
+    const VarDecl *base = cast<VarDecl>(getArrayBaseDeclRefExpr(a)->getDecl());
     const auto indexes = getArraySubscriptsIndexesValues(a);
     llvm::errs() << "test\n";
     const auto mainAlias =
@@ -147,7 +146,7 @@ void ASTTaskGraphVisitor::handleCXXOperatorCallExpr(
       if ((array = getSingleArraySubscriptExprInsideExpr(c.getArg(1))) !=
           nullptr) {
         const auto baseDeclExpr =
-            getSingleDeclRefExprInsideExpr(array->getBase());
+            getSingleDeclRefExprInsideExpr(getArrayBaseDeclRefExpr(array));
         v2 = cast<VarDecl>(baseDeclExpr->getDecl());
         indexes = getArraySubscriptsIndexesValues(array);
         declOrArray = array;
@@ -187,7 +186,8 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator &uop,
   // If it's an operation on an array, then we look for the base variable, and
   // the indexes
   if ((array = getSingleArraySubscriptExprInsideExpr(subExpr)) != nullptr) {
-    const auto baseDeclExpr = getSingleDeclRefExprInsideExpr(array->getBase());
+    const auto baseDeclExpr =
+        getSingleDeclRefExprInsideExpr(getArrayBaseDeclRefExpr(array));
     mainVariable = cast<VarDecl>(baseDeclExpr->getDecl());
     indexes = getArraySubscriptsIndexesValues(array);
     arrayOrDeclExpr = array;
@@ -246,8 +246,7 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator &bop,
     // Array
     if ((array = getSingleArraySubscriptExprInsideExpr(bop.getLHS())) !=
         nullptr) {
-      const auto baseDeclExpr =
-          getSingleDeclRefExprInsideExpr(array->getBase());
+      const auto baseDeclExpr = getArrayBaseDeclRefExpr(array);
       mainVariable = cast<VarDecl>(baseDeclExpr->getDecl());
       indexes = getArraySubscriptsIndexesValues(array);
       declOrArrayExpr = array;
@@ -265,7 +264,6 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator &bop,
     // setLeftVars.insert(v);
     computeAliasesForRHS(bop.getLHS(), aliasesLeft, curInstr);
     // aliasTable.getModifiedVariables(setLeftVars,depth);
-
     if (isPointerQualType(bop.getLHS()->getType())) {
       // Separate this part in a different function to make it more
       // understandable
@@ -287,7 +285,6 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator &bop,
       else
         ;
       if (declOrArrayExprRHS) {
-        declOrArrayExpr->getType().dump();
         declOrArrayExprRHS->getType().dump();
         int depth = getPtrDepthAccess(declOrArrayExprRHS->getType(),
                                       bop.getRHS()->getType(),
@@ -310,7 +307,6 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator &bop,
       if (isa<CompoundAssignOperator>(bop))
         addDependencyRead(curInstr, alias);
     }
-
     // If we have a pointer, then the aliases are related to the pointed
     // values when depth > 0 So we have to add a read dependency on the
     // pointer itself
