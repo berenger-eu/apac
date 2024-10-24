@@ -242,6 +242,9 @@ bool isFullConstType(const QualType &qType) {
 int getPtrDepthAccess(QualType qt1, QualType qt2, const ASTContext &aContext) {
   int returnValue = 0;
   // If both types are the same, then we return 0 since they have the same depth
+  qt2 = qt2.getSingleStepDesugaredType(aContext);
+  if (isReferenceQualType(qt2))
+    qt2 = getNonReferenceQualType(qt2);
   if (qt1 != qt2) {
     // If a pointer to type qt1 is equal to qt2, then qt2 is a pointer to type
     // qt1
@@ -251,12 +254,16 @@ int getPtrDepthAccess(QualType qt1, QualType qt2, const ASTContext &aContext) {
     // Else, we compare type pointed by qt1 until we find the same type as qt2
     // The number of iteration is the depth of the pointer access
     else {
-      while (qt1 != qt2 && qt1.getTypePtrOrNull() && qt2.getTypePtrOrNull() &&
-             qt1->getPointeeType() != qt2->getPointeeType()) {
+      while (qt1 != qt2 && qt1.getTypePtrOrNull() && qt2.getTypePtrOrNull()) {
         if (isPointerQualType(qt1)) {
           returnValue++;
           qt1 = qt1->getPointeeType();
+        } else if (isReferenceQualType(qt1)) {
+          qt1 = getNonReferenceQualType(qt1);
+        } else if (qt1->isArrayType() || qt1->isConstantArrayType()) {
+          qt1 = aContext.getAsArrayType(qt1)->getElementType();
         }
+        qt1 = qt1.getSingleStepDesugaredType(aContext);
       }
     }
   }
