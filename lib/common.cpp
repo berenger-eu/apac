@@ -128,6 +128,22 @@ bool isReferenceQualType(QualType qType) {
 
   return returnValue;
 }
+
+QualType getNonReferenceQualType(QualType qType) {
+  qType.dump();
+  if (qType->isReferenceType()) {
+    return qType.getNonReferenceType();
+  } else if (qType.getAsString().find("reference_wrapper") !=
+             std::string::npos) {
+    if (isa<TemplateSpecializationType>(qType)) {
+      const TemplateSpecializationType *tst =
+          cast<TemplateSpecializationType>(qType);
+      return tst->template_arguments().front().getAsType();
+    }
+  }
+  return qType;
+}
+
 void getLeafs(Stmt *st, std::vector<Stmt *> &leafs) {
   std::queue<Stmt *> vectNodes;
   vectNodes.push(st);

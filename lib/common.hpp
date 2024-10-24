@@ -40,6 +40,8 @@ bool isPointerQualType(clang::QualType);
 
 // True when the input is a reference
 bool isReferenceQualType(clang::QualType);
+// Returns the type of the reference
+QualType getNonReferenceQualType(QualType qType);
 
 // Returns the leafs (CallExpr,DeclRefExpr,...) of a given statement
 // TODO: Check usefulness and remove/replace if not needed
