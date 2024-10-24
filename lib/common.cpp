@@ -209,9 +209,25 @@ const DeclRefExpr *getArrayBaseDeclRefExpr(const ArraySubscriptExpr *ase) {
 }
 
 const ArraySubscriptExpr *getSingleArraySubscriptExprInsideExpr(const Expr *e) {
+
+  std::deque<const ArraySubscriptExpr *> dequeArraySubscriptExpr;
+  std::stack<const Expr *> stackExpr;
+  const Expr *curExpr = e;
+
+  stackExpr.push(curExpr);
+  while (!stackExpr.empty()) {
+    curExpr = stackExpr.top();
+    stackExpr.pop();
+    if (isa<ArraySubscriptExpr>(curExpr)) {
+      const ArraySubscriptExpr *ase = cast<ArraySubscriptExpr>(curExpr);
+      dequeArraySubscriptExpr.push_front(ase);
+    } else {
+      for (auto it = curExpr->child_begin(); it != curExpr->child_end(); ++it)
+        if (isa<Expr>(*it))
+          stackExpr.push(cast<Expr>(*it));
+    }
+  }
   const ArraySubscriptExpr *returnValue = NULL;
-  std::deque<const ArraySubscriptExpr *> dequeArraySubscriptExpr =
-      getArraySubscripts(e);
   if (dequeArraySubscriptExpr.size() == 1) {
     returnValue = dequeArraySubscriptExpr.front();
   }
