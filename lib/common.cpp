@@ -196,6 +196,18 @@ const DeclRefExpr *getSingleDeclRefExprInsideExpr(const Expr *e) {
   }
   return returnValue;
 }
+
+const DeclRefExpr *getArrayBaseDeclRefExpr(const ArraySubscriptExpr *ase) {
+  const DeclRefExpr *returnValue = NULL;
+  const Expr *base = ase;
+  while (isa<ArraySubscriptExpr>(base)) {
+    base = cast<ArraySubscriptExpr>(base)->getBase();
+    base = base->IgnoreParenImpCasts();
+  }
+  returnValue = getSingleDeclRefExprInsideExpr(base);
+  return returnValue;
+}
+
 const ArraySubscriptExpr *getSingleArraySubscriptExprInsideExpr(const Expr *e) {
   const ArraySubscriptExpr *returnValue = NULL;
   std::deque<const ArraySubscriptExpr *> dequeArraySubscriptExpr =

@@ -52,7 +52,9 @@ const DeclRefExpr *getSingleDeclRefExprInsideExpr(const Expr *e);
 // Returns all DeclRefExpr inside a given Expr
 std::vector<const DeclRefExpr *> getAllDeclRefExprInsideExpr(const Expr *e);
 // Returns the ArraySubscriptExpr inside a given Expr, none if there are
-// multiple
+// multiple array access (except when inside indexes)
+// Example : p[pi[4]] will return p, pi[4] + pi[2] will return nullptr
+// p[1][4] will return p[1][4]
 const ArraySubscriptExpr *getSingleArraySubscriptExprInsideExpr(const Expr *e);
 // True when the input is a completely constant type (exemple, const int *const
 // )
@@ -88,11 +90,16 @@ getArraySubscripts(const clang::Expr *e);
 
 std::vector<const clang::Expr *>
 getArraySubscriptsIndexes(const clang::Expr *e);
+
+// Returns the base decl ref expr of an ArraySubscriptExpr (nullptr if not
+// found), used mostly to get the base of arrays with multiple dimensions
+const clang::DeclRefExpr *
+getArrayBaseDeclRefExpr(const clang::ArraySubscriptExpr *ase);
+
 // Returns the values of the ArraySubscriptExpr expressions in a given Expr in
 // the same ordre they appear -1 if the value is not evaluated (because it's
 // either not evaluable or not supported) Warning: it won't return arrays access
 // inside indexes, so p[pi[4]] will only return -1
-
 std::vector<int> getArraySubscriptsIndexesValues(const clang::Expr *e);
 // Inline Function
 
