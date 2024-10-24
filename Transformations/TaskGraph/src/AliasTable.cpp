@@ -396,14 +396,18 @@ AliasTable::getArrayElementDependencies(std::shared_ptr<aliasArg> elem) const {
     auto indexes = elem->indexes;
     const VarDecl *variableArg = &elem->declaration;
     auto curElem = aliasTableMap.at(getKey(&elem->declaration));
-    if (isVariantSubArray(*curElem))
-      dependencies.insert(getVariantSubArray(*curElem)->alias);
-    else if (isVariantAliasArg(*curElem))
-      dependencies.insert(getVariantAliasArg(*curElem));
+
+    std::shared_ptr<aliasArg> aliasArgToAdd;
+    if (isVariantSubArray(*curElem) &&
+        (aliasArgToAdd = getVariantSubArray(*curElem)->alias) != nullptr)
+      dependencies.insert(aliasArgToAdd);
+    else if (isVariantAliasArg(*curElem) &&
+             (aliasArgToAdd = getVariantAliasArg(*curElem)) != nullptr)
+      dependencies.insert(aliasArgToAdd);
     std::stack<const aliasesTableValues *> toVisit;
     toVisit.push(curElem);
     auto curIndex = indexes.begin();
-    std::stack<const aliasesTableValues *> nextToVisit;
+    std::vector<const aliasesTableValues *> nextToVisit;
     for (auto index : indexes)
       llvm::errs() << index << " ";
     llvm::errs() << "DoneIndex\n";
@@ -412,33 +416,42 @@ AliasTable::getArrayElementDependencies(std::shared_ptr<aliasArg> elem) const {
       toVisit.pop();
       auto curChildren = getDirectChildren(*curTableValue, *curIndex);
       for (auto child : curChildren) {
-        if (isVariantSubArray(child))
-          dependencies.insert(getVariantSubArray(child)->alias);
-        else if (isVariantAliasArg(child))
-          dependencies.insert(getVariantAliasArg(child));
-        nextToVisit.push(&child);
+        std::shared_ptr<aliasArg> aliasArgToAdd = nullptr;
+        if (isVariantSubArray(*child) &&
+            ((aliasArgToAdd = getVariantSubArray(*child)->alias)) != nullptr) {
+          dependencies.insert(aliasArgToAdd);
+        } else if (isVariantAliasArg(*child) &&
+                   ((aliasArgToAdd = getVariantAliasArg(*child))) != nullptr) {
+          dependencies.insert(aliasArgToAdd);
+        }
+        nextToVisit.push_back(child);
       }
       if (toVisit.empty()) {
-        toVisit.swap(nextToVisit);
+        for (auto &next : nextToVisit)
+          toVisit.push(next);
+        nextToVisit.clear();
         curIndex++;
       }
     }
   }
   return dependencies;
 }
-std::vector<aliasesTableValues>
+std::vector<aliasesTableValues *>
 AliasTable::getDirectChildren(const aliasesTableValues elem,
                               const int &depth) const {
   assert(depth >= -1);
-  std::vector<aliasesTableValues> children;
+  std::vector<aliasesTableValues *> children;
   if (isVariantSubArray(elem)) {
     auto curMap = getVariantSubArray(elem);
     if (depth == -1)
-      for (auto &childElem : curMap->map)
-        children.push_back(childElem.second);
+      for (auto &childElem : curMap->map) {
+        children.push_back(&childElem.second);
+      }
     else if (curMap->map.count(depth)) {
-      children.push_back(curMap->map.at(depth));
+      children.push_back(&curMap->map.at(depth));
     }
+  } else if (isVariantAliasArg(elem)) {
+    auto alias = getVariantAliasArg(elem);
   }
   return children;
 }
@@ -505,11 +518,6 @@ void AliasTable::dumpPrep(std::string *varTable, std::string *refTable,
       }
     } else if (isVariantSubArray(elem.second)) {
       auto alias = getVariantSubArray(elem.second);
-      for (auto &subAlias : alias->map) {
-        if (isVariantAliasArg(subAlias.second)) {
-          auto aliasBis = getVariantAliasArg(subAlias.second);
-        }
-      }
       alias->dumpPrep(varTable, refTable, ptrTable);
       if (varTable != nullptr)
         ssVar << *varTable;

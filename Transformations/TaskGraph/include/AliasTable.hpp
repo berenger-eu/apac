@@ -86,8 +86,8 @@ void addAliasPtr(const VarDecl *var, const std::vector<int> &,
   // (as long as they are in the table)
   std::unordered_set<std::shared_ptr<aliasArg>>
       getArrayElementChildren(std::shared_ptr<aliasArg>) const;
-  std::vector<aliasesTableValues> getDirectChildren(aliasesTableValues,
-                                                    const int &depth) const;
+  std::vector<aliasesTableValues *> getDirectChildren(aliasesTableValues,
+                                                      const int &depth) const;
   // Get all the elements related to an array
   // For example if we give it tab[1], it will return tab, all tab[1][i] and all
   // tab[i] ...
