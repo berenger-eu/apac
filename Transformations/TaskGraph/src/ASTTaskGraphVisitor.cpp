@@ -533,7 +533,13 @@ bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt *i) {
   if (isInHeaders(TheRewriter.getSourceMgr(), i->getBeginLoc()))
     return true;
   bool res = true;
-
+  StmtOrder *outerInstrOrder = currentOrderManager;
+  if (!ignoreStmtPragma) {
+    currentOrderManager->addInstructionToManager(i);
+  }
+  if (currentOrderManager->getSubStmtOrder(i) != nullptr) {
+    currentOrderManager = (outerInstrOrder->getSubStmtOrder(i)).get();
+  }
   Instruction compInstr(i, getStmtAsString(i, TheRewriter.getLangOpts()), true,
                         0);
   functionsInstructionsVector.push_back(std::vector<Instruction>());
@@ -556,6 +562,8 @@ bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt *i) {
     functionsInstructionsVector.pop_back();
     functionsInstructionsVector.back().push_back(compInstr);
   }
+  currentOrderManager = outerInstrOrder;
+
   if (i->getElse()) {
     if (isa<CompoundStmt>(i->getElse())) {
 
