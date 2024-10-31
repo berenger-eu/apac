@@ -217,20 +217,13 @@ void nodesComputeInOut(Graph &graph) {
   }
 }
 void optimizeGraph(Graph &graph) {
-  transitiveReduction(graph);
-  nodesFusion(graph);
+  // transitiveReduction(graph);
+  // nodesFusion(graph);
   nodesComputeInOut(graph);
 }
 
-void updateInstructionOrderNode(
-    const std::shared_ptr<Node> &node, StmtOrder &orderManager,
-    std::unordered_set<std::shared_ptr<Node>> &visited) {
-  if (visited.count(node))
-    return;
-  for (const auto &prev : node->prev)
-    if (!visited.count(prev))
-      updateInstructionOrderNode(prev, orderManager, visited);
-  visited.insert(node);
+void updateInstructionOrderNode(const std::shared_ptr<Node> &node,
+                                StmtOrder &orderManager) {
   std::vector<const Stmt *> vectStmts;
   for (auto instr : node->instructionPtr)
     vectStmts.push_back(instr->instruction);
@@ -251,9 +244,8 @@ void updateInstructionOrderNode(
 
 void updateInstructionOrderFromGraph(const Graph &graph,
                                      StmtOrder &orderManager) {
-  std::unordered_set<std::shared_ptr<Node>> visited;
   for (const auto &node : graph.nodes)
-    updateInstructionOrderNode(node, orderManager, visited);
+    updateInstructionOrderNode(node, orderManager);
   // Separated just in case
 }
 

@@ -53,8 +53,7 @@ struct Graph {
     this->nodes.erase(std::find(this->nodes.begin(), this->nodes.end(), n2));
   }
 };
-void updateInstructionOrderNode(const std::shared_ptr<Node> &, StmtOrder &,
-                                std::unordered_set<std::shared_ptr<Node>> &);
+void updateInstructionOrderNode(const std::shared_ptr<Node> &, StmtOrder &);
 void updateInstructionOrderFromGraph(const Graph &, StmtOrder &);
 
 // Translate a list of instructions to a graph
