@@ -82,6 +82,7 @@ std::string OutputHandler::modifiedStringForInstruction(
   // If the instruction contains a group of instructions (for,if,...)
   StmtOrder *subOrder = instructionsOrderManager.getSubStmtOrder(instr).get();
   if (subOrder != nullptr) {
+    if (!isa<CompoundStmt>(instr))
     ssPrint << getStmtAsString(instr, TheRewriter.getLangOpts()) << "{\n";
     for (auto instrSubGroups : subOrder->instructionGroups) {
       bool addPragma = isPragmaValid(*subOrder, instrSubGroups.first);
@@ -98,6 +99,7 @@ std::string OutputHandler::modifiedStringForInstruction(
       if (addPragma)
         ssPrint << "}\n";
     }
+    if (!isa<CompoundStmt>(instr))
     ssPrint << "}\n";
   } else
     ssPrint << getStmtAsStringFull(instr, TheRewriter.getLangOpts()) << "\n";
@@ -177,6 +179,8 @@ OutputHandler::createPragmaTaskWait(const StmtOrder &instructionsOrderManager,
   std::stringstream ssPrint;
   ssPrint << "#pragma omp taskwait ";
   auto instr = instructionGroup.begin()->first;
+  // TODO : Implement condition for taskwait as a node
+  /*
   auto node = instructionsOrderManager.getNode(instr);
 
   if (node == nullptr) {
@@ -191,9 +195,27 @@ OutputHandler::createPragmaTaskWait(const StmtOrder &instructionsOrderManager,
   }
   node->dump();
   std::string dependString = createDependsString(node);
+  */
+  std::string dependString;
+  if (isa<IfStmt>(instr)) {
+    auto ifSt = cast<IfStmt>(instr);
+    auto readVarWaitSet = getAllDistinctDeclRefExprInsideExpr(ifSt->getCond());
+    if (readVarWaitSet.size() > 0) {
+      dependString = " depend(in:";
+      auto itBeg = readVarWaitSet.begin();
+      auto itEnd = readVarWaitSet.end();
+      for (auto itSet = itBeg; itSet != itEnd; ++itSet) {
+        if (itSet != itBeg)
+          dependString += ",";
+        dependString += (*itSet)->getDecl()->getNameAsString();
+      }
+      dependString += ")";
+    }
+  }
   if (dependString.length() == 0)
     return "";
-  ssPrint << createDependsString(node);
+  // ssPrint << createDependsString(node);
+  ssPrint << dependString;
   return ssPrint.str();
 }
 std::string

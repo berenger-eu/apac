@@ -546,6 +546,13 @@ bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt *i) {
   // res=RecursiveASTVisitor::TraverseIfStmt(i);
   if (i->getThen() && isa<CompoundStmt>(i->getThen())) {
     CompoundStmt *c = cast<CompoundStmt>(i->getThen());
+    StmtOrder *outerInstrOrder2 = currentOrderManager;
+    if (!ignoreStmtPragma) {
+      currentOrderManager->addInstructionToManager(c);
+    }
+    if (currentOrderManager->getSubStmtOrder(c) != nullptr) {
+      currentOrderManager = (outerInstrOrder2->getSubStmtOrder(c)).get();
+    }
     Instruction compInstr(c, "if", true, 0);
     functionsInstructionsVector.push_back(std::vector<Instruction>());
     res = RecursiveASTVisitor::TraverseCompoundStmt(c);
@@ -559,10 +566,10 @@ bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt *i) {
       }
       compInstr.scopedInstructionsNumber++;
     }
+    currentOrderManager = outerInstrOrder2;
     functionsInstructionsVector.pop_back();
     functionsInstructionsVector.back().push_back(compInstr);
   }
-  currentOrderManager = outerInstrOrder;
 
   if (i->getElse()) {
     if (isa<CompoundStmt>(i->getElse())) {
@@ -602,6 +609,7 @@ bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt *i) {
       functionsInstructionsVector.back().push_back(compInstr);
     }
   }
+  currentOrderManager = outerInstrOrder;
   compInstr.scopedInstructions = functionsInstructionsVector.back();
   for (auto &instr : compInstr.scopedInstructions) {
     for (auto &dep : instr.dependencies) {
@@ -614,6 +622,5 @@ bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt *i) {
   }
   functionsInstructionsVector.pop_back();
   functionsInstructionsVector.back().push_back(compInstr);
-
   return res;
 }
