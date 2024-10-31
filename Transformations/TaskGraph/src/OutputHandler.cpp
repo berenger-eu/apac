@@ -212,22 +212,10 @@ OutputHandler::createPragmaTaskWait(const StmtOrder &instructionsOrderManager,
   std::string dependString;
   if (isa<IfStmt>(instr)) {
     auto ifSt = cast<IfStmt>(instr);
-    auto readVarWaitSet = getAllDistinctDeclRefExprInsideExpr(ifSt->getCond());
-    if (readVarWaitSet.size() > 0) {
-      dependString = " depend(in:";
-      auto itBeg = readVarWaitSet.begin();
-      auto itEnd = readVarWaitSet.end();
-      for (auto itSet = itBeg; itSet != itEnd; ++itSet) {
-        if (itSet != itBeg)
-          dependString += ",";
-        dependString += (*itSet)->getDecl()->getNameAsString();
-      }
-      dependString += ")";
-    }
+    dependString = createDependsString(instructionsOrderManager.getNode(ifSt));
   }
   if (dependString.length() == 0)
     return "";
-  // ssPrint << createDependsString(node);
   ssPrint << dependString;
   return ssPrint.str();
 }
