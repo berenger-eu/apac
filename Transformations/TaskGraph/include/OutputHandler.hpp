@@ -12,7 +12,8 @@ public:
   void modifyFile(const StmtOrder &instructionsOrderManager);
 
 private:
-  void subGenerateDotGraph(const Graph &inGraph, std::ofstream &file);
+  void subGenerateDotGraph(const Graph &graph, std::ofstream &file);
+  void generateLinks(const Graph &inGraph, std::ofstream &file);
   std::string
   modifiedStringForInstruction(const StmtOrder &instructionsOrderManager,
                                const Stmt *instr);

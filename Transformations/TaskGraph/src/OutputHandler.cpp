@@ -1,5 +1,27 @@
 #include "OutputHandler.hpp"
 int invisibleNodeCounter = 0;
+
+void OutputHandler::generateLinks(const Graph &inGraph, std::ofstream &file) {
+  for (const auto &node : inGraph.nodes) {
+
+    // Add links, with the dependencies
+    for (const auto &nextNode : node->next) {
+      std::stringstream ss;
+      for (auto iterBegin = nextNode.second.begin();
+           iterBegin != nextNode.second.end(); iterBegin++) {
+        if (iterBegin != nextNode.second.begin())
+          ss << ",";
+        ss << iterBegin->first->varAsString()
+           << (iterBegin->second.isRead ? "R" : "")
+           << (iterBegin->second.isWrite ? "W" : "");
+      }
+      file << "    " << node->id << " -> " << nextNode.first->id
+           << "[label=\"  " << ss.str() << "\"];\n";
+    }
+    for (auto subGraph : node->graph)
+      generateLinks(*subGraph, file);
+  }
+}
 void OutputHandler::subGenerateDotGraph(const Graph &inGraph,
                                         std::ofstream &file) {
   file << "    invisibleNodeScope_" << invisibleNodeCounter++
@@ -24,19 +46,6 @@ void OutputHandler::subGenerateDotGraph(const Graph &inGraph,
              << alias.second->varAsString();
       }
     file << "\"];\n";
-    for (const auto &nextNode : node->next) {
-      std::stringstream ss;
-      for (auto iterBegin = nextNode.second.begin();
-           iterBegin != nextNode.second.end(); iterBegin++) {
-        if (iterBegin != nextNode.second.begin())
-          ss << ",";
-        ss << iterBegin->first->varAsString()
-           << (iterBegin->second.isRead ? "R" : "")
-           << (iterBegin->second.isWrite ? "W" : "");
-      }
-      file << "    " << node->id << " -> " << nextNode.first->id
-           << "[label=\"  " << ss.str() << "\"];\n";
-    }
     for (long unsigned int i = 0; i < node->graph.size(); i++) {
       auto subGraph = node->graph[i];
       long unsigned int curInstrIndex = 0, countGraph = -1;
@@ -64,6 +73,8 @@ void OutputHandler::subGenerateDotGraph(const Graph &inGraph,
 void OutputHandler::GenerateDotGraph(const std::vector<Graph> &graphs,
                                      const std::string &filename) {
   std::ofstream file(filename);
+  if (file.fail())
+    llvm::errs() << "Error generating file " << filename << "\n";
   file << "digraph G {\n";
   int i = 0;
   for (auto graph : graphs) {
@@ -72,6 +83,8 @@ void OutputHandler::GenerateDotGraph(const std::vector<Graph> &graphs,
     file << "}\n";
     i++;
   }
+  for (auto graph : graphs)
+    generateLinks(graph, file);
   file << "}\n";
   file.close();
 }
@@ -83,7 +96,7 @@ std::string OutputHandler::modifiedStringForInstruction(
   StmtOrder *subOrder = instructionsOrderManager.getSubStmtOrder(instr).get();
   if (subOrder != nullptr) {
     if (!isa<CompoundStmt>(instr))
-    ssPrint << getStmtAsString(instr, TheRewriter.getLangOpts()) << "{\n";
+      ssPrint << getStmtAsString(instr, TheRewriter.getLangOpts()) << "{\n";
     for (auto instrSubGroups : subOrder->instructionGroups) {
       bool addPragma = isPragmaValid(*subOrder, instrSubGroups.first);
       if (addPragma)
@@ -100,7 +113,7 @@ std::string OutputHandler::modifiedStringForInstruction(
         ssPrint << "}\n";
     }
     if (!isa<CompoundStmt>(instr))
-    ssPrint << "}\n";
+      ssPrint << "}\n";
   } else
     ssPrint << getStmtAsStringFull(instr, TheRewriter.getLangOpts()) << "\n";
   return ssPrint.str();
