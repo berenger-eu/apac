@@ -12,8 +12,15 @@
 
 int Node::idCounter = 0;
 
-Graph InstructionToGraph(const std::vector<Instruction> &inInstructions,
-                         const AliasTable &aliasTable, bool isLoop) {
+Graph InstructionToGraph(
+    const std::vector<Instruction> &inInstructions,
+    const AliasTable &aliasTable, bool isLoop,
+    std::shared_ptr<std::unordered_map<std::shared_ptr<aliasArg>,
+                                       std::set<std::shared_ptr<Node>>>>
+        previousDataUsedInRead,
+    std::shared_ptr<
+        std::unordered_map<std::shared_ptr<aliasArg>, std::shared_ptr<Node>>>
+        previousDataUsedInWrite) {
   Graph graph;
 
   for (const auto &curInstruction : inInstructions) {
@@ -24,22 +31,26 @@ Graph InstructionToGraph(const std::vector<Instruction> &inInstructions,
     node->instructionPtr = std::vector<const Instruction *>();
     node->instructionPtr.push_back(&curInstruction);
     graph.nodes.push_back(node);
-    if (curInstruction.complexInstruction) {
-      if (isa<ForStmt>(curInstruction.instruction))
-        node->graph.emplace_back(std::make_shared<Graph>(InstructionToGraph(
-            curInstruction.scopedInstructions, aliasTable, true)));
-      else
-        node->graph.emplace_back(std::make_shared<Graph>(InstructionToGraph(
-            curInstruction.scopedInstructions, aliasTable, isLoop)));
-    }
+
     for (const auto &dep : curInstruction.dependencies) {
       node->dependencies.insert(dep);
     }
   }
+  std::shared_ptr<std::unordered_map<std::shared_ptr<aliasArg>,
+                                     std::set<std::shared_ptr<Node>>>>
+      dataUsedInReadPtr;
+  std::shared_ptr<
+      std::unordered_map<std::shared_ptr<aliasArg>, std::shared_ptr<Node>>>
+      dataUsedInWritePtr;
+  if (previousDataUsedInRead != nullptr)
+    dataUsedInReadPtr = previousDataUsedInRead;
+  if (previousDataUsedInWrite != nullptr)
+    dataUsedInWritePtr = previousDataUsedInWrite;
   std::unordered_map<std::shared_ptr<aliasArg>, std::set<std::shared_ptr<Node>>>
-      dataUsedInRead;
+      &dataUsedInRead = *dataUsedInReadPtr;
   std::unordered_map<std::shared_ptr<aliasArg>, std::shared_ptr<Node>>
-      dataUsedInWrite;
+      &dataUsedInWrite = *dataUsedInWritePtr;
+
   // Iterate over all instructions
   for (long unsigned int i = 0; i < inInstructions.size(); ++i) {
     auto node = graph.nodes[i];
@@ -103,6 +114,17 @@ Graph InstructionToGraph(const std::vector<Instruction> &inInstructions,
         }
         if (readFound)
           dataUsedInRead[depArrayElem].insert(node);
+      }
+    }
+
+    if (inInstructions[i].complexInstruction) {
+      if (isa<ForStmt>(inInstructions[i].instruction))
+        node->graph.emplace_back(std::make_shared<Graph>(InstructionToGraph(
+            inInstructions[i].scopedInstructions, aliasTable, true)));
+      else {
+        node->graph.emplace_back(std::make_shared<Graph>(
+            InstructionToGraph(inInstructions[i].scopedInstructions, aliasTable,
+                               isLoop, dataUsedInReadPtr, dataUsedInWritePtr)));
       }
     }
   }

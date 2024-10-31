@@ -58,8 +58,16 @@ void updateInstructionOrderNode(const std::shared_ptr<Node> &, StmtOrder &,
 void updateInstructionOrderFromGraph(const Graph &, StmtOrder &);
 
 // Translate a list of instructions to a graph
-Graph InstructionToGraph(const std::vector<Instruction> &, const AliasTable &,
-                         bool isLoop = false);
+Graph InstructionToGraph(
+    const std::vector<Instruction> &, const AliasTable &, bool isLoop = false,
+    std::shared_ptr<std::unordered_map<std::shared_ptr<aliasArg>,
+                                       std::set<std::shared_ptr<Node>>>>
+        previousDataUsedInRead = std::make_shared<std::unordered_map<
+            std::shared_ptr<aliasArg>, std::set<std::shared_ptr<Node>>>>(),
+    std::shared_ptr<
+        std::unordered_map<std::shared_ptr<aliasArg>, std::shared_ptr<Node>>>
+        previousDataUsedInWrite = std::make_shared<std::unordered_map<
+            std::shared_ptr<aliasArg>, std::shared_ptr<Node>>>());
 
 // Print the graph, mostly to debug
 void PrintGraph(const Graph &);

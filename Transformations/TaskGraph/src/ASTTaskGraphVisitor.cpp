@@ -542,6 +542,7 @@ bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt *i) {
   }
   Instruction compInstr(i, getStmtAsString(i, TheRewriter.getLangOpts()), true,
                         0);
+  handleStmt(*i->getCond(), compInstr);
   functionsInstructionsVector.push_back(std::vector<Instruction>());
   // res=RecursiveASTVisitor::TraverseIfStmt(i);
   if (i->getThen() && isa<CompoundStmt>(i->getThen())) {
@@ -558,9 +559,11 @@ bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt *i) {
     res = RecursiveASTVisitor::TraverseCompoundStmt(c);
     compInstr.scopedInstructions = functionsInstructionsVector.back();
     for (auto &instr : compInstr.scopedInstructions) {
+      /*
       for (auto &dep : instr.dependencies) {
         compInstr.dependencies.insert(dep);
       }
+      */
       if (instr.complexInstruction) {
         compInstr.scopedInstructionsNumber += instr.scopedInstructions.size();
       }
@@ -581,9 +584,11 @@ bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt *i) {
       res = RecursiveASTVisitor::TraverseCompoundStmt(c);
       compInstr.scopedInstructions = functionsInstructionsVector.back();
       for (auto &instr : compInstr.scopedInstructions) {
+        /*
         for (auto &dep : instr.dependencies) {
           compInstr.dependencies.insert(dep);
         }
+        */
         if (instr.complexInstruction) {
           compInstr.scopedInstructionsNumber += instr.scopedInstructions.size();
         }
@@ -597,9 +602,11 @@ bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt *i) {
       res = RecursiveASTVisitor::TraverseStmt(i->getElse());
       compInstr.scopedInstructions = functionsInstructionsVector.back();
       for (auto &instr : compInstr.scopedInstructions) {
+        /*
         for (auto &dep : instr.dependencies) {
           compInstr.dependencies.insert(dep);
         }
+        */
         if (instr.complexInstruction) {
           compInstr.scopedInstructionsNumber += instr.scopedInstructions.size();
         }
@@ -612,9 +619,11 @@ bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt *i) {
   currentOrderManager = outerInstrOrder;
   compInstr.scopedInstructions = functionsInstructionsVector.back();
   for (auto &instr : compInstr.scopedInstructions) {
+    /*
     for (auto &dep : instr.dependencies) {
       compInstr.dependencies.insert(dep);
     }
+    */
     if (instr.complexInstruction) {
       compInstr.scopedInstructionsNumber += instr.scopedInstructions.size();
     }
