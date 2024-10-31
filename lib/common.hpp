@@ -3,6 +3,7 @@
 #include <queue>
 #include <sstream>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "clang/AST/ASTContext.h"
@@ -51,6 +52,14 @@ void getLeafs(clang::Stmt *s, std::vector<clang::Stmt *> &leafs);
 const DeclRefExpr *getSingleDeclRefExprInsideExpr(const Expr *e);
 // Returns all DeclRefExpr inside a given Expr
 std::vector<const DeclRefExpr *> getAllDeclRefExprInsideExpr(const Expr *e);
+// Get all distinct DeclRefExpr inside a given Expr
+inline std::unordered_set<const DeclRefExpr *>
+getAllDistinctDeclRefExprInsideExpr(const Expr *e) {
+  std::unordered_set<const DeclRefExpr *> declSet;
+  for (const auto &d : getAllDeclRefExprInsideExpr(e))
+    declSet.insert(d);
+  return declSet;
+}
 // Returns the ArraySubscriptExpr inside a given Expr, none if there are
 // multiple array access (except when inside indexes)
 // Example : p[pi[4]] will return p, pi[4] + pi[2] will return nullptr
