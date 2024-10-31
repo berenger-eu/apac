@@ -4,7 +4,7 @@
 #include "clang/AST/Decl.h"
 using namespace clang;
 struct Node {
-
+  int graphId;
   static int idCounter;
   int id;
   bool isLooped;

@@ -23,8 +23,11 @@
 #include <vector>
 
 struct Graph {
+  int graphId;
+  static int idCounter;
   std::vector<std::shared_ptr<Node>> nodes;
   std::vector<std::shared_ptr<Node>> roots;
+  Graph() : graphId(idCounter++) {}
   void dump() const {
     llvm::errs() << "Graph: \n";
     for (const auto &node : nodes) {

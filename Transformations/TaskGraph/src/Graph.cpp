@@ -11,7 +11,7 @@
 #include <stack>
 
 int Node::idCounter = 0;
-
+int Graph::idCounter = 0;
 Graph InstructionToGraph(
     const std::vector<Instruction> &inInstructions,
     const AliasTable &aliasTable, bool isLoop,
@@ -25,6 +25,7 @@ Graph InstructionToGraph(
 
   for (const auto &curInstruction : inInstructions) {
     auto node = std::make_shared<Node>();
+    node->graphId = graph.graphId;
     node->isLooped = isLoop;
     node->instruction =
         curInstruction.instructionString; // instruction.instruction;
@@ -195,18 +196,21 @@ void nodesFusion(Graph &graph) {
   for (long unsigned int i = 0; i < graph.nodes.size(); i++) {
     auto node = graph.nodes[i];
     if (node->instructionPtr.size() == 1 &&
-        node->instructionPtr[0]->complexInstruction)
+        node->instructionPtr[0]->complexInstruction) {
+      for (auto subGraph : node->graph) {
+        optimizeGraph(*subGraph);
+      }
       continue;
+    }
     while (
         node->next.size() == 1 && node->next.begin()->first->prev.size() == 1 &&
+        node->next.begin()->first->graphId == node->graphId &&
         !(node->next.begin()->first->instructionPtr.size() == 1 &&
           node->next.begin()->first->instructionPtr[0]->complexInstruction)) {
       toRemove.push(node->next.begin()->first);
       graph.fuseNodes(node, (node->next.begin()->first));
     }
     // TODO: handle multiple subgraphs (might happen after fusion of nodes)
-    for (auto subGraph : node->graph)
-      optimizeGraph(*subGraph);
   }
 }
 void nodesComputeInOut(Graph &graph) {
@@ -217,8 +221,8 @@ void nodesComputeInOut(Graph &graph) {
   }
 }
 void optimizeGraph(Graph &graph) {
-  // transitiveReduction(graph);
-  // nodesFusion(graph);
+  transitiveReduction(graph);
+  nodesFusion(graph);
   nodesComputeInOut(graph);
 }
 
