@@ -34,14 +34,14 @@ for file in $testsPath/*.cpp; do
             for file2 in "$resultPath/$folderName"/*; do
                 if [ -f "$file2" ] && [[ "$file2" != *"astdiff"* ]]; then
                     fileName=$(basename "$file2" /)
-                    clang-format -i "$file2"
+                    clang-format-18 -i "$file2"
                     diff "$file2" "$expectedPath/$folderName"/"$fileName" > /dev/null
                     if [ $? -ne 0 ]; then
                         differenceInText=true
                         echo -e "${RED}Different Text : $fileName${NC}"
                     fi
-                    clang-check -ast-print "$expectedPath/$folderName/$fileName" > $curPath/ast_expected 2> /dev/null
-                    clang-check -ast-print $file2 > $curPath/ast_result 2> /dev/null
+                    clang-check-18 -ast-print "$expectedPath/$folderName/$fileName" > $curPath/ast_expected 2> /dev/null
+                    clang-check-18 -ast-print $file2 > $curPath/ast_result 2> /dev/null
                     diff $curPath/ast_expected $curPath/ast_result > "$resultPath/$folderName/astdiff"
                     if [ $? -ne 0 ]; then
                         differenceInAST=true
