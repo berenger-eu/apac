@@ -4,11 +4,11 @@ subgraph cluster_f0 {
     0 [label="a = 4;
 p[1] = a;
 a = 1;"];
-    0 -> 5[label="  aR"];
     1 [label="p[0] = 4;
 p[0] = 7;"];
-    1 -> 5[label="  p[0]W"];
     5 [label="p[a] = 5;
 p[5] = 4;"];
 }
+    0 -> 5[label="  aR"];
+    1 -> 5[label="  p[0]W"];
 }
