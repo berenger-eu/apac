@@ -67,6 +67,8 @@ for file in $testsPath/*.cpp; do
             diff "$folderResultPath/$rawGraphName" "$expectedPath/$rawGraphName" > /dev/null
                 if [ $? -ne 0 ]; then
                     differenceInRawGraph=true
+                else
+                    ((countRawPassed++))
                 fi
         fi
         if [ -f "$optimizedGraphName" ]; then
@@ -74,6 +76,8 @@ for file in $testsPath/*.cpp; do
             diff "$folderResultPath/$optimizedGraphName" "$expectedPath/$optimizedGraphName" > /dev/null
                 if [ $? -ne 0 ]; then
                     differenceInOptimizedGraph=true
+                else
+                    ((countOptPassed++))
                 fi
         fi
         if $differenceInAST; then
@@ -103,6 +107,8 @@ for file in $testsPath/*.cpp; do
     fi
 done
 echo -e "${BLUE}${BOLD}Tests passed : $countPassed/$countTotal ${NC}"
+echo -e "${BLUE}${BOLD}Raw graphs passed : $countRawPassed/$countTotal ${NC}"
+echo -e "${BLUE}${BOLD}Optimized graphs passed : $countOptPassed/$countTotal ${NC}"
 if [ $countPassed != $countTotal ]; then
     exit 1
 fi
