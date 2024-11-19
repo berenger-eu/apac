@@ -21,18 +21,22 @@ struct SmallerBeginLocation {
     return a.first->getBeginLoc() <= b.first->getBeginLoc();
   }
 };
+using InstructionLinksMap = std::map<const Stmt *, int>;
+using InstructionGroup =
+    std::set<std::pair<const Stmt *, std::shared_ptr<StmtOrder>>,
+             SmallerBeginLocation>;
+using InstructionGroupsMap = std::map<int, InstructionGroup>;
+using NodesGroupMap = std::map<int, std::shared_ptr<Node>>;
 struct StmtOrder {
   bool isLooped;
   int groupCounter = 0;
   // The key is the instruction, the value is its associated group number
-  std::map<const Stmt *, int> instructionLinks;
+  InstructionLinksMap instructionLinks;
   // The key is the group number, the value is a set of pairs of instructions
   // and sub groups(with their own sub order)
-  std::map<int, std::set<std::pair<const Stmt *, std::shared_ptr<StmtOrder>>,
-                         SmallerBeginLocation>>
-      instructionGroups;
+  InstructionGroupsMap instructionGroups;
   // The key is the group number, the value is the corresponding node
-  std::map<int, std::shared_ptr<Node>> nodesGroup;
+  NodesGroupMap nodesGroup;
   StmtOrder() : isLooped(false) {}
   inline void addInstructionToManager(const Stmt *key) {
     instructionLinks.insert({key, groupCounter});
@@ -105,6 +109,7 @@ struct StmtOrder {
         }
       }
     }
+    llvm::errs() << "End Dumping StmtOrder\n\n";
   }
   // Moves the group of the instruction closer to the start of the code to the
   // group of the instruction closer to the end of the code
