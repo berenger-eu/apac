@@ -578,6 +578,14 @@ bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt *i) {
     if (isa<CompoundStmt>(i->getElse())) {
 
       CompoundStmt *c = cast<CompoundStmt>(i->getElse());
+      StmtOrder *outerInstrOrder2 = currentOrderManager;
+      if (!ignoreStmtPragma) {
+        currentOrderManager->addInstructionToManager(c);
+      }
+
+      if (currentOrderManager->getSubStmtOrder(c) != nullptr) {
+        currentOrderManager = (outerInstrOrder2->getSubStmtOrder(c)).get();
+      }
       Instruction compInstr(c, "else", true, 0);
 
       functionsInstructionsVector.push_back(std::vector<Instruction>());
@@ -594,6 +602,7 @@ bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt *i) {
         }
         compInstr.scopedInstructionsNumber++;
       }
+      currentOrderManager = outerInstrOrder2;
       functionsInstructionsVector.pop_back();
       functionsInstructionsVector.back().push_back(compInstr);
     } else {
