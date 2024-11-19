@@ -89,83 +89,85 @@ void OutputHandler::GenerateDotGraph(const std::vector<Graph> &graphs,
   file.close();
 }
 
+std::string OutputHandler::modifiedStringdForInstructionIf(
+    const StmtOrder &instructionsOrderManager, const Stmt *instr) {
+
+  std::stringstream ssPrint;
+  const IfStmt *ifSt = cast<IfStmt>(instr);
+  // String : if (condition) {
+  ssPrint << getStmtAsString(instr, TheRewriter.getLangOpts()) << "{\n";
+  // One or Two groups of instructions : then and else
+  bool secondGroup = false;
+  for (auto instrSubGroups : instructionsOrderManager.instructionGroups) {
+    if (ifSt->getElse() != nullptr && secondGroup)
+      ssPrint << "else {\n";
+
+    ssPrint << modifyGroup(instructionsOrderManager, instrSubGroups.second);
+    secondGroup = true;
+  }
+  if (!isa<CompoundStmt>(instr))
+    ssPrint << "}\n";
+  return ssPrint.str();
+}
+
 std::string OutputHandler::modifiedStringForInstruction(
     const StmtOrder &instructionsOrderManager, const Stmt *instr) {
   std::stringstream ssPrint;
   // If the instruction contains a group of instructions (for,if,...)
   StmtOrder *subOrder = instructionsOrderManager.getSubStmtOrder(instr).get();
+  TheRewriter.RemoveText(
+      SourceRange(instr->getBeginLoc(),
+                  Lexer::getLocForEndOfToken(instr->getEndLoc(), 0,
+                                             TheRewriter.getSourceMgr(),
+                                             TheRewriter.getLangOpts())));
   if (subOrder != nullptr) {
-    if (!isa<CompoundStmt>(instr))
-      ssPrint << getStmtAsString(instr, TheRewriter.getLangOpts()) << "{\n";
-    for (auto instrSubGroups : subOrder->instructionGroups) {
-      bool addPragma = isPragmaValid(*subOrder, instrSubGroups.first);
-      if (addPragma)
-        ssPrint << createPragmaTaskString(*subOrder, instrSubGroups.first)
-                << "\n{\n";
-      else
-        ssPrint << createPragmaTaskWait(*subOrder, instrSubGroups.first)
-                << "\n";
-      for (auto instrPair : instrSubGroups.second) {
-        auto instr = instrPair.first;
-        ssPrint << modifiedStringForInstruction(*subOrder, instr) << "\n";
+    // Special case for ifs, as we need to print the else too
+
+    if (isa<IfStmt>(instr))
+      ssPrint << modifiedStringdForInstructionIf(*subOrder, instr);
+    else {
+
+      if (!isa<CompoundStmt>(instr))
+        ssPrint << getStmtAsString(instr, TheRewriter.getLangOpts()) << "{\n";
+      for (auto instrSubGroups : subOrder->instructionGroups) {
+        ssPrint << modifyGroup(*subOrder, instrSubGroups.second);
       }
-      if (addPragma)
+      if (!isa<CompoundStmt>(instr))
         ssPrint << "}\n";
     }
-    if (!isa<CompoundStmt>(instr))
-      ssPrint << "}\n";
   } else
     ssPrint << getStmtAsStringFull(instr, TheRewriter.getLangOpts()) << "\n";
   return ssPrint.str();
 }
-
-void OutputHandler::modifyFile(const StmtOrder &instructionsOrderManager) {
-  for (const auto &instructionGroup :
-       instructionsOrderManager.instructionGroups) {
-    // Remove old text
-    auto instructionGroupNum = instructionGroup.first;
-    auto instructionGroupSet = instructionGroup.second;
-    if (instructionGroupSet.size() == 0)
-      continue;
-
-    const Stmt *st = (*instructionGroupSet.rbegin()).first;
-    TheRewriter.RemoveText(SourceRange(
-        st->getBeginLoc(), Lexer::getLocForEndOfToken(
-                               st->getEndLoc(), 0, TheRewriter.getSourceMgr(),
-                               TheRewriter.getLangOpts())));
-    std::stringstream ssPrint;
-    bool addPragma =
-        isPragmaValid(instructionsOrderManager, instructionGroupNum);
-    if (addPragma)
-      ssPrint << createPragmaTaskString(instructionsOrderManager,
-                                        instructionGroupNum)
-              << "\n{\n";
-    else
-      ssPrint << createPragmaTaskWait(instructionsOrderManager,
-                                      instructionGroupNum)
-              << "\n";
-    llvm::errs() << ssPrint.str();
-    for (auto instrPair : instructionGroupSet) {
-      auto instr = instrPair.first;
-      TheRewriter.RemoveText(
-          SourceRange(instr->getBeginLoc(),
-                      Lexer::getLocForEndOfToken(instr->getEndLoc(), 0,
-                                                 TheRewriter.getSourceMgr(),
-                                                 TheRewriter.getLangOpts())));
-      ssPrint << modifiedStringForInstruction(instructionsOrderManager, instr);
-    }
-    if (addPragma)
-      ssPrint << "}\n";
-
-    TheRewriter.InsertText(st->getBeginLoc(), ssPrint.str());
+std::string
+OutputHandler::modifyGroup(const StmtOrder &instructionsOrderManager,
+                           const InstructionGroup &instructionGroup,
+                           bool writeInFile) {
+  if (instructionGroup.size() == 0)
+    return "";
+  std::stringstream ssPrint;
+  std::string pragmaStart, pragmaEnd;
+  createPragmaString(instructionsOrderManager, instructionGroup, pragmaStart,
+                     pragmaEnd);
+  ssPrint << pragmaStart;
+  for (auto instrPair : instructionGroup) {
+    auto instr = instrPair.first;
+    ssPrint << modifiedStringForInstruction(instructionsOrderManager, instr);
   }
+  ssPrint << pragmaEnd;
+  if (writeInFile) {
+    const Stmt *firstSt = (*instructionGroup.begin()).first;
+    const Stmt *lastSt = (*instructionGroup.rbegin()).first;
+    llvm::errs() << ssPrint.str();
+    // Insert new text
+    TheRewriter.InsertText(lastSt->getBeginLoc(), ssPrint.str());
+  }
+  return ssPrint.str();
 }
 
-bool OutputHandler::isPragmaValid(const StmtOrder &instructionsOrderManager,
-                                  const int &instructionGroupNum) const {
-
-  const auto &instructionGroup =
-      instructionsOrderManager.instructionGroups.at(instructionGroupNum);
+bool OutputHandler::isPragmaValid(
+    const StmtOrder &instructionsOrderManager,
+    const InstructionGroup &instructionGroup) const {
   // Group of instructions is empty
   if (instructionGroup.size() == 0)
     return false;
@@ -184,11 +186,9 @@ bool OutputHandler::isPragmaValid(const StmtOrder &instructionsOrderManager,
   }
   return true;
 }
-std::string
-OutputHandler::createPragmaTaskWait(const StmtOrder &instructionsOrderManager,
-                                    const int &instructionGroupNum) const {
-  const auto &instructionGroup =
-      instructionsOrderManager.instructionGroups.at(instructionGroupNum);
+std::string OutputHandler::createPragmaTaskWait(
+    const StmtOrder &instructionsOrderManager,
+    const InstructionGroup &instructionGroup) const {
   std::stringstream ssPrint;
   ssPrint << "#pragma omp taskwait ";
   auto instr = instructionGroup.begin()->first;
@@ -219,11 +219,9 @@ OutputHandler::createPragmaTaskWait(const StmtOrder &instructionsOrderManager,
   ssPrint << dependString;
   return ssPrint.str();
 }
-std::string
-OutputHandler::createPragmaTaskString(const StmtOrder &instructionsOrderManager,
-                                      const int &instructionGroupNum) const {
-  const auto &instructionGroup =
-      instructionsOrderManager.instructionGroups.at(instructionGroupNum);
+std::string OutputHandler::createPragmaTaskString(
+    const StmtOrder &instructionsOrderManager,
+    const InstructionGroup &instructionGroup) const {
   std::stringstream ssPrint;
   ssPrint << "#pragma omp task ";
   auto instr = instructionGroup.begin()->first;
@@ -250,9 +248,9 @@ OutputHandler::createDependsString(const std::shared_ptr<Node> &node) const {
   // We add the first dependency to a next node to the task as inout
   // And then we add the first dependency from a previous node to this one to
   // the task as in if the dependency is not in the inout set We don't have to
-  // add the dependencies from one node to another as one is sufficient As long
-  // as we chose the same single one for both of them (which here is always the
-  // first one)
+  // add the dependencies from one node to another as one is sufficient As
+  // long as we chose the same single one for both of them (which here is
+  // always the first one)
 
   if (inOutSet.size() > 0) {
     ssPrint << " depend (inout:";
@@ -273,4 +271,22 @@ OutputHandler::createDependsString(const std::shared_ptr<Node> &node) const {
     ssPrint << ") ";
   }
   return ssPrint.str();
+}
+void OutputHandler::createPragmaString(
+    const StmtOrder &instructionsOrderManager,
+    const InstructionGroup &instructionGroup, std::string &pragmaStart,
+    std::string &pragmaEnd) {
+  bool addPragma = isPragmaValid(instructionsOrderManager, instructionGroup);
+  std::stringstream ssPragmaStart;
+  if (addPragma)
+    ssPragmaStart << createPragmaTaskString(instructionsOrderManager,
+                                            instructionGroup)
+                  << "\n{\n";
+  else
+    ssPragmaStart << createPragmaTaskWait(instructionsOrderManager,
+                                          instructionGroup)
+                  << "\n";
+  pragmaStart = ssPragmaStart.str();
+  if (addPragma)
+    pragmaEnd = "}\n";
 }
