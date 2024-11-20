@@ -26,8 +26,8 @@ private:
   modifiedStringForInstruction(const StmtOrder &instructionsOrderManager,
                                const Stmt *instr);
   std::string
-  modifiedStringdForInstructionIf(const StmtOrder &instructionsOrderManager,
-                                  const Stmt *instr);
+  modifiedStringForInstruction(const StmtOrder &instructionsOrderManager,
+                               const IfStmt *instr);
   bool isPragmaValid(const StmtOrder &instructionsOrderManager,
                      const InstructionGroup &instructionGroup) const;
   std::string createDependsString(const std::shared_ptr<Node> &node) const;

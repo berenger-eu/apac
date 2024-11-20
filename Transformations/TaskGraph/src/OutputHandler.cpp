@@ -88,28 +88,21 @@ void OutputHandler::GenerateDotGraph(const std::vector<Graph> &graphs,
   file << "}\n";
   file.close();
 }
-
-std::string OutputHandler::modifiedStringdForInstructionIf(
-    const StmtOrder &instructionsOrderManager, const Stmt *instr) {
-
+std::string OutputHandler::modifiedStringForInstruction(
+    const StmtOrder &instructionsOrderManager, const IfStmt *instr) {
   std::stringstream ssPrint;
-  const IfStmt *ifSt = cast<IfStmt>(instr);
-  // String : if (condition) {
   ssPrint << getStmtAsString(instr, TheRewriter.getLangOpts()) << "{\n";
-  // One or Two groups of instructions : then and else
-  bool secondGroup = false;
+  bool isSecond = false;
   for (auto instrSubGroups : instructionsOrderManager.instructionGroups) {
-    if (ifSt->getElse() != nullptr && secondGroup)
-      ssPrint << "else {\n";
-
-    ssPrint << modifyGroup(instructionsOrderManager, instrSubGroups.second);
-    secondGroup = true;
+    if (isSecond && instr->getElse() != nullptr)
+      ssPrint << "} else {";
+    ssPrint << modifyGroup(instructionsOrderManager, instrSubGroups.second,
+                           false);
+    isSecond = true;
   }
-  if (!isa<CompoundStmt>(instr))
-    ssPrint << "}\n";
+  ssPrint << "}\n";
   return ssPrint.str();
 }
-
 std::string OutputHandler::modifiedStringForInstruction(
     const StmtOrder &instructionsOrderManager, const Stmt *instr) {
   std::stringstream ssPrint;
@@ -121,16 +114,14 @@ std::string OutputHandler::modifiedStringForInstruction(
                                              TheRewriter.getSourceMgr(),
                                              TheRewriter.getLangOpts())));
   if (subOrder != nullptr) {
-    // Special case for ifs, as we need to print the else too
-
+    // Special case for if statement, we need to add else
     if (isa<IfStmt>(instr))
-      ssPrint << modifiedStringdForInstructionIf(*subOrder, instr);
+      ssPrint << modifiedStringForInstruction(*subOrder, cast<IfStmt>(instr));
     else {
-
       if (!isa<CompoundStmt>(instr))
         ssPrint << getStmtAsString(instr, TheRewriter.getLangOpts()) << "{\n";
       for (auto instrSubGroups : subOrder->instructionGroups) {
-        ssPrint << modifyGroup(*subOrder, instrSubGroups.second);
+        ssPrint << modifyGroup(*subOrder, instrSubGroups.second, false);
       }
       if (!isa<CompoundStmt>(instr))
         ssPrint << "}\n";
@@ -142,25 +133,33 @@ std::string OutputHandler::modifiedStringForInstruction(
 std::string
 OutputHandler::modifyGroup(const StmtOrder &instructionsOrderManager,
                            const InstructionGroup &instructionGroup,
-                           bool writeInFile) {
+                           bool isWrite) {
   if (instructionGroup.size() == 0)
     return "";
+
+  const Stmt *st = (*instructionGroup.rbegin()).first;
   std::stringstream ssPrint;
   std::string pragmaStart, pragmaEnd;
   createPragmaString(instructionsOrderManager, instructionGroup, pragmaStart,
                      pragmaEnd);
+
   ssPrint << pragmaStart;
-  for (auto instrPair : instructionGroup) {
-    auto instr = instrPair.first;
-    ssPrint << modifiedStringForInstruction(instructionsOrderManager, instr);
-  }
+
+  for (auto instrPair : instructionGroup)
+    ssPrint << modifiedStringForInstruction(instructionsOrderManager,
+                                            instrPair.first);
   ssPrint << pragmaEnd;
-  if (writeInFile) {
-    const Stmt *firstSt = (*instructionGroup.begin()).first;
-    const Stmt *lastSt = (*instructionGroup.rbegin()).first;
-    llvm::errs() << ssPrint.str();
-    // Insert new text
-    TheRewriter.InsertText(lastSt->getBeginLoc(), ssPrint.str());
+
+  if (isWrite) {
+    for (auto instrPair : instructionGroup) {
+      auto instr = instrPair.first;
+      TheRewriter.RemoveText(
+          SourceRange(instr->getBeginLoc(),
+                      Lexer::getLocForEndOfToken(instr->getEndLoc(), 0,
+                                                 TheRewriter.getSourceMgr(),
+                                                 TheRewriter.getLangOpts())));
+    }
+    TheRewriter.InsertText(st->getBeginLoc(), ssPrint.str());
   }
   return ssPrint.str();
 }
