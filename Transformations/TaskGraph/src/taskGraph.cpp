@@ -43,7 +43,6 @@ public:
       updateInstructionOrderFromGraph(graph, orderManager);
     }
     outputHandler.GenerateDotGraph(graphs, "taskGraphOpt.dot");
-
     outputHandler.modifyFile(orderManager);
   }
 
