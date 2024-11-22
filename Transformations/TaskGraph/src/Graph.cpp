@@ -202,13 +202,23 @@ void nodesFusion(Graph &graph) {
       }
       continue;
     }
+    std::shared_ptr<Node> nextNode;
+    if (node->next.size() == 1)
+      nextNode = node->next.begin()->first;
     while (
-        node->next.size() == 1 && node->next.begin()->first->prev.size() == 1 &&
-        node->next.begin()->first->graphId == node->graphId &&
-        !(node->next.begin()->first->instructionPtr.size() == 1 &&
-          node->next.begin()->first->instructionPtr[0]->complexInstruction)) {
+        // Only one next node, and only one previous node for the next node
+        node->next.size() == 1 && nextNode->prev.size() == 1 &&
+        // The same graph (or subgraph), so same scope
+        nextNode->graphId == node->graphId &&
+        // The next node is not a complex instruction or a node that should not
+        // be fused
+        !((nextNode->instructionPtr.size() == 1 &&
+           nextNode->instructionPtr[0]->complexInstruction) ||
+          nextNode->instructionPtr[0]->noFusion)) {
       toRemove.push(node->next.begin()->first);
       graph.fuseNodes(node, (node->next.begin()->first));
+      if (node->next.size() == 1)
+        nextNode = node->next.begin()->first;
     }
     // TODO: handle multiple subgraphs (might happen after fusion of nodes)
   }

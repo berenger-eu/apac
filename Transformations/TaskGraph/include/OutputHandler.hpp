@@ -2,6 +2,15 @@
 #include "Graph.hpp"
 #include "InstructionsOrderManager.hpp"
 #include "clang/AST/Decl.h"
+#include "clang/AST/ExprCXX.h"
+struct pragmaStatus {
+  bool isTaskWaitValid = true;
+  bool isTaskValid = true;
+  inline bool isPragmaValid() { return (isTaskValid || isTaskWaitValid); };
+  void setTaskWaitFalse() { isTaskWaitValid = false; }
+  void setTaskFalse() { isTaskValid = false; }
+};
+using pragmaStatus = struct pragmaStatus;
 class OutputHandler {
 public:
   OutputHandler(Rewriter &TheRewriter)
@@ -28,8 +37,9 @@ private:
   std::string
   modifiedStringForInstruction(const StmtOrder &instructionsOrderManager,
                                const IfStmt *instr);
-  bool isPragmaValid(const StmtOrder &instructionsOrderManager,
-                     const InstructionGroup &instructionGroup) const;
+  void isPragmaValid(const StmtOrder &instructionsOrderManager,
+                     const InstructionGroup &instructionGroup,
+                     pragmaStatus &) const;
   std::string createDependsString(const std::shared_ptr<Node> &node) const;
   void createPragmaString(const StmtOrder &instructionsOrderManager,
                           const InstructionGroup &instructionGroup,

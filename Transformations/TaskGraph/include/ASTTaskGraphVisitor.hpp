@@ -48,6 +48,26 @@ public:
   inline bool TraverseCompoundAssignOperator(CompoundAssignOperator *bop) {
     return traverseSimpleElements(bop);
   }
+  inline bool TraverseCXXDeleteExpr(CXXDeleteExpr *d) {
+    if (isInHeaders(TheRewriter.getSourceMgr(), d->getBeginLoc()))
+      return true;
+    if (!ignoreStmtPragma)
+      currentOrderManager->addInstructionToManager(d);
+    Instruction instr(d, getStmtAsString(d, TheRewriter.getLangOpts()));
+    VarDecl *v;
+    if (isa<DeclRefExpr>(d->getArgument()->IgnoreImpCasts())) {
+      auto declRef = cast<DeclRefExpr>(d->getArgument()->IgnoreImpCasts());
+      if (isa<VarDecl>(declRef->getDecl())) {
+        v = cast<VarDecl>(declRef->getDecl());
+        auto alias = aliasTable.getOrAddAliasArg(v, getAliasType(v));
+        addDependencyWrite(instr, alias);
+        addDependencyRead(instr, alias);
+      }
+    }
+    instr.noFusion = true;
+    functionsInstructionsVector.back().push_back(instr);
+    return true;
+  }
   // Can be ignore if it is assumed that previous passes were run
   // So the return statement should not contain any expressions
   inline bool TraverseReturnStmt(ReturnStmt *r) {

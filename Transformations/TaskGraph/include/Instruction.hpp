@@ -27,6 +27,12 @@ struct Instruction {
   clang::Stmt *instruction;
   std::string instructionString; // Instruction string
   bool complexInstruction;
+
+  // If true, the instruction will not be fused with the next one
+  // Mostly used when an instruction requires a taskwait (delete,
+  // complexInstructions)
+  bool noFusion;
+
   unsigned int scopedInstructionsNumber; // Also takes in account number of
                                          // instructions in ComplexInstructions
   // Use the aliasArg as its adress is unique and will contain all available

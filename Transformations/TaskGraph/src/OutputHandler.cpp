@@ -164,26 +164,30 @@ OutputHandler::modifyGroup(const StmtOrder &instructionsOrderManager,
   return ssPrint.str();
 }
 
-bool OutputHandler::isPragmaValid(
-    const StmtOrder &instructionsOrderManager,
-    const InstructionGroup &instructionGroup) const {
+void OutputHandler::isPragmaValid(const StmtOrder &instructionsOrderManager,
+                                  const InstructionGroup &instructionGroup,
+                                  pragmaStatus &addPragma) const {
   // Group of instructions is empty
   if (instructionGroup.size() == 0)
-    return false;
+    return;
   // Group of instructions has only one instruction
   if (instructionGroup.size() == 1) {
 
     auto instrPair = instructionGroup.begin();
     auto instr = instrPair->first;
     // Instruction is a declaration, so no task can be created
-    if (isa<DeclStmt>(instr))
-      return false;
+    if (isa<DeclStmt>(instr)) {
+      addPragma.setTaskFalse();
+      addPragma.setTaskWaitFalse();
+    }
+    // Instruction is a delete, so no task can be created
+    if (isa<CXXDeleteExpr>(instr))
+      addPragma.setTaskFalse();
     // Instruction is a complex instruction, so no task should be created
     std::shared_ptr<Node> node;
     if (instrPair->second != nullptr)
-      return false;
+      addPragma.setTaskFalse();
   }
-  return true;
 }
 std::string OutputHandler::createPragmaTaskWait(
     const StmtOrder &instructionsOrderManager,
@@ -212,9 +216,16 @@ std::string OutputHandler::createPragmaTaskWait(
   if (isa<IfStmt>(instr)) {
     auto ifSt = cast<IfStmt>(instr);
     dependString = createDependsString(instructionsOrderManager.getNode(ifSt));
+  } else if (isa<CXXDeleteExpr>(instr)) {
+    auto deleteExpr = cast<CXXDeleteExpr>(instr);
+    if (isa<DeclRefExpr>(deleteExpr->getArgument()->IgnoreImpCasts())) {
+
+      dependString =
+          cast<DeclRefExpr>(deleteExpr->getArgument()->IgnoreImpCasts())
+              ->getDecl()
+              ->getNameAsString();
+    }
   }
-  if (dependString.length() == 0)
-    return "";
   ssPrint << dependString;
   return ssPrint.str();
 }
@@ -275,17 +286,18 @@ void OutputHandler::createPragmaString(
     const StmtOrder &instructionsOrderManager,
     const InstructionGroup &instructionGroup, std::string &pragmaStart,
     std::string &pragmaEnd) {
-  bool addPragma = isPragmaValid(instructionsOrderManager, instructionGroup);
+  struct pragmaStatus addPragma;
+  isPragmaValid(instructionsOrderManager, instructionGroup, addPragma);
   std::stringstream ssPragmaStart;
-  if (addPragma)
+  if (addPragma.isTaskValid)
     ssPragmaStart << createPragmaTaskString(instructionsOrderManager,
                                             instructionGroup)
                   << "\n{\n";
-  else
+  else if (addPragma.isTaskWaitValid)
     ssPragmaStart << createPragmaTaskWait(instructionsOrderManager,
                                           instructionGroup)
                   << "\n";
   pragmaStart = ssPragmaStart.str();
-  if (addPragma)
+  if (addPragma.isTaskValid)
     pragmaEnd = "}\n";
 }
