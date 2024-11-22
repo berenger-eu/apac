@@ -497,6 +497,7 @@ bool ASTTaskGraphVisitor::TraverseForStmt(ForStmt *f) {
                << "End ForStmt\n";
   Instruction compInstr(f, getStmtAsString(f, TheRewriter.getLangOpts()), true,
                         0);
+  compInstr.noFusion = true;
   functionsInstructionsVector.push_back(std::vector<Instruction>());
   ignoreStmtPragma = true;
   if (!(RecursiveASTVisitor::TraverseStmt(f->getCond()) &&
@@ -542,6 +543,7 @@ bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt *i) {
   }
   Instruction compInstr(i, getStmtAsString(i, TheRewriter.getLangOpts()), true,
                         0);
+  compInstr.noFusion = true;
   handleStmt(*i->getCond(), compInstr);
   functionsInstructionsVector.push_back(std::vector<Instruction>());
   // res=RecursiveASTVisitor::TraverseIfStmt(i);
