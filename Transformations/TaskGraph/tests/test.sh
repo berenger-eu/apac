@@ -46,6 +46,8 @@ for file in $testsPath/*.cpp; do
                 if [ -f "$file2" ] && [[ "$file2" != *"astdiff"* ]]; then
                     #echo "Created file : $file2"
                     expectedResult="$expectedPath"/$fileName
+                    sed '/^$/d' "$file2" > "$file2.tmp"
+                    mv "$file2.tmp" "$file2" 
                     diff "$file2" "$expectedResult" > /dev/null
                     if [ $? -ne 0 ]; then
                         differenceInText=true
