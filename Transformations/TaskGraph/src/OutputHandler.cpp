@@ -226,7 +226,7 @@ std::string OutputHandler::createPragmaTaskWait(
               ->getNameAsString();
     }
   }
-  ssPrint << dependString;
+  ssPrint << "depend (inout:" << dependString << ")";
   return ssPrint.str();
 }
 std::string OutputHandler::createPragmaTaskString(
