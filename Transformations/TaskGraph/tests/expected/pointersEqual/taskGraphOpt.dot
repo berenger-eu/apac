@@ -19,7 +19,7 @@ p = pa;"];
     1 -> 7[label="  bW"];
     2 -> 5[label="  pR"];
     3 -> 6[label="  pbR"];
-    5 -> 8[label="  aRW"];
     5 -> 6[label="  pW"];
+    5 -> 8[label="  aRW"];
     6 -> 7[label="  pR"];
 }

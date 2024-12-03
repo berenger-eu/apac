@@ -12,11 +12,11 @@ subgraph cluster_f0 {
     6 [label="j = a;"];
 }
     0 -> 2[label="  aRW"];
-    1 -> 5[label="  pR"];
     1 -> 2[label="  pR"];
+    1 -> 5[label="  pR"];
     2 -> 3[label="  aRW"];
-    3 -> 6[label="  aR"];
     3 -> 5[label="  aR"];
+    3 -> 6[label="  aR"];
     4 -> 5[label="  jRW"];
     5 -> 6[label="  jRW"];
 }

@@ -9,6 +9,7 @@ difference=false
 countPassed=0
 countTotal=0
 countRawPassed=0
+countOptPassed=0
 countOptTotal=0
 curPath="$(realpath $(dirname "$0"))"
 taskGraph="$curPath/../../../build/taskGraph"

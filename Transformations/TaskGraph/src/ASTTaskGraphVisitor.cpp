@@ -8,8 +8,7 @@ void ASTTaskGraphVisitor::addDependenciesRead(Instruction &instr,
   // dependency with this function)
   auto allDeclRefVar = getAllReadDeclRefExprInsideExpr(e);
   for (auto d : allDeclRefVar) {
-    const VarDecl *v = cast<VarDecl>(d->getDecl());
-    auto alias = aliasTable.getOrAddAliasArg(v, getAliasType(v));
+    auto alias = aliasTable.getOrAddAliasArg(d);
     addDependencyRead(instr, alias);
   }
   // TODO : Handle ArraySubscriptExpr (only for cases such as tab[ tab [5] ],
@@ -69,11 +68,11 @@ void ASTTaskGraphVisitor::computeAliasesForRHS(
   // for
   // the aliases of *p
   if (a) {
-    const VarDecl *base = cast<VarDecl>(getArrayBaseDeclRefExpr(a)->getDecl());
+    // const VarDecl *base =
+    // cast<VarDecl>(getArrayBaseDeclRefExpr(a)->getDecl());
     const auto indexes = getArraySubscriptsIndexesValues(a);
     llvm::errs() << "test\n";
-    const auto mainAlias =
-        aliasTable.getOrAddAliasArg(base, getAliasType(a), indexes);
+    const auto mainAlias = aliasTable.getOrAddAliasArg(a);
     aliases.insert(mainAlias);
     mainAlias->dump();
     llvm::errs() << "123: " << mainAlias->varAsString() << "\n";
@@ -86,7 +85,7 @@ void ASTTaskGraphVisitor::computeAliasesForRHS(
     // location
     // TODO:Modif ici pour ajout alias aux nodes
     const VarDecl *v = cast<VarDecl>(d->getDecl());
-    const auto mainAlias = aliasTable.getOrAddAliasArg(v, getAliasType(v));
+    const auto mainAlias = aliasTable.getOrAddAliasArg(d);
     aliases.insert(mainAlias);
     depth = getPtrDepthAccess(*v, *rhs);
     // We retrive the pointed values or the references
@@ -115,7 +114,8 @@ void ASTTaskGraphVisitor::computeAliasesForRHS(
           const VarDecl *v =
               cast<VarDecl>(getSingleDeclRefExprInsideExpr(arg)->getDecl());
           if (getPtrDepthAccess(*v, *arg) == -1) {
-            auto alias = aliasTable.getOrAddAliasArg(v, getAliasType(v));
+            auto alias = aliasTable.getOrAddAliasArg(
+                getSingleDeclRefExprInsideExpr(arg));
             aliases.insert(alias);
           }
         }
@@ -134,33 +134,33 @@ void ASTTaskGraphVisitor::handleCXXOperatorCallExpr(
   if (c.isAssignmentOp() && c.getNumArgs() == 2) {
     if (isa<DeclRefExpr>(c.getArg(0)) &&
         isReferenceQualType(c.getArg(0)->getType())) {
-      const VarDecl *v =
-          cast<VarDecl>(cast<DeclRefExpr>(c.getArg(0))->getDecl());
-      const VarDecl *v2;
+      // const VarDecl *v =
+      //     cast<VarDecl>(cast<DeclRefExpr>(c.getArg(0))->getDecl());
+      // const VarDecl *v2;
       std::vector<int> indexes;
-      auto aliasRef = aliasTable.getOrAddAliasArg(v, Reference);
+      auto aliasRef = aliasTable.getOrAddAliasArg(c.getArg(0), Reference);
       const DeclRefExpr *d;
       const ArraySubscriptExpr *array;
       const Expr *declOrArray;
 
       if ((array = getSingleArraySubscriptExprInsideExpr(c.getArg(1))) !=
           nullptr) {
-        const auto baseDeclExpr =
-            getSingleDeclRefExprInsideExpr(getArrayBaseDeclRefExpr(array));
-        v2 = cast<VarDecl>(baseDeclExpr->getDecl());
+        // const auto baseDeclExpr =
+        //     getSingleDeclRefExprInsideExpr(getArrayBaseDeclRefExpr(array));
+        //  v2 = cast<VarDecl>(baseDeclExpr->getDecl());
         indexes = getArraySubscriptsIndexesValues(array);
         declOrArray = array;
 
       } else if ((d = getSingleDeclRefExprInsideExpr(c.getArg(1))) != nullptr) {
-        v2 = cast<VarDecl>(d->getDecl());
+        // v2 = cast<VarDecl>(d->getDecl());
         declOrArray = d;
 
       } else {
         handleStmt(*c.getArg(1), instr);
         return;
       }
-      AliasType type = getAliasType(declOrArray);
-      auto aliasVar = aliasTable.getOrAddAliasArg(v2, type, indexes);
+      // AliasType type = getAliasType(declOrArray);
+      auto aliasVar = aliasTable.getOrAddAliasArg(declOrArray);
       aliasTable.addAliasReference(aliasVar, aliasRef);
       addDependencyRead(instr, aliasVar);
       addDependencyWrite(instr, aliasRef);
@@ -222,8 +222,7 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator &uop,
       addDependencyWrite(curInstr, alias);
 
   if (depth > 0)
-    addDependencyRead(
-        curInstr, aliasTable.getOrAddAliasArg(mainVariable, Pointer, indexes));
+    addDependencyRead(curInstr, aliasTable.getOrAddAliasArg(d, Pointer));
 
   // Otherwise, unary expression affects a temporary value so we ignore it but
   // still look through the expression
@@ -310,8 +309,8 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator &bop,
     // If we have a pointer, then the aliases are related to the pointed
     // values when depth > 0 So we have to add a read dependency on the
     // pointer itself
-    auto aliasMain = aliasTable.getOrAddAliasArg(
-        mainVariable, getAliasType(bop.getLHS()), indexes);
+    auto aliasMain = aliasTable.getOrAddAliasArg(declOrArrayExpr,
+                                                 getAliasType(bop.getLHS()));
     int depth =
         getPtrDepthAccess(declOrArrayExpr->getType(), bop.getLHS()->getType(),
                           mainVariable->getASTContext());
@@ -330,11 +329,9 @@ void ASTTaskGraphVisitor::handleMemberCallExpr(const CXXMemberCallExpr &c,
                                                Instruction &curInstr,
                                                bool isWrite) {
   Expr *obj = c.getImplicitObjectArgument();
-  AliasType type = getAliasType(obj);
   // Handle the object of the call
   if (isa<DeclRefExpr>(obj)) {
-    const auto alias = aliasTable.getOrAddAliasArg(
-        cast<VarDecl>(cast<DeclRefExpr>(obj)->getDecl()), type);
+    const auto alias = aliasTable.getOrAddAliasArg(obj);
     // Alias is supposed to be read
     addDependencyRead(curInstr, alias);
     // If the method is not const, then we assume it may be written
@@ -363,10 +360,10 @@ void ASTTaskGraphVisitor::handleCallExpr(const CallExpr &c,
       if (isa<CXXConstructExpr>(d))
         d = cast<CXXConstructExpr>(d)->getArg(0);
       if (isa<DeclRefExpr>(d->IgnoreParenImpCasts())) {
-        const VarDecl *v = cast<VarDecl>(
-            cast<DeclRefExpr>(d->IgnoreParenImpCasts())->getDecl());
+        // const VarDecl *v = cast<VarDecl>(
+        //     cast<DeclRefExpr>(d->IgnoreParenImpCasts())->getDecl());
         AliasType type = getAliasType(&p);
-        const auto alias = aliasTable.getOrAddAliasArg(v, type);
+        const auto alias = aliasTable.getOrAddAliasArg(d, type);
         addDependencyRead(curInstr, alias);
         addDependencyWrite(curInstr, alias);
       }
@@ -378,9 +375,9 @@ void ASTTaskGraphVisitor::handleCallExpr(const CallExpr &c,
       // a pointer AND it's not completely const)
       //   then there might be a write, so we assume there is one
       if (d) {
-        const VarDecl *v = cast<VarDecl>(d->getDecl());
+        // const VarDecl *v = cast<VarDecl>(d->getDecl());
         AliasType type = getAliasType(&p);
-        auto alias = aliasTable.getOrAddAliasArg(v, type);
+        auto alias = aliasTable.getOrAddAliasArg(d, type);
 
         addDependencyRead(curInstr, alias);
         addDependencyWrite(curInstr, alias);
@@ -414,8 +411,8 @@ void ASTTaskGraphVisitor::handleStmt(const Stmt &st, Instruction &instr,
 
     auto curExp = (cast<Expr>(st).IgnoreParenImpCasts());
     if (isa<DeclRefExpr>(curExp)) {
-      const VarDecl *v = cast<VarDecl>(cast<DeclRefExpr>(curExp)->getDecl());
-      auto alias = aliasTable.getOrAddAliasArg(v, getAliasType(v));
+      // const VarDecl *v = cast<VarDecl>(cast<DeclRefExpr>(curExp)->getDecl());
+      auto alias = aliasTable.getOrAddAliasArg(curExp);
       if (isRead)
         addDependencyRead(instr, alias);
       if (isWrite)
@@ -436,16 +433,13 @@ void ASTTaskGraphVisitor::handleStmt(const Stmt &st, Instruction &instr,
       else if (isa<ArraySubscriptExpr>(curExp)) {
         auto arrayExpr = getSingleArraySubscriptExprInsideExpr(curExp);
         if (arrayExpr) {
-          auto baseExpr = getSingleDeclRefExprInsideExpr(arrayExpr->getBase());
-          auto base = cast<VarDecl>(baseExpr->getDecl());
+          auto baseExpr = getArrayBaseDeclRefExpr(arrayExpr);
+          // auto base = cast<VarDecl>(baseExpr->getDecl());
           auto indexes =
               getArraySubscriptsIndexesValues(cast<ArraySubscriptExpr>(curExp));
           // We don't use the type of the base but the type of the expression
           // (tab will be a pointer but tab[0] might not be one)
-          auto alias = aliasTable.getOrAddAliasArg(
-              base, getAliasType(curExp),
-              getArraySubscriptsIndexesValues(
-                  cast<ArraySubscriptExpr>(curExp)));
+          auto alias = aliasTable.getOrAddAliasArg(arrayExpr);
           if (isRead)
             addDependencyRead(instr, alias);
           if (isWrite)

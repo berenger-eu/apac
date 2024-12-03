@@ -54,15 +54,11 @@ public:
     if (!ignoreStmtPragma)
       currentOrderManager->addInstructionToManager(d);
     Instruction instr(d, getStmtAsString(d, TheRewriter.getLangOpts()));
-    VarDecl *v;
     if (isa<DeclRefExpr>(d->getArgument()->IgnoreImpCasts())) {
       auto declRef = cast<DeclRefExpr>(d->getArgument()->IgnoreImpCasts());
-      if (isa<VarDecl>(declRef->getDecl())) {
-        v = cast<VarDecl>(declRef->getDecl());
-        auto alias = aliasTable.getOrAddAliasArg(v, getAliasType(v));
-        addDependencyWrite(instr, alias);
-        addDependencyRead(instr, alias);
-      }
+      auto alias = aliasTable.getOrAddAliasArg(declRef);
+      addDependencyWrite(instr, alias);
+      addDependencyRead(instr, alias);
     }
     instr.noFusion = true;
     functionsInstructionsVector.back().push_back(instr);
