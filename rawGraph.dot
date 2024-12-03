@@ -1,0 +1,31 @@
+digraph G {
+subgraph cluster_f0 {
+    invisibleNodeScope_0 [style=invis];
+    0 [label="if(a < b)"];
+    0 -> invisibleNodeScope_1[label="instr 0 : if(a < b)"];
+subgraph cluster_0_0 {
+label = "subGraph0_0";
+    invisibleNodeScope_1 [style=invis];
+    1 [label="if"];
+    1 -> invisibleNodeScope_2[label="instr 0 : if"];
+subgraph cluster_1_0 {
+label = "subGraph1_0";
+    invisibleNodeScope_2 [style=invis];
+}
+    2 [label="else"];
+    2 -> invisibleNodeScope_3[label="instr 0 : else"];
+subgraph cluster_2_0 {
+label = "subGraph2_0";
+    invisibleNodeScope_3 [style=invis];
+}
+}
+}
+subgraph cluster_f1 {
+    invisibleNodeScope_4 [style=invis];
+    3 [label="i = 4;"];
+    3 -> 5[label="  iRW"];
+    4 [label="j = 4;"];
+    4 -> 5[label="  jRW"];
+    5 [label="p = minPtr(&i, &j);"];
+}
+}

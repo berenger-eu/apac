@@ -8,8 +8,9 @@
  */
 #pragma once
 #include "AliasTable.hpp"
+#include "Instruction.hpp"
 #include "InstructionsOrderManager.hpp"
-#include "PotTaskGraphInterface.hpp"
+#include "Node.hpp"
 #include "clang/AST/Decl.h"
 #include <fstream>
 #include <functional>
@@ -21,55 +22,12 @@
 #include <unordered_set>
 #include <vector>
 
-struct Node {
-
-  static int idCounter;
-  int id;
-  std::unordered_map<std::shared_ptr<Node>,
-                     std::unordered_map<const NamedDecl *, NodeDependency>>
-      next;
-  std::unordered_set<std::shared_ptr<Node>> prev;
-  std::vector<std::shared_ptr<struct Graph>> graph;
-  std::string instruction;
-  std::vector<const Instruction *> instructionPtr;
-  void dump() {
-    llvm::errs() << "Instructions: " << instruction << "\n";
-    for (auto &instr : instructionPtr) {
-
-      instr->dump();
-    }
-    llvm::errs() << "\n";
-  }
-  void addLink(std::shared_ptr<Node> curN, std::shared_ptr<Node> n, bool isRead,
-               bool isWrite, const NamedDecl *arg) {
-    if (arg == nullptr)
-      return;
-    if (this->next.count(n) == 0)
-      this->next.insert(
-          {n, std::unordered_map<const NamedDecl *, NodeDependency>()});
-    if (this->next.at(n).count(arg) == 0) {
-      this->next.at(n).insert({arg, {isRead, isWrite}});
-      n->prev.insert(curN);
-    } else {
-      this->next.at(n).at(arg).isRead =
-          this->next.at(n).at(arg).isRead || isRead;
-      this->next.at(n).at(arg).isWrite =
-          this->next.at(n).at(arg).isWrite || isWrite;
-    }
-  }
-  inline void addReadLink(std::shared_ptr<Node> curN, std::shared_ptr<Node> n,
-                          const NamedDecl *arg) {
-    addLink(curN, n, true, false, arg);
-  }
-  inline void addWriteLink(std::shared_ptr<Node> curN, std::shared_ptr<Node> n,
-                           const NamedDecl *arg) {
-    addLink(curN, n, false, true, arg);
-  }
-};
-
 struct Graph {
+  int graphId;
+  static int idCounter;
   std::vector<std::shared_ptr<Node>> nodes;
   std::vector<std::shared_ptr<Node>> roots;
+  Graph() : graphId(idCounter++) {}
   void dump() const {
     llvm::errs() << "Graph: \n";
     for (const auto &node : nodes) {
@@ -83,6 +41,13 @@ struct Graph {
       n.first->prev.erase(n2);
       n.first->prev.insert(n1);
     }
+    for (auto &n2Dep : n2->dependencies) {
+      if (n1->dependencies.count(n2Dep.first) == 0)
+        n1->dependencies.insert(n2Dep);
+      else
+        n1->dependencies.at(n2Dep.first) =
+            n1->dependencies.at(n2Dep.first) + n2Dep.second;
+    }
     for (auto &n : n2->instructionPtr)
       n1->instructionPtr.push_back(n);
     for (auto &graph : n2->graph)
@@ -91,12 +56,28 @@ struct Graph {
     this->nodes.erase(std::find(this->nodes.begin(), this->nodes.end(), n2));
   }
 };
-void updateInstructionOrderNode(const std::shared_ptr<Node> &, StmtOrder &,
-                                std::unordered_set<std::shared_ptr<Node>> &);
+void updateInstructionOrderNode(const std::shared_ptr<Node> &, StmtOrder &);
 void updateInstructionOrderFromGraph(const Graph &, StmtOrder &);
 
 // Translate a list of instructions to a graph
-Graph InstructionToGraph(const std::vector<Instruction> &);
+Graph InstructionToGraph(
+    const std::vector<Instruction> &, const AliasTable &, bool isLoop = false,
+    std::shared_ptr<std::unordered_map<std::shared_ptr<aliasArg>,
+                                       std::set<std::shared_ptr<Node>>>>
+        previousDataUsedInRead = std::make_shared<std::unordered_map<
+            std::shared_ptr<aliasArg>, std::set<std::shared_ptr<Node>>>>(),
+    std::shared_ptr<
+        std::unordered_map<std::shared_ptr<aliasArg>, std::shared_ptr<Node>>>
+        previousDataUsedInWrite = std::make_shared<std::unordered_map<
+            std::shared_ptr<aliasArg>, std::shared_ptr<Node>>>());
+void handleInstructionDeps(
+    std::shared_ptr<Node> &node,
+    const std::unordered_map<std::shared_ptr<aliasArg>, NodeDependency> &deps,
+    std::unordered_map<std::shared_ptr<aliasArg>,
+                       std::set<std::shared_ptr<Node>>> &dataUsedInRead,
+    std::unordered_map<std::shared_ptr<aliasArg>, std::shared_ptr<Node>>
+        &dataUsedInWrite,
+    const AliasTable &);
 
 // Print the graph, mostly to debug
 void PrintGraph(const Graph &);
@@ -114,4 +95,11 @@ void nodesFusion(Graph &graph);
 void transitiveReduction(Graph &graph);
 
 // Generate all of the graph for a file, (generate one for each function)
-void generateGraph(const std::vector<std::vector<Instruction>> &, StmtOrder &);
+std::vector<Graph> generateGraph(const std::vector<std::vector<Instruction>> &,
+                                 StmtOrder &, const AliasTable &);
+// To check when two nodes have common array element (to know when to fuse them)
+// ie. a[d]=b and a[e]=c should not be fused)
+// a[d]=b and a[d]=c should be fused
+// a[d]=b and a[e]=a[d] should be fused
+bool hasCommonArrayElement(std::shared_ptr<Node> &n1,
+                           std::shared_ptr<Node> &n2);

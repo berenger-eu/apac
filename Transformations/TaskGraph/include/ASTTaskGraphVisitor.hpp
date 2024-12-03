@@ -3,8 +3,8 @@
 #include <string>
 
 #include "AliasTable.hpp"
+#include "Instruction.hpp"
 #include "InstructionsOrderManager.hpp"
-#include "PotTaskGraphInterface.hpp"
 #include "common.hpp"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/RecursiveASTVisitor.h"
@@ -17,7 +17,7 @@ public:
   ASTTaskGraphVisitor(Rewriter &R, StmtOrder &orderManager)
       : TheRewriter(R), orderManager(orderManager),
         currentOrderManager(&orderManager), aliasTable(R),
-        ignoreStmtPragma(false){};
+        ignoreStmtPragma(false) {};
   inline bool VisitStmt(Stmt *s) { return true; }
   // Traverse methods lets us stop visiting nodes that we don't need
   inline bool TraverseDeclStmt(DeclStmt *d) {
@@ -48,6 +48,22 @@ public:
   inline bool TraverseCompoundAssignOperator(CompoundAssignOperator *bop) {
     return traverseSimpleElements(bop);
   }
+  inline bool TraverseCXXDeleteExpr(CXXDeleteExpr *d) {
+    if (isInHeaders(TheRewriter.getSourceMgr(), d->getBeginLoc()))
+      return true;
+    if (!ignoreStmtPragma)
+      currentOrderManager->addInstructionToManager(d);
+    Instruction instr(d, getStmtAsString(d, TheRewriter.getLangOpts()));
+    if (isa<DeclRefExpr>(d->getArgument()->IgnoreImpCasts())) {
+      auto declRef = cast<DeclRefExpr>(d->getArgument()->IgnoreImpCasts());
+      auto alias = aliasTable.getOrAddAliasArg(declRef);
+      addDependencyWrite(instr, alias);
+      addDependencyRead(instr, alias);
+    }
+    instr.noFusion = true;
+    functionsInstructionsVector.back().push_back(instr);
+    return true;
+  }
   // Can be ignore if it is assumed that previous passes were run
   // So the return statement should not contain any expressions
   inline bool TraverseReturnStmt(ReturnStmt *r) {
@@ -71,35 +87,33 @@ public:
   }
 
 private:
-  bool isEmptyInstruction(const Instruction &instr) {
-    return instr.dependencies.size() == 0;
-  };
-  inline void addDependencyRead(Instruction &instr, const VarDecl *d) {
+  // Add all read dependencies of an expression to the instruction
+  void addDependenciesRead(Instruction &instr, const Expr *e);
+
+  inline void addDependencyRead(Instruction &instr,
+                                std::shared_ptr<aliasArg> d) {
     for (auto &alias : aliasTable.getAliases(d)) {
       if (instr.dependencies.count(alias) == 0)
-        instr.dependencies.insert(
-            {alias->getCanonicalDecl(), NodeDependency{true, false}});
+        instr.dependencies.insert({alias, NodeDependency{true, false}});
       else
-        instr.dependencies.find(alias->getCanonicalDecl())->second.isRead =
-            true;
+        instr.dependencies.find(alias)->second.isRead = true;
     }
   }
-  inline void addDependencyWrite(Instruction &instr, const VarDecl *d) {
+  inline void addDependencyWrite(Instruction &instr,
+                                 std::shared_ptr<aliasArg> d) {
     for (auto &alias : aliasTable.getAliases(d)) {
-      if (instr.dependencies.count(alias->getCanonicalDecl()) == 0)
-        instr.dependencies.insert(
-            {alias->getCanonicalDecl(), NodeDependency{false, true}});
+      if (instr.dependencies.count(alias) == 0)
+        instr.dependencies.insert({alias, NodeDependency{false, true}});
       else
-        instr.dependencies.find(alias->getCanonicalDecl())->second.isWrite =
-            true;
+        instr.dependencies.find(alias)->second.isWrite = true;
     }
   }
-  bool traverseSimpleElements(Stmt *s) {
+  inline bool traverseSimpleElements(Stmt *s) {
     if (isInHeaders(TheRewriter.getSourceMgr(), s->getBeginLoc()))
       return true;
     if (!ignoreStmtPragma)
       currentOrderManager->addInstructionToManager(s);
-    Instruction instr{s, getStmtAsString(s, TheRewriter.getLangOpts()), false};
+    Instruction instr(s, getStmtAsString(s, TheRewriter.getLangOpts()));
     handleStmt(*s, instr);
     functionsInstructionsVector.back().push_back(instr);
     return true;
@@ -111,11 +125,12 @@ private:
   void handleBinaryOperator(const BinaryOperator &, Instruction &,
                             bool isWrite = false);
   void handleCallExpr(const CallExpr &, Instruction &, bool isWrite = false);
-  void handleStmt(const Stmt &st, Instruction &, bool isWrite = false);
+  void handleStmt(const Stmt &st, Instruction &, bool isWrite = false,
+                  bool isRead = true);
   void handleMemberCallExpr(const CXXMemberCallExpr &, Instruction &,
                             bool isWrite = false);
   void computeAliasesForRHS(const Expr *bop,
-                            std::unordered_set<const VarDecl *> &,
+                            std::unordered_set<std::shared_ptr<aliasArg>> &,
                             Instruction &instr);
   Rewriter &TheRewriter;
   StmtOrder &orderManager;
@@ -123,7 +138,12 @@ private:
   AliasTable aliasTable;
   bool ignoreStmtPragma;
 };
-
+inline bool isEmptyInstruction(const Instruction &instr) {
+  return instr.dependencies.size() == 0;
+};
 inline bool isInExceptionList(const ParmVarDecl &p) {
   return p.getType().getAsString().find("std::shared_ptr") != std::string::npos;
 }
+// Get all the variables that are read in an expression (similar to
+// getAllDeclRefExprInsideExpr but with some exceptions such as a in &a)
+std::vector<const DeclRefExpr *> getAllReadDeclRefExprInsideExpr(const Expr *e);

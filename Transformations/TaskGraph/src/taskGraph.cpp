@@ -24,8 +24,26 @@ public:
   // Parse all the file
   virtual void HandleTranslationUnit(ASTContext &Ctx) {
     VisitorTaskGraph.TraverseAST(Ctx);
-    generateGraph(VisitorTaskGraph.functionsInstructionsVector, orderManager);
-    modifyFile(TheRewriter, orderManager);
+    for (auto instr : VisitorTaskGraph.functionsInstructionsVector)
+      for (auto instrI : instr)
+        instrI.dump();
+
+    llvm::errs() << "Print\n\n";
+    VisitorTaskGraph.getAliasTable().dump();
+    llvm::errs() << "Print\n\n";
+
+    orderManager.dump();
+    auto graphs = generateGraph(VisitorTaskGraph.functionsInstructionsVector,
+                                orderManager, VisitorTaskGraph.getAliasTable());
+
+    OutputHandler outputHandler(TheRewriter);
+    outputHandler.GenerateDotGraph(graphs, "taskGraphRaw.dot");
+    for (auto &graph : graphs) {
+      optimizeGraph(graph);
+      updateInstructionOrderFromGraph(graph, orderManager);
+    }
+    outputHandler.GenerateDotGraph(graphs, "taskGraphOpt.dot");
+    outputHandler.modifyFile(orderManager);
   }
 
 private:

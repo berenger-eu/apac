@@ -128,6 +128,22 @@ bool isReferenceQualType(QualType qType) {
 
   return returnValue;
 }
+
+QualType getNonReferenceQualType(QualType qType) {
+  qType.dump();
+  if (qType->isReferenceType()) {
+    return qType.getNonReferenceType();
+  } else if (qType.getAsString().find("reference_wrapper") !=
+             std::string::npos) {
+    if (isa<TemplateSpecializationType>(qType)) {
+      const TemplateSpecializationType *tst =
+          cast<TemplateSpecializationType>(qType);
+      return tst->template_arguments().front().getAsType();
+    }
+  }
+  return qType;
+}
+
 void getLeafs(Stmt *st, std::vector<Stmt *> &leafs) {
   std::queue<Stmt *> vectNodes;
   vectNodes.push(st);
@@ -180,6 +196,43 @@ const DeclRefExpr *getSingleDeclRefExprInsideExpr(const Expr *e) {
   }
   return returnValue;
 }
+
+const DeclRefExpr *getArrayBaseDeclRefExpr(const ArraySubscriptExpr *ase) {
+  const DeclRefExpr *returnValue = NULL;
+  const Expr *base = ase;
+  while (isa<ArraySubscriptExpr>(base)) {
+    base = cast<ArraySubscriptExpr>(base)->getBase();
+    base = base->IgnoreParenImpCasts();
+  }
+  returnValue = getSingleDeclRefExprInsideExpr(base);
+  return returnValue;
+}
+
+const ArraySubscriptExpr *getSingleArraySubscriptExprInsideExpr(const Expr *e) {
+
+  std::deque<const ArraySubscriptExpr *> dequeArraySubscriptExpr;
+  std::stack<const Expr *> stackExpr;
+  const Expr *curExpr = e;
+
+  stackExpr.push(curExpr);
+  while (!stackExpr.empty()) {
+    curExpr = stackExpr.top();
+    stackExpr.pop();
+    if (isa<ArraySubscriptExpr>(curExpr)) {
+      const ArraySubscriptExpr *ase = cast<ArraySubscriptExpr>(curExpr);
+      dequeArraySubscriptExpr.push_front(ase);
+    } else {
+      for (auto it = curExpr->child_begin(); it != curExpr->child_end(); ++it)
+        if (isa<Expr>(*it))
+          stackExpr.push(cast<Expr>(*it));
+    }
+  }
+  const ArraySubscriptExpr *returnValue = NULL;
+  if (dequeArraySubscriptExpr.size() == 1) {
+    returnValue = dequeArraySubscriptExpr.front();
+  }
+  return returnValue;
+}
 bool isFullConstType(const QualType &qType) {
   const Type *typeTemp;
   bool workDone = false;
@@ -205,6 +258,9 @@ bool isFullConstType(const QualType &qType) {
 int getPtrDepthAccess(QualType qt1, QualType qt2, const ASTContext &aContext) {
   int returnValue = 0;
   // If both types are the same, then we return 0 since they have the same depth
+  qt2 = qt2.getSingleStepDesugaredType(aContext);
+  if (isReferenceQualType(qt2))
+    qt2 = getNonReferenceQualType(qt2);
   if (qt1 != qt2) {
     // If a pointer to type qt1 is equal to qt2, then qt2 is a pointer to type
     // qt1
@@ -214,12 +270,16 @@ int getPtrDepthAccess(QualType qt1, QualType qt2, const ASTContext &aContext) {
     // Else, we compare type pointed by qt1 until we find the same type as qt2
     // The number of iteration is the depth of the pointer access
     else {
-      while (qt1 != qt2 && qt1.getTypePtrOrNull() && qt2.getTypePtrOrNull() &&
-             qt1->getPointeeType() != qt2->getPointeeType()) {
+      while (qt1 != qt2 && qt1.getTypePtrOrNull() && qt2.getTypePtrOrNull()) {
         if (isPointerQualType(qt1)) {
           returnValue++;
           qt1 = qt1->getPointeeType();
+        } else if (isReferenceQualType(qt1)) {
+          qt1 = getNonReferenceQualType(qt1);
+        } else if (qt1->isArrayType() || qt1->isConstantArrayType()) {
+          qt1 = aContext.getAsArrayType(qt1)->getElementType();
         }
+        qt1 = qt1.getSingleStepDesugaredType(aContext);
       }
     }
   }
@@ -232,17 +292,17 @@ int getPtrDepthAccess(const clang::VarDecl &v, const clang::Expr &e) {
   return getPtrDepthAccess(qt1, qt2, v.getASTContext());
 }
 
-std::deque<clang::ArraySubscriptExpr *>
+std::deque<const clang::ArraySubscriptExpr *>
 getArraySubscripts(const clang::Expr *e) {
-  std::deque<clang::ArraySubscriptExpr *> queueArraySubscriptExpr;
-  Expr *curExpr;
-  std::stack<Expr *> stackExpr;
+  std::deque<const clang::ArraySubscriptExpr *> queueArraySubscriptExpr;
+  const Expr *curExpr = e;
+  std::stack<const Expr *> stackExpr;
   stackExpr.push(curExpr);
   while (!stackExpr.empty()) {
     curExpr = stackExpr.top();
     stackExpr.pop();
     if (isa<ArraySubscriptExpr>(curExpr)) {
-      ArraySubscriptExpr *ase = cast<ArraySubscriptExpr>(curExpr);
+      const ArraySubscriptExpr *ase = cast<ArraySubscriptExpr>(curExpr);
       queueArraySubscriptExpr.push_front(ase);
       stackExpr.push(ase->getBase());
     } else {
@@ -253,9 +313,10 @@ getArraySubscripts(const clang::Expr *e) {
   }
   return queueArraySubscriptExpr;
 }
-std::vector<clang::Expr *> getArraySubscriptsIndexes(const clang::Expr *e) {
-  std::vector<clang::Expr *> vectArraySubscriptExprIndexes;
-  std::deque<clang::ArraySubscriptExpr *> queueArraySubscriptExpr =
+std::vector<const clang::Expr *>
+getArraySubscriptsIndexes(const clang::Expr *e) {
+  std::vector<const clang::Expr *> vectArraySubscriptExprIndexes;
+  std::deque<const clang::ArraySubscriptExpr *> queueArraySubscriptExpr =
       getArraySubscripts(e);
   for (auto &expr : queueArraySubscriptExpr) {
     vectArraySubscriptExprIndexes.push_back(expr->getIdx());
@@ -264,14 +325,22 @@ std::vector<clang::Expr *> getArraySubscriptsIndexes(const clang::Expr *e) {
 }
 std::vector<int> getArraySubscriptsIndexesValues(const clang::Expr *e) {
   std::vector<int> vectArraySubscriptExpr;
-  std::vector<Expr *> vectExpr = getArraySubscriptsIndexes(e);
-  for (auto &expr : vectExpr) {
-    // TODO: Handle cases with evaluable expressions (5+4 , ...)
-    if (isa<IntegerLiteral>(expr))
-      vectArraySubscriptExpr.push_back(
-          cast<IntegerLiteral>(expr)->getValue().getSExtValue());
-    else
-      vectArraySubscriptExpr.push_back(-1);
+  std::vector<const Expr *> vectExpr = getArraySubscriptsIndexes(e);
+  if (isa<ArraySubscriptExpr>(e)) {
+    auto arraySubscriptExpr = cast<ArraySubscriptExpr>(e);
+    if (getSingleDeclRefExprInsideExpr(
+            getArrayBaseDeclRefExpr(arraySubscriptExpr))) {
+      auto base =
+          cast<VarDecl>(getArrayBaseDeclRefExpr(arraySubscriptExpr)->getDecl());
+      for (auto &expr : vectExpr) {
+        // TODO: Handle cases with evaluable expressions (5+4 , ...)
+        Expr::EvalResult result;
+        if (expr->EvaluateAsInt(result, base->getASTContext()))
+          vectArraySubscriptExpr.push_back(result.Val.getInt().getSExtValue());
+        else
+          vectArraySubscriptExpr.push_back(-1);
+      }
+    }
   }
   return vectArraySubscriptExpr;
 }

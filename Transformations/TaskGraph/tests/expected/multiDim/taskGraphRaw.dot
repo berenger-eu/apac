@@ -1,0 +1,64 @@
+digraph G {
+subgraph cluster_f0 {
+    invisibleNodeScope_0 [style=invis];
+}
+subgraph cluster_f1 {
+    invisibleNodeScope_1 [style=invis];
+    0 [label="apacMemeBloc__a_0 = new int [2][2][2];"];
+    1 [label="a = apacMemeBloc__a_0;"];
+    2 [label="b = 4;"];
+    3 [label="d = 4;"];
+    4 [label="e = 7;"];
+    5 [label="a[0][0][0] = 1;"];
+    6 [label="a[0][0][0] = 4;"];
+    7 [label="a[1][1][1] = 2;"];
+    8 [label="a[0][0][1] = d + e;"];
+    9 [label="a[d][0][1] = e;"];
+    10 [label="a[d][0][1] = 7;"];
+    11 [label="a[e][0][1] = a[d][0][1];"];
+    12 [label="a[e][0][1] = 9;"];
+    13 [label="a[e + 1][0][1] = a[0][0][1];"];
+    14 [label="a[0][0][1] = d + e;"];
+    15 [label="delete [] apacMemeBloc__a_0;"];
+}
+    0 -> 1[label="  apacMemeBloc__a_0RW"];
+    1 -> 5[label="  apacMemeBloc__a_0R,aR"];
+    1 -> 6[label="  apacMemeBloc__a_0R,aR"];
+    1 -> 7[label="  apacMemeBloc__a_0R,aR"];
+    1 -> 8[label="  apacMemeBloc__a_0R,aR"];
+    1 -> 9[label="  apacMemeBloc__a_0R,aR"];
+    1 -> 10[label="  apacMemeBloc__a_0R,aR"];
+    1 -> 11[label="  apacMemeBloc__a_0R,aR"];
+    1 -> 12[label="  apacMemeBloc__a_0R,aR"];
+    1 -> 13[label="  apacMemeBloc__a_0R,aR"];
+    1 -> 14[label="  apacMemeBloc__a_0R,aR"];
+    1 -> 15[label="  apacMemeBloc__a_0RW,aRW"];
+    3 -> 8[label="  dR"];
+    3 -> 9[label="  dR"];
+    3 -> 10[label="  dR"];
+    3 -> 11[label="  dR"];
+    3 -> 14[label="  dR"];
+    4 -> 8[label="  eR"];
+    4 -> 9[label="  eR"];
+    4 -> 11[label="  eR"];
+    4 -> 12[label="  eR"];
+    4 -> 13[label="  eR"];
+    4 -> 14[label="  eR"];
+    5 -> 6[label="  a[0][0][0]W"];
+    5 -> 15[label="  apacMemeBloc__a_0W,aW"];
+    6 -> 15[label="  apacMemeBloc__a_0W,aW"];
+    7 -> 15[label="  apacMemeBloc__a_0W,aW"];
+    8 -> 9[label="  a[d][0][1]W"];
+    8 -> 15[label="  apacMemeBloc__a_0W,aW"];
+    9 -> 10[label="  a[d][0][1]W"];
+    9 -> 15[label="  apacMemeBloc__a_0W,aW"];
+    10 -> 11[label="  a[d][0][1]R,a[e][0][1]W"];
+    10 -> 15[label="  apacMemeBloc__a_0W,aW"];
+    11 -> 12[label="  a[e][0][1]W"];
+    11 -> 15[label="  apacMemeBloc__a_0W,aW"];
+    12 -> 13[label="  a[0][0][1]R,a[e + 1][0][1]W"];
+    12 -> 15[label="  apacMemeBloc__a_0W,aW"];
+    13 -> 14[label="  a[0][0][1]W"];
+    13 -> 15[label="  apacMemeBloc__a_0W,aW"];
+    14 -> 15[label="  apacMemeBloc__a_0W,aW"];
+}

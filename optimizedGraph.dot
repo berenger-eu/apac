@@ -1,0 +1,42 @@
+digraph G {
+subgraph cluster_f0 {
+    invisibleNodeScope_3 [style=invis];
+}
+subgraph cluster_f1 {
+    invisibleNodeScope_4 [style=invis];
+    0 [label="this->x = 4;"];
+}
+subgraph cluster_f2 {
+    invisibleNodeScope_5 [style=invis];
+    1 [label="i = 4;"];
+    1 -> 8[label="  iW"];
+    2 [label="ref = a;
+a++;
+ref++;
+a : ref
+ref : a"];
+    5 [label="p = &i;
+p1 = p;"];
+    5 -> 8[label="  p1R"];
+    5 -> 7[label="  pW"];
+    7 [label="p = &j;"];
+    7 -> 11[label="  pR"];
+    8 [label="(*p1) = 4;
+i++;
+*p1 : i"];
+    8 -> 12[label="  iR"];
+    9 [label="j++;"];
+    9 -> 11[label="  jW"];
+    11 [label="*p = 4;
+*p : j"];
+    11 -> 12[label="  jW"];
+    12 [label="j = i;
+i++;"];
+    12 -> 16[label="  iRW"];
+    14 [label="po.setX(4);
+po.setX(8);"];
+    14 -> 16[label="  poRW"];
+    16 [label="po.setX(i);
+po.setX(j);"];
+}
+}

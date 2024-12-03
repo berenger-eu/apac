@@ -44,8 +44,8 @@ for file in $testsPath/*.cpp; do
                         differenceInText=true
                         echo -e "${RED}Different Text : $fileName${NC}"
                     fi
-                    clang-check -ast-print "$expectedResult" > "$curPath/ast_result" 2> /dev/null
-                    clang-check -ast-print $file2 > "$curPath/ast_expected" 2> /dev/null
+                    clang-check-18 -ast-print "$expectedResult" > "$curPath/ast_result" 2> /dev/null
+                    clang-check-18 -ast-print $file2 > "$curPath/ast_expected" 2> /dev/null
                     diff "$curPath/ast_expected" "$curPath/ast_result" > "$folderResultPath"/astdiff
                     if [ $? -ne 0 ]; then
                         differenceInAST=true

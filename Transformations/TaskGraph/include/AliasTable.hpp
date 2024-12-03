@@ -1,175 +1,172 @@
 #pragma once
+#include "AliasTableMaps.hpp"
+#include "ElementsRepresentationStruct.hpp"
 #include "common.hpp"
 #include "clang/AST/Decl.h"
+#include "clang/AST/Expr.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 #include <unordered_map>
 #include <unordered_set>
+#include <variant>
 #include <vector>
 using namespace clang;
-enum AliasType { Reference, Pointer, Variable };
-struct pointersAliasArg;
-struct referenceAliasArg;
-struct aliasArg {
-  const clang::VarDecl &declaration;
-  // Type of Alias arg
-  const AliasType type;
-  // Elements that point to current element
-  std::unordered_set<pointersAliasArg *> pointers;
-  // Elements that references current element
-  std::unordered_set<referenceAliasArg *> references;
-  aliasArg(const clang::VarDecl &decl, AliasType t)
-      : declaration(decl), type(t) {}
-  virtual void dump() const;
-};
-
-struct pointersAliasArg : public aliasArg {
-  pointersAliasArg(const clang::VarDecl &decl) : aliasArg{decl, Pointer} {}
-  // Element referenced
-  std::unordered_set<aliasArg *> aliased;
-  void dump() const override;
-};
-struct referenceAliasArg : public aliasArg {
-  referenceAliasArg(const clang::VarDecl &decl) : aliasArg{decl, Reference} {}
-  // Element referenced
-  std::unordered_set<aliasArg *> aliased;
-  void dump() const override;
-};
-struct key_struct {
-  const clang::NamedDecl *decl;
-  std::vector<int> indices;
-  void dump() const {
-    // Dump the contents of the key_struct
-    llvm::errs() << decl->getNameAsString();
-    for (const auto &index : indices) {
-      llvm::errs() << " [" << index << "]";
-    }
-    llvm::errs() << "\n";
-  }
-};
-struct key_hash {
-  std::size_t operator()(const key_struct p) const {
-    auto h1 = std::hash<const clang::NamedDecl *>{}(p.decl);
-    auto h2 = 0;
-    for (const auto &element : p.indices) {
-      h2 ^= std::hash<int>{}(element);
-    }
-    return h1 ^ h2;
-  }
-};
-
-struct key_equal {
-  bool operator()(const key_struct p1, key_struct p2) const {
-    return p1.decl == p2.decl; //&& p1.indices == p2.indices;
-  }
-};
-
-typedef std::unordered_map<key_struct, struct aliasArg, key_hash, key_equal>
-    VariableAliasTable;
-typedef std::unordered_map<key_struct, struct referenceAliasArg, key_hash,
-                           key_equal>
-    ReferenceAliasTable;
-typedef std::unordered_map<key_struct, struct pointersAliasArg, key_hash,
-                           key_equal>
-    PointersAliasTable;
 
 class AliasTable {
 public:
   AliasTable(Rewriter &R) : TheRewriter(R) {}
-  const std::unordered_set<const VarDecl *> getAliases(const VarDecl *v) const;
-  std::unordered_set<const VarDecl *> getAliased(const VarDecl *v);
-  inline void addVariableToTables(const VarDecl *v) {
-    if (v != nullptr) {
-      referenceAliasArg ref{*v};
-      pointersAliasArg ptr{*v};
 
-      refAliasTable.insert({{getKey(v), std::vector<int>()}, ref});
-      //   ptrAliasTable.insert({getKey(v),ptr});
-    }
-  }
-  void removeDependencyPtr(const VarDecl *ptr);
-  void addAliasReference(const VarDecl *var, const VarDecl *ref);
-  void addAliasPtr(const VarDecl *var, const VarDecl *ptr);
-  void getModifiedVariables(std::unordered_set<const VarDecl *> &setResults,
-                            const int &depth);
   void inline dump() const {
-    dumpVarTable();
-    dumpRefTable();
-    dumpPtrTable();
+    std::string varTable, refTable, ptrTable;
+    llvm::errs() << "Map Size : " << getNbElements()
+                 << "\nDumping Alias Table\n";
+    dumpPrep(&varTable, &refTable, &ptrTable);
+    llvm::errs() << "Var Table \n\n"
+                 << varTable << "\nRef Table\n\n"
+                 << refTable << "\nPtr Table \n\n"
+                 << ptrTable << "\n";
   };
-  inline const aliasArg *getAliasArg(const VarDecl *v) const {
-    const aliasArg *result = nullptr;
-    if (getVarAliasArg(v) != nullptr)
-      result = getVarAliasArg(v);
-    else if (getPtrAliasArg(v) != nullptr)
-      result = getPtrAliasArg(v);
-    else if (getRefAliasArg(v) != nullptr)
-      result = getRefAliasArg(v);
-    return result;
-  }
-  inline const aliasArg *getVarAliasArg(const VarDecl *v) const {
-    const NamedDecl *result = getKey(v);
-    if (varAliasTable.count({result, std::vector<int>()}) == 0)
-      return nullptr;
-    return &varAliasTable.at({result, std::vector<int>()});
-  }
-  inline const pointersAliasArg *getPtrAliasArg(const VarDecl *v) const {
-    const NamedDecl *result = getKey(v);
-    if (ptrAliasTable.count({result, std::vector<int>()}) == 0)
-      return nullptr;
-    return &ptrAliasTable.at({result, std::vector<int>()});
-  }
-  inline const referenceAliasArg *getRefAliasArg(const VarDecl *v) const {
-    const NamedDecl *result = getKey(v);
-    if (refAliasTable.count({result, std::vector<int>()}) == 0)
-      return nullptr;
-    return &refAliasTable.at({result, std::vector<int>()});
-  }
-
-private:
-  inline const NamedDecl *getKey(const VarDecl *v) const {
-    return v->getCanonicalDecl();
-  }
-
-  inline aliasArg *getAliasArg(const VarDecl *v) {
-    aliasArg *result = nullptr;
-    if (getVarAliasArg(v) != nullptr)
-      result = getVarAliasArg(v);
-    else if (getPtrAliasArg(v) != nullptr)
-      result = getPtrAliasArg(v);
-    else if (getRefAliasArg(v) != nullptr)
-      result = getRefAliasArg(v);
-    return result;
-  }
-
-  inline aliasArg *getVarAliasArg(const VarDecl *v) {
-    const NamedDecl *result = getKey(v);
-    if (varAliasTable.count({result, std::vector<int>()}) == 0)
-      return nullptr;
-    return &varAliasTable.at({result, std::vector<int>()});
-  }
-
-  inline pointersAliasArg *getPtrAliasArg(const VarDecl *v) {
-    const NamedDecl *result = getKey(v);
-    if (ptrAliasTable.count({result, std::vector<int>()}) == 0)
-      return nullptr;
-    return &ptrAliasTable.at({result, std::vector<int>()});
-  }
-
-  inline referenceAliasArg *getRefAliasArg(const VarDecl *v) {
-    const NamedDecl *result = getKey(v);
-    if (refAliasTable.count({result, std::vector<int>()}) == 0)
-      return nullptr;
-    return &refAliasTable.at({result, std::vector<int>()});
-  }
-  void getReferencesAliases(const VarDecl *,
-                            std::unordered_set<const VarDecl *> &) const;
-  void getPointersAliases(const VarDecl *,
-                          std::unordered_set<const VarDecl *> &) const;
   void dumpPtrTable() const;
   void dumpRefTable() const;
   void dumpVarTable() const;
-  VariableAliasTable varAliasTable;
-  ReferenceAliasTable refAliasTable;
-  PointersAliasTable ptrAliasTable;
+
+  const std::unordered_set<std::shared_ptr<aliasArg>>
+  getAliases(std::shared_ptr<aliasArg> &v) const;
+  std::unordered_set<std::shared_ptr<aliasArg>>
+  getAliased(std::shared_ptr<aliasArg> &v);
+  void removeDependencyPtr(const std::shared_ptr<aliasArg> &ptr);
+  void addAliasReference(std::shared_ptr<aliasArg> &var,
+                         std::shared_ptr<aliasArg> &ref);
+  // TODO: split function ?
+  void addAliasPtr(std::shared_ptr<aliasArg> var,
+                   std::shared_ptr<aliasArg> ptr);
+  /*
+void addAliasPtr(const Expr *var, const Expr *ptr);
+void addAliasPtr(const VarDecl *var, const std::vector<int> &,
+  const VarDecl *ptr, const std::vector<int> &, const int &);
+  */
+  // Used to add aliased element of right AliasArg to left AliasArg
+  void addAliasedToElement(std::shared_ptr<aliasArg>,
+                           std::shared_ptr<aliasArg>);
+  void getModifiedVariables(
+      std::unordered_set<std::shared_ptr<aliasArg>> &setResults,
+      const int &depth);
+
+  std::shared_ptr<aliasArg>
+  getAliasArg(const VarDecl *v, const std::vector<int> & = std::vector<int>(),
+              std::string indexString = "") const;
+  std::shared_ptr<aliasArg>
+  getAliasArg(const VarDecl *v,
+              const std::vector<int> &indexes = std::vector<int>(),
+              std::string indexString = "");
+  inline bool
+  isInTable(const VarDecl *v,
+            const std::vector<int> &indexes = std::vector<int>()) const {
+    return aliasTableMap.count(getKey(v), indexes) > 0;
+  }
+  inline std::shared_ptr<aliasArg>
+  getOrAddAliasArg(const VarDecl *v, const AliasType &type,
+                   const std::vector<int> &indexes = std::vector<int>(),
+                   std::string indexString = "") {
+    // If variable does not exist in table add it
+    if (getAliasArg(v) == nullptr)
+      addElementToAliasTable(v, type);
+    // If element (variable and indexes) does not exist in table add it
+    if (getAliasArg(v, indexes) == nullptr)
+      addElementToAliasTable(v, type, indexes, indexString);
+    if (getAliasArg(v, indexes, indexString) == nullptr)
+      addElementToAliasTable(v, type, indexes, indexString);
+    return getAliasArg(v, indexes, indexString);
+  }
+  inline std::shared_ptr<aliasArg>
+  getOrAddAliasArg(const Expr *expr, AliasType type = AliasType::None) {
+    // If variable does not exist in table add it
+    const VarDecl *v = nullptr;
+    std::vector<int> indexes;
+    std::string indexString;
+    if (type == AliasType::None)
+      type = getAliasType(expr);
+    if (isa<DeclRefExpr>(expr->IgnoreImpCasts()))
+      v = cast<VarDecl>(cast<DeclRefExpr>(expr->IgnoreImpCasts())->getDecl());
+    else if (isa<ArraySubscriptExpr>(expr->IgnoreImpCasts())) {
+      auto a = cast<ArraySubscriptExpr>(expr->IgnoreImpCasts());
+      indexes = getArraySubscriptsIndexesValues(a);
+      v = cast<VarDecl>(getArrayBaseDeclRefExpr(a)->getDecl());
+      std::stringstream ssIndexString;
+      for (auto &index : getArraySubscriptsIndexes(a))
+        ssIndexString << "["
+                      << getExprAsString(index, TheRewriter.getLangOpts())
+                      << "]";
+      bool foundUnknownIndex = false;
+      for (auto &index : indexes) {
+        if (index == -1) {
+          foundUnknownIndex = true;
+          break;
+        }
+      }
+      if (foundUnknownIndex)
+        indexString = ssIndexString.str();
+    }
+
+    if (v == nullptr || type == AliasType::None)
+      return nullptr;
+    return getOrAddAliasArg(v, type, indexes, indexString);
+  }
+  const AliasTableMapStruct &getAliasTable() const { return aliasTableMap; }
+  int getNbElements() const { return aliasTableMap.nbElements(); }
+  // Get "parents" of an array elements
+  // For example if we give it tab[1][2], it will return tab[1] and tab
+  std::vector<std::shared_ptr<aliasArg>>
+      getArrayElementParents(std::shared_ptr<aliasArg>) const;
+  // Get "children" of an array element
+  // For example if we give it tab[1], it will return tab[1][0], tab[1][1], ...
+  // (as long as they are in the table)
+  std::unordered_set<std::shared_ptr<aliasArg>>
+      getArrayElementChildren(std::shared_ptr<aliasArg>) const;
+  std::vector<aliasesTableValues *> getDirectChildren(aliasesTableValues,
+                                                      const int &depth) const;
+  // Get all the elements related to an array
+  // For example if we give it tab[1], it will return tab, all tab[1][i] and all
+  // tab[i] ...
+  std::vector<std::shared_ptr<aliasArg>>
+      getArrayElementAll(std::shared_ptr<aliasArg>) const;
+  // Get parents and children of an element
+  inline std::unordered_set<std::shared_ptr<aliasArg>>
+  getArrayElementRelated(std::shared_ptr<aliasArg> v) const {
+    std::unordered_set<std::shared_ptr<aliasArg>> result;
+    result = getArrayElementDependencies(v);
+    /*
+        llvm::errs() << "Getting parents\n";
+        auto parents = getArrayElementParents(v);
+        auto children = getArrayElementChildren(v);
+        result.insert(parents.begin(), parents.end());
+        result.insert(children.begin(), children.end());
+    */
+    return result;
+  }
+
+private:
+  void dumpPrep(std::string *varTable, std::string *refTable,
+                std::string *ptrTable) const;
+  inline const NamedDecl *getKey(const VarDecl *v) const {
+    return v->getCanonicalDecl();
+  }
+  void addElementToAliasTable(const VarDecl *v, const AliasType &type,
+                              std::vector<int> indexes = std::vector<int>(),
+                              std::string indexString = "") {
+    const auto &key = getKey(v);
+    if (key != nullptr) {
+      aliasTableMap.insert({aliasArg(*v, type, indexes, indexString), indexes});
+    }
+  }
+
+  void
+  getReferencesAliases(std::shared_ptr<aliasArg>,
+                       std::unordered_set<std::shared_ptr<aliasArg>> &) const;
+  void
+  getPointersAliases(std::shared_ptr<aliasArg>,
+                     std::unordered_set<std::shared_ptr<aliasArg>> &) const;
+  std::unordered_set<std::shared_ptr<aliasArg>>
+  getArrayElementDependencies(std::shared_ptr<aliasArg> elem) const;
+  AliasTableMapStruct aliasTableMap;
   Rewriter &TheRewriter;
 };

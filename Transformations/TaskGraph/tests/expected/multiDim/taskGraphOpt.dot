@@ -1,0 +1,34 @@
+digraph G {
+subgraph cluster_f0 {
+    invisibleNodeScope_2 [style=invis];
+}
+subgraph cluster_f1 {
+    invisibleNodeScope_3 [style=invis];
+    0 [label="apacMemeBloc__a_0 = new int [2][2][2];
+a = apacMemeBloc__a_0;"];
+    2 [label="b = 4;"];
+    3 [label="d = 4;"];
+    4 [label="e = 7;"];
+    5 [label="a[0][0][0] = 1;
+a[0][0][0] = 4;"];
+    7 [label="a[1][1][1] = 2;"];
+    8 [label="a[0][0][1] = d + e;"];
+    9 [label="a[d][0][1] = e;
+a[d][0][1] = 7;
+a[e][0][1] = a[d][0][1];
+a[e][0][1] = 9;"];
+    13 [label="a[e + 1][0][1] = a[0][0][1];
+a[0][0][1] = d + e;"];
+    15 [label="delete [] apacMemeBloc__a_0;"];
+}
+    0 -> 5[label="  apacMemeBloc__a_0R,aR"];
+    0 -> 7[label="  apacMemeBloc__a_0R,aR"];
+    0 -> 8[label="  apacMemeBloc__a_0R,aR"];
+    3 -> 8[label="  dR"];
+    4 -> 8[label="  eR"];
+    5 -> 15[label="  apacMemeBloc__a_0W,aW"];
+    7 -> 15[label="  apacMemeBloc__a_0W,aW"];
+    8 -> 9[label="  a[d][0][1]W"];
+    9 -> 13[label="  a[0][0][1]R,a[e + 1][0][1]W"];
+    13 -> 15[label="  apacMemeBloc__a_0W,aW"];
+}

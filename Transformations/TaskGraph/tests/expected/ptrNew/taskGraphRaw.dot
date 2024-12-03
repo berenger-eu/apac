@@ -1,0 +1,8 @@
+digraph G {
+subgraph cluster_f0 {
+    invisibleNodeScope_0 [style=invis];
+    0 [label="apacMemeBloc__tab_0 = new int [10];"];
+    1 [label="delete [] apacMemeBloc__tab_0;"];
+}
+    0 -> 1[label="  apacMemeBloc__tab_0RW"];
+}
