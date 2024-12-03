@@ -1,12 +1,17 @@
 #include "AliasArg.hpp"
+int aliasArg::curId = 0;
 
 std::string aliasArg::varAsString() const {
   std::stringstream ssRes;
   ssRes << declaration.getNameAsString();
-  for (const auto &index : indexes)
-    ssRes << "[" << index << "]";
+  if (!hasUnknownIndex)
+    for (const auto &index : indexes)
+      ssRes << "[" << index << "]";
+  else
+    ssRes << indexString;
   return ssRes.str();
 }
+
 std::string aliasArg::dumpAsStr() const {
   std::stringstream ssRes;
   ssRes << "AliasArg: " << varAsString() << "\n";

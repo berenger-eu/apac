@@ -7,7 +7,7 @@ int main() {
   int c;
 #pragma omp task depend(inout : c)
   { c = 5; }
-#pragma omp task depend(in : j, i, c)
+#pragma omp task depend(in : i, j, c)
   {
     c = i + j;
     c = i - j;

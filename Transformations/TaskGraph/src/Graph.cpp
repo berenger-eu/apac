@@ -23,6 +23,7 @@ Graph InstructionToGraph(
         previousDataUsedInWrite) {
   Graph graph;
 
+  // Create a node for each instruction
   for (const auto &curInstruction : inInstructions) {
     auto node = std::make_shared<Node>();
     node->graphId = graph.graphId;
@@ -47,77 +48,18 @@ Graph InstructionToGraph(
     dataUsedInReadPtr = previousDataUsedInRead;
   if (previousDataUsedInWrite != nullptr)
     dataUsedInWritePtr = previousDataUsedInWrite;
-  std::unordered_map<std::shared_ptr<aliasArg>, std::set<std::shared_ptr<Node>>>
-      &dataUsedInRead = *dataUsedInReadPtr;
-  std::unordered_map<std::shared_ptr<aliasArg>, std::shared_ptr<Node>>
-      &dataUsedInWrite = *dataUsedInWritePtr;
+  auto &dataUsedInRead = *dataUsedInReadPtr;
+  auto &dataUsedInWrite = *dataUsedInWritePtr;
 
   // Iterate over all instructions
   for (long unsigned int i = 0; i < inInstructions.size(); ++i) {
     auto node = graph.nodes[i];
     // Iterate over all dependencies of the current instruction
-    for (const auto &dep : inInstructions[i].dependencies) {
-      // Parent elements are read only (if considered write, it would ignore
-      // current precision level) Example, a[1]=4;a[2]=1; if a is considered
-      // write, then a[1] and a[2] can't be parallelized If considered read,
-      // then a[1] and a[2] can be parallelized (and both elements are still
-      // write) Children elements are considered write (if the element is write)
-      auto &depElem = dep.first;
-      for (const auto &depArrayElem :
-           aliasTable.getArrayElementParents(dep.first)) {
-        bool readFound = false;
 
-        if (dep.second.isRead) {
-          if (dataUsedInWrite.find(depArrayElem) != dataUsedInWrite.end()) {
-            if ((*dataUsedInWrite.find(depArrayElem)).second->id != node->id) {
-              auto depNode = dataUsedInWrite[depArrayElem];
-              depNode->addReadLink(depNode, node, depArrayElem);
-            }
-          }
-          readFound = true;
-        }
-        if (readFound)
-          dataUsedInRead[depArrayElem].insert(node);
-      }
-      for (const auto &depArrayElem :
-           aliasTable.getArrayElementChildren(dep.first)) {
-        bool readFound = false;
+    handleInstructionDeps(node, inInstructions[i].dependencies, dataUsedInRead,
+                          dataUsedInWrite, aliasTable);
 
-        if (dep.second.isRead) {
-          if (dataUsedInWrite.find(depArrayElem) != dataUsedInWrite.end()) {
-            if ((*dataUsedInWrite.find(depArrayElem)).second->id != node->id) {
-              auto depNode = dataUsedInWrite[depArrayElem];
-              depNode->addReadLink(depNode, node, depArrayElem);
-            }
-          }
-          readFound = true;
-        }
-        if (dep.second.isWrite) {
-          if (dataUsedInRead.find(depArrayElem) != dataUsedInRead.end()) {
-            auto it = dataUsedInRead.find(depArrayElem);
-            for (const auto &depNode : it->second) {
-              if (depNode->id == node->id) {
-                continue;
-              }
-              depNode->addWriteLink(depNode, node, depArrayElem);
-            }
-
-            dataUsedInRead.erase(depArrayElem);
-          } else if (dataUsedInWrite.find(depArrayElem) !=
-                     dataUsedInWrite.end()) {
-            auto it = dataUsedInWrite.find(depArrayElem);
-            if (it->second->id != node->id) {
-              auto depNode = dataUsedInWrite[depArrayElem];
-              depNode->addWriteLink(depNode, node, depArrayElem);
-            }
-          }
-          dataUsedInWrite[depArrayElem] = node;
-        }
-        if (readFound)
-          dataUsedInRead[depArrayElem].insert(node);
-      }
-    }
-
+    // If the instruction has a sub scope, we create a new graph
     if (inInstructions[i].complexInstruction) {
       if (isa<ForStmt>(inInstructions[i].instruction))
         node->graph.emplace_back(std::make_shared<Graph>(InstructionToGraph(
@@ -135,7 +77,99 @@ Graph InstructionToGraph(
       graph.roots.push_back(node);
   return graph;
 }
+void handleInstructionDeps(
+    std::shared_ptr<Node> &node,
+    const std::unordered_map<std::shared_ptr<aliasArg>, NodeDependency> &deps,
+    std::unordered_map<std::shared_ptr<aliasArg>,
+                       std::set<std::shared_ptr<Node>>> &dataUsedInRead,
+    std::unordered_map<std::shared_ptr<aliasArg>, std::shared_ptr<Node>>
+        &dataUsedInWrite,
+    const AliasTable &aliasTable) {
+  // Parent elements are read only (if considered write, it would ignore
+  // current precision level) Example, a[1]=4;a[2]=1; if a is considered
+  // write, then a[1] and a[2] can't be parallelized If considered read,
+  // then a[1] and a[2] can be parallelized (and both elements are still
+  // write) Children elements are considered write (if the element is write)
+  std::vector<std::pair<std::shared_ptr<Node>, std::shared_ptr<aliasArg>>>
+      dataReadBuffer;
+  std::vector<std::pair<std::shared_ptr<Node>, std::shared_ptr<aliasArg>>>
+      dataWriteBuffer;
+  std::vector<std::shared_ptr<aliasArg>> dataReadEraseBuffer;
+  for (auto &dep : deps) {
 
+    auto &depElem = dep.first;
+    for (const auto &depArrayElem :
+         aliasTable.getArrayElementParents(dep.first)) {
+      bool readFound = false;
+
+      if (dep.second.isRead) {
+        if (dataUsedInWrite.find(depArrayElem) != dataUsedInWrite.end()) {
+          if ((*dataUsedInWrite.find(depArrayElem)).second->id != node->id) {
+            auto depNode = dataUsedInWrite[depArrayElem];
+            if (depElem->hasUnknownIndex)
+              depNode->addReadLink(depNode, node, depElem);
+            else
+              depNode->addReadLink(depNode, node, depArrayElem);
+          }
+        }
+        readFound = true;
+      }
+      if (readFound)
+        dataReadBuffer.push_back({node, depArrayElem});
+    }
+    for (const auto &depArrayElem :
+         aliasTable.getArrayElementChildren(dep.first)) {
+      bool readFound = false;
+
+      if (dep.second.isRead) {
+        if (dataUsedInWrite.find(depArrayElem) != dataUsedInWrite.end()) {
+          if ((*dataUsedInWrite.find(depArrayElem)).second->id != node->id) {
+            auto depNode = dataUsedInWrite[depArrayElem];
+            if (depElem->hasUnknownIndex)
+              depNode->addReadLink(depNode, node, depElem);
+            else
+              depNode->addReadLink(depNode, node, depArrayElem);
+          }
+        }
+        readFound = true;
+      }
+      if (dep.second.isWrite) {
+        if (dataUsedInRead.find(depArrayElem) != dataUsedInRead.end()) {
+          auto it = dataUsedInRead.find(depArrayElem);
+          for (const auto &depNode : it->second) {
+            if (depNode->id == node->id) {
+              continue;
+            }
+            if (depElem->hasUnknownIndex)
+              depNode->addWriteLink(depNode, node, depElem);
+            else
+              depNode->addWriteLink(depNode, node, depArrayElem);
+          }
+          dataReadEraseBuffer.push_back(depArrayElem);
+        } else if (dataUsedInWrite.find(depArrayElem) !=
+                   dataUsedInWrite.end()) {
+          auto it = dataUsedInWrite.find(depArrayElem);
+          if (it->second->id != node->id) {
+            auto depNode = dataUsedInWrite[depArrayElem];
+            if (depElem->hasUnknownIndex)
+              depNode->addWriteLink(depNode, node, depElem);
+            else
+              depNode->addWriteLink(depNode, node, depArrayElem);
+          }
+        }
+        dataWriteBuffer.push_back({node, depArrayElem});
+      }
+      if (readFound)
+        dataReadBuffer.push_back({node, depArrayElem});
+    }
+  }
+  for (const auto &depArrayElem : dataReadEraseBuffer)
+    dataUsedInRead.erase(depArrayElem);
+  for (const auto &depArrayElem : dataReadBuffer)
+    dataUsedInRead[depArrayElem.second].insert(depArrayElem.first);
+  for (const auto &depArrayElem : dataWriteBuffer)
+    dataUsedInWrite[depArrayElem.second] = depArrayElem.first;
+}
 void PrintGraph(const Graph &inGraph) {
   for (const auto &node : inGraph.nodes) {
     std::cout << "Node: " << node->id << " Instruction: " << node->instruction
@@ -214,7 +248,8 @@ void nodesFusion(Graph &graph) {
         // be fused
         !((nextNode->instructionPtr.size() == 1 &&
            nextNode->instructionPtr[0]->complexInstruction) ||
-          nextNode->instructionPtr[0]->noFusion)) {
+          nextNode->instructionPtr[0]->noFusion) &&
+        hasCommonArrayElement(node, nextNode)) {
       toRemove.push(node->next.begin()->first);
       graph.fuseNodes(node, (node->next.begin()->first));
       if (node->next.size() == 1)
@@ -222,6 +257,31 @@ void nodesFusion(Graph &graph) {
     }
     // TODO: handle multiple subgraphs (might happen after fusion of nodes)
   }
+}
+bool hasCommonArrayElement(std::shared_ptr<Node> &node1,
+                           std::shared_ptr<Node> &node2) {
+  auto nextAliasesMap = node1->next[node2];
+  bool result = true;
+  bool hasArrayUnknownElements = false;
+  for (auto &nextNode : node1->next) {
+    for (auto &nextLink : nextNode.second) {
+      auto alias1 = nextLink.first;
+      for (auto &nodeDep : node1->dependencies) {
+        auto alias2 = nodeDep.first;
+        if (indexesMatch(alias1->indexes, alias2->indexes)) {
+          if (!hasArrayUnknownElements) {
+            result = false;
+            hasArrayUnknownElements = true;
+          }
+        }
+        if (alias1 == alias2) {
+          result = true;
+        }
+      }
+    }
+  }
+
+  return result;
 }
 void nodesComputeInOut(Graph &graph) {
   for (auto &node : graph.nodes) {

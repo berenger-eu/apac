@@ -168,46 +168,77 @@ AliasTable::getAliases(std::shared_ptr<aliasArg> &v) const {
 };
 
 std::shared_ptr<aliasArg>
-AliasTable::getAliasArg(const VarDecl *v,
-                        const std::vector<int> &indexes) const {
+AliasTable::getAliasArg(const VarDecl *v, const std::vector<int> &indexes,
+                        std::string indexString) const {
   // const aliasArg *result = nullptr;
   const NamedDecl *key = getKey(v);
   std::shared_ptr<aliasArg> result = nullptr;
+  std::shared_ptr<aliasArgStruct> resultArgStruct = nullptr;
   if (aliasTableMap.count(key) != 0) {
     auto tableValue = aliasTableMap.at(key, indexes);
     if (tableValue == nullptr)
       ;
-    else if (isVariantAliasArg(*tableValue)) {
-      result = getVariantAliasArg(*tableValue);
+    else if (isVariantAliasArgStruct(*tableValue)) {
+      resultArgStruct = getVariantAliasArgStruct(*tableValue);
     } else if (isVariantSubArray(*tableValue)) {
-      result = getVariantSubArray(*tableValue)->alias;
+      resultArgStruct = getVariantSubArray(*tableValue)->aliasStruct;
     } else {
       // TODO: Remove this later (if no issues arrise)
       llvm::errs() << "Error in getAliasArg\n";
       v->dump();
       return nullptr;
     }
+    if (resultArgStruct != nullptr) {
+      if (indexString.empty())
+        result = resultArgStruct->alias;
+      else if (resultArgStruct->unknownIndexAliases.count(indexString) != 0) {
+        result = resultArgStruct->unknownIndexAliases.at(indexString);
+      }
+      // Should not happen, if it does, it means that there is most likely an
+      // issue with the insertion of the element (or with something else)
+      else {
+        llvm::errs() << "Error in getAliasArg : " << indexString
+                     << " not found in unknown indexes array\n";
+        this->dump();
+      }
+    }
   }
   return result;
 }
 std::shared_ptr<aliasArg>
-AliasTable::getAliasArg(const VarDecl *v, const std::vector<int> &indexes) {
+AliasTable::getAliasArg(const VarDecl *v, const std::vector<int> &indexes,
+                        std::string indexString) {
   // const aliasArg *result = nullptr;
   const NamedDecl *key = getKey(v);
   std::shared_ptr<aliasArg> result = nullptr;
+  std::shared_ptr<aliasArgStruct> resultArgStruct = nullptr;
   if (aliasTableMap.count(key) != 0) {
     auto tableValue = aliasTableMap.at(key, indexes);
     if (tableValue == nullptr)
       ;
-    else if (isVariantAliasArg(*tableValue)) {
-      result = getVariantAliasArg(*tableValue);
+    else if (isVariantAliasArgStruct(*tableValue)) {
+      resultArgStruct = getVariantAliasArgStruct(*tableValue);
     } else if (isVariantSubArray(*tableValue)) {
-      result = getVariantSubArray(*tableValue)->alias;
+      resultArgStruct = getVariantSubArray(*tableValue)->aliasStruct;
     } else {
       // TODO: Remove this later (if no issues arrise)
       llvm::errs() << "Error in getAliasArg\n";
       v->dump();
       return nullptr;
+    }
+    if (resultArgStruct != nullptr) {
+      if (indexString.empty())
+        result = resultArgStruct->alias;
+      else if (resultArgStruct->unknownIndexAliases.count(indexString) != 0) {
+        result = resultArgStruct->unknownIndexAliases.at(indexString);
+      }
+      // Should not happen, if it does, it means that there is most likely an
+      // issue with the insertion of the element (or with something else)
+      else {
+        llvm::errs() << "Error in getAliasArg : " << indexString
+                     << " not found in unknown indexes array\n";
+        this->dump();
+      }
     }
   }
   return result;
@@ -394,16 +425,21 @@ AliasTable::getArrayElementDependencies(std::shared_ptr<aliasArg> elem) const {
   std::unordered_set<std::shared_ptr<aliasArg>> dependencies;
   if (elem != nullptr) {
     auto indexes = elem->indexes;
-    const VarDecl *variableArg = &elem->declaration;
+    // const VarDecl *variableArg = &elem->declaration;
     auto curElem = aliasTableMap.at(getKey(&elem->declaration));
 
-    std::shared_ptr<aliasArg> aliasArgToAdd;
+    std::shared_ptr<aliasArgStruct> aliasArgStructToAdd;
+    std::vector<std::shared_ptr<aliasArg>> allAlias;
     if (isVariantSubArray(*curElem) &&
-        (aliasArgToAdd = getVariantSubArray(*curElem)->alias) != nullptr)
-      dependencies.insert(aliasArgToAdd);
-    else if (isVariantAliasArg(*curElem) &&
-             (aliasArgToAdd = getVariantAliasArg(*curElem)) != nullptr)
-      dependencies.insert(aliasArgToAdd);
+        (aliasArgStructToAdd = getVariantSubArray(*curElem)->aliasStruct) !=
+            nullptr)
+      allAlias = aliasArgStructToAdd->getAllAlias();
+    else if (isVariantAliasArgStruct(*curElem) &&
+             (aliasArgStructToAdd = getVariantAliasArgStruct(*curElem)) !=
+                 nullptr)
+      allAlias = aliasArgStructToAdd->getAllAlias();
+    for (auto &alias : allAlias)
+      dependencies.insert(alias);
     std::stack<const aliasesTableValues *> toVisit;
     toVisit.push(curElem);
     auto curIndex = indexes.begin();
@@ -416,14 +452,18 @@ AliasTable::getArrayElementDependencies(std::shared_ptr<aliasArg> elem) const {
       toVisit.pop();
       auto curChildren = getDirectChildren(*curTableValue, *curIndex);
       for (auto child : curChildren) {
-        std::shared_ptr<aliasArg> aliasArgToAdd = nullptr;
+        std::shared_ptr<aliasArgStruct> aliasArgStructToAdd = nullptr;
+        std::vector<std::shared_ptr<aliasArg>> allAlias;
         if (isVariantSubArray(*child) &&
-            ((aliasArgToAdd = getVariantSubArray(*child)->alias)) != nullptr) {
+            ((aliasArgStructToAdd = getVariantSubArray(*child)->aliasStruct)) !=
+                nullptr)
+          allAlias = aliasArgStructToAdd->getAllAlias();
+        else if (isVariantAliasArgStruct(*child) &&
+                 ((aliasArgStructToAdd = getVariantAliasArgStruct(*child))) !=
+                     nullptr)
+          allAlias = aliasArgStructToAdd->getAllAlias();
+        for (auto &aliasArgToAdd : allAlias)
           dependencies.insert(aliasArgToAdd);
-        } else if (isVariantAliasArg(*child) &&
-                   ((aliasArgToAdd = getVariantAliasArg(*child))) != nullptr) {
-          dependencies.insert(aliasArgToAdd);
-        }
         nextToVisit.push_back(child);
       }
       if (toVisit.empty()) {
@@ -450,8 +490,8 @@ AliasTable::getDirectChildren(const aliasesTableValues elem,
     else if (curMap->map.count(depth)) {
       children.push_back(&curMap->map.at(depth));
     }
-  } else if (isVariantAliasArg(elem)) {
-    auto alias = getVariantAliasArg(elem);
+  } else if (isVariantAliasArgStruct(elem)) {
+    auto alias = getVariantAliasArgStruct(elem);
   }
   return children;
 }
@@ -465,13 +505,17 @@ AliasTable::getArrayElementAll(std::shared_ptr<aliasArg> elem) const {
     while (!toVisit.empty()) {
       auto cur = toVisit.top();
       toVisit.pop();
-      if (isVariantAliasArg(*cur)) {
-        related.push_back(getVariantAliasArg(*cur));
+      std::vector<std::shared_ptr<aliasArg>> allAlias;
+      if (isVariantAliasArgStruct(*cur)) {
+        allAlias = getVariantAliasArgStruct(*cur)->getAllAlias();
       } else if (isVariantSubArray(*cur)) {
         auto curMap = getVariantSubArray(*cur);
-        related.push_back(curMap->alias);
+        allAlias = curMap->aliasStruct->getAllAlias();
         for (auto &subAlias : curMap->map) {
           toVisit.push(&subAlias.second);
+        }
+        for (auto &alias : allAlias) {
+          related.push_back(alias);
         }
       }
     }
@@ -501,20 +545,24 @@ void AliasTable::dumpPrep(std::string *varTable, std::string *refTable,
                           std::string *ptrTable) const {
   std::stringstream ssVar, ssRef, ssPtr;
   for (auto &elem : aliasTableMap.map) {
-    if (isVariantAliasArg(elem.second)) {
-      auto alias = getVariantAliasArg(elem.second);
-      if (varTable != nullptr && alias->type == Variable)
-        ssVar << alias->varAsString() << " ";
-      else if (refTable != nullptr && alias->type == Reference) {
-        ssRef << alias->varAsString() << " : ";
-        for (auto aliased : alias->aliased)
-          ssRef << aliased->varAsString() << " ";
-        ssRef << "\n";
-      } else if (ptrTable != nullptr && alias->type == Pointer) {
-        ssPtr << alias->varAsString() << " : ";
-        for (auto aliased : alias->aliased)
-          ssPtr << aliased->varAsString() << " ";
-        ssPtr << "\n";
+    if (isVariantAliasArgStruct(elem.second)) {
+      auto aliasArgStruct = getVariantAliasArgStruct(elem.second);
+      std::vector<std::shared_ptr<aliasArg>> aliases;
+      aliases = aliasArgStruct->getAllAlias();
+      for (auto &alias : aliases) {
+        if (varTable != nullptr && alias->type == Variable)
+          ssVar << alias->varAsString() << " ";
+        else if (refTable != nullptr && alias->type == Reference) {
+          ssRef << alias->varAsString() << " : ";
+          for (auto aliased : alias->aliased)
+            ssRef << aliased->varAsString() << " ";
+          ssRef << "\n";
+        } else if (ptrTable != nullptr && alias->type == Pointer) {
+          ssPtr << alias->varAsString() << " : ";
+          for (auto aliased : alias->aliased)
+            ssPtr << aliased->varAsString() << " ";
+          ssPtr << "\n";
+        }
       }
     } else if (isVariantSubArray(elem.second)) {
       auto alias = getVariantSubArray(elem.second);

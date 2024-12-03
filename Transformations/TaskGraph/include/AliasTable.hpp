@@ -3,6 +3,7 @@
 #include "ElementsRepresentationStruct.hpp"
 #include "common.hpp"
 #include "clang/AST/Decl.h"
+#include "clang/AST/Expr.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 #include <unordered_map>
 #include <unordered_set>
@@ -51,11 +52,12 @@ void addAliasPtr(const VarDecl *var, const std::vector<int> &,
       const int &depth);
 
   std::shared_ptr<aliasArg>
-  getAliasArg(const VarDecl *v,
-              const std::vector<int> & = std::vector<int>()) const;
+  getAliasArg(const VarDecl *v, const std::vector<int> & = std::vector<int>(),
+              std::string indexString = "") const;
   std::shared_ptr<aliasArg>
   getAliasArg(const VarDecl *v,
-              const std::vector<int> &indexes = std::vector<int>());
+              const std::vector<int> &indexes = std::vector<int>(),
+              std::string indexString = "");
   inline bool
   isInTable(const VarDecl *v,
             const std::vector<int> &indexes = std::vector<int>()) const {
@@ -63,17 +65,51 @@ void addAliasPtr(const VarDecl *var, const std::vector<int> &,
   }
   inline std::shared_ptr<aliasArg>
   getOrAddAliasArg(const VarDecl *v, const AliasType &type,
-                   const std::vector<int> &indexes = std::vector<int>()) {
+                   const std::vector<int> &indexes = std::vector<int>(),
+                   std::string indexString = "") {
     // If variable does not exist in table add it
-    llvm::errs() << "nbElements: " << aliasTableMap.nbElements() << "\n";
     if (getAliasArg(v) == nullptr)
       addElementToAliasTable(v, type);
-    llvm::errs() << "nbElements2: " << aliasTableMap.nbElements() << "\n";
     // If element (variable and indexes) does not exist in table add it
     if (getAliasArg(v, indexes) == nullptr)
-      addElementToAliasTable(v, type, indexes);
-    llvm::errs() << "nbElements3: " << aliasTableMap.nbElements() << "\n";
-    return getAliasArg(v, indexes);
+      addElementToAliasTable(v, type, indexes, indexString);
+    if (getAliasArg(v, indexes, indexString) == nullptr)
+      addElementToAliasTable(v, type, indexes, indexString);
+    return getAliasArg(v, indexes, indexString);
+  }
+  inline std::shared_ptr<aliasArg>
+  getOrAddAliasArg(const Expr *expr, AliasType type = AliasType::None) {
+    // If variable does not exist in table add it
+    const VarDecl *v = nullptr;
+    std::vector<int> indexes;
+    std::string indexString;
+    if (type == AliasType::None)
+      type = getAliasType(expr);
+    if (isa<DeclRefExpr>(expr->IgnoreImpCasts()))
+      v = cast<VarDecl>(cast<DeclRefExpr>(expr->IgnoreImpCasts())->getDecl());
+    else if (isa<ArraySubscriptExpr>(expr->IgnoreImpCasts())) {
+      auto a = cast<ArraySubscriptExpr>(expr->IgnoreImpCasts());
+      indexes = getArraySubscriptsIndexesValues(a);
+      v = cast<VarDecl>(getArrayBaseDeclRefExpr(a)->getDecl());
+      std::stringstream ssIndexString;
+      for (auto &index : getArraySubscriptsIndexes(a))
+        ssIndexString << "["
+                      << getExprAsString(index, TheRewriter.getLangOpts())
+                      << "]";
+      bool foundUnknownIndex = false;
+      for (auto &index : indexes) {
+        if (index == -1) {
+          foundUnknownIndex = true;
+          break;
+        }
+      }
+      if (foundUnknownIndex)
+        indexString = ssIndexString.str();
+    }
+
+    if (v == nullptr || type == AliasType::None)
+      return nullptr;
+    return getOrAddAliasArg(v, type, indexes, indexString);
   }
   const AliasTableMapStruct &getAliasTable() const { return aliasTableMap; }
   int getNbElements() const { return aliasTableMap.nbElements(); }
@@ -115,11 +151,11 @@ private:
     return v->getCanonicalDecl();
   }
   void addElementToAliasTable(const VarDecl *v, const AliasType &type,
-                              std::vector<int> indexes = std::vector<int>()) {
+                              std::vector<int> indexes = std::vector<int>(),
+                              std::string indexString = "") {
     const auto &key = getKey(v);
     if (key != nullptr) {
-      llvm::errs() << "Adding element to alias table\n";
-      aliasTableMap.insert({aliasArg(*v, type, indexes), indexes});
+      aliasTableMap.insert({aliasArg(*v, type, indexes, indexString), indexes});
     }
   }
 

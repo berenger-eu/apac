@@ -70,6 +70,14 @@ Graph InstructionToGraph(
         std::unordered_map<std::shared_ptr<aliasArg>, std::shared_ptr<Node>>>
         previousDataUsedInWrite = std::make_shared<std::unordered_map<
             std::shared_ptr<aliasArg>, std::shared_ptr<Node>>>());
+void handleInstructionDeps(
+    std::shared_ptr<Node> &node,
+    const std::unordered_map<std::shared_ptr<aliasArg>, NodeDependency> &deps,
+    std::unordered_map<std::shared_ptr<aliasArg>,
+                       std::set<std::shared_ptr<Node>>> &dataUsedInRead,
+    std::unordered_map<std::shared_ptr<aliasArg>, std::shared_ptr<Node>>
+        &dataUsedInWrite,
+    const AliasTable &);
 
 // Print the graph, mostly to debug
 void PrintGraph(const Graph &);
@@ -89,3 +97,9 @@ void transitiveReduction(Graph &graph);
 // Generate all of the graph for a file, (generate one for each function)
 std::vector<Graph> generateGraph(const std::vector<std::vector<Instruction>> &,
                                  StmtOrder &, const AliasTable &);
+// To check when two nodes have common array element (to know when to fuse them)
+// ie. a[d]=b and a[e]=c should not be fused)
+// a[d]=b and a[d]=c should be fused
+// a[d]=b and a[e]=a[d] should be fused
+bool hasCommonArrayElement(std::shared_ptr<Node> &n1,
+                           std::shared_ptr<Node> &n2);

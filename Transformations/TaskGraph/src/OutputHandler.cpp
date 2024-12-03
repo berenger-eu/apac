@@ -5,8 +5,14 @@ void OutputHandler::generateLinks(const Graph &inGraph, std::ofstream &file) {
   for (const auto &node : inGraph.nodes) {
 
     // Add links, with the dependencies
-    for (const auto &nextNode : node->next) {
+    std::map<int, std::pair<std::shared_ptr<Node>, NextAliasMap>>
+        nodeOrderedMap;
+    for (auto &nextNode : node->next) {
+      nodeOrderedMap[nextNode.first->id] = {nextNode.first, nextNode.second};
+    }
+    for (const auto &nextNodeordered : nodeOrderedMap) {
       std::stringstream ss;
+      auto &nextNode = nextNodeordered.second;
       for (auto iterBegin = nextNode.second.begin();
            iterBegin != nextNode.second.end(); iterBegin++) {
         if (iterBegin != nextNode.second.begin())

@@ -23,8 +23,7 @@ void Node::addLink(std::shared_ptr<Node> curN, std::shared_ptr<Node> n,
   if (arg == nullptr)
     return;
   if (this->next.count(n) == 0)
-    this->next.insert(
-        {n, std::unordered_map<std::shared_ptr<aliasArg>, NodeDependency>()});
+    this->next.insert({n, NextAliasMap()});
   if (this->next.at(n).count(arg) == 0) {
     this->next.at(n).insert({arg, {isRead, isWrite}});
     n->prev.insert(curN);
@@ -48,6 +47,13 @@ void Node::computeInOutDep() {
       if (itNext->second.count(dep.first) > 0) {
         isInOut = true;
         break;
+      } else if (dep.first->indexes.size() > 0) {
+        for (const auto &nextAlias : itNext->second) {
+          if (indexesMatch(nextAlias.first->indexes, dep.first->indexes)) {
+            isInOut = true;
+            break;
+          }
+        }
       }
       ++itNext;
     }
@@ -63,6 +69,13 @@ void Node::computeInDep() {
     while (itPrev != endPrev && !isIn) {
       if ((*itPrev)->dependencies.count(dep.first) > 0) {
         isIn = true;
+      } else if (dep.first->indexes.size() > 0) {
+        for (const auto &prevAlias : (*itPrev)->dependencies) {
+          if (indexesMatch(prevAlias.first->indexes, dep.first->indexes)) {
+            isIn = true;
+            break;
+          }
+        }
       }
       ++itPrev;
     }
