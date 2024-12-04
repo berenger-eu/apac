@@ -16,3 +16,8 @@
 #include "clang/Tooling/Tooling.h"
 
 #include "llvm/Support/raw_ostream.h"
+
+class UnstackHandler {
+public:
+  static bool run(int argc, const char **argv);
+};

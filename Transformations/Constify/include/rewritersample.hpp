@@ -22,3 +22,8 @@
 #include "clang/Tooling/Tooling.h"
 
 #define PRINT_TABLE 1
+
+class ConstifyHandler {
+public:
+  static bool run(int argc, const char **argv);
+};

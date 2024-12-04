@@ -219,7 +219,7 @@ private:
   SymTab SymT;
 };
 
-int main(int argc, const char **argv) {
+bool ConstifyHandler::run(int argc, const char **argv) {
   llvm::Expected<clang::tooling::CommonOptionsParser> option =
       CommonOptionsParser::create(argc, argv, ToolingSampleCategory,
                                   llvm::cl::OneOrMore);
@@ -233,6 +233,10 @@ int main(int argc, const char **argv) {
   // return a new MyFrontendAction object every time.
   // To further customize this, we could create our own factory class.
   return tool.run(newFrontendActionFactory<MyFrontendAction>().get());
+}
+
+int main(int argc, const char **argv) {
+  return ConstifyHandler::run(argc, argv);
 }
 
 /*
