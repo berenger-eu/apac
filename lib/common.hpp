@@ -30,7 +30,14 @@ std::string getStmtAsStringFull(const Stmt *statement,
 std::string getCompleteVarDeclStr(const VarDecl &);
 
 // From a VarDecl Type, get the string :
+//  <varName> [= <init>];
+//  or <varName>(<init>);
+// To use when linked to the declaration
+std::string getVarDeclDeclDefStr(const VarDecl &v);
+
+// From a VarDecl Type, get the string :
 //  <varName> [= <init>] ;
+// To use when separated from the declaration
 std::string getVarDeclDefStr(const VarDecl &);
 // From a VarDecl Type, get the string :
 //  <type> <varName> ;
