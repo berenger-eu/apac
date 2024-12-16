@@ -9,8 +9,8 @@
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Decl.h"
 #include "clang/AST/Expr.h"
+#include "clang/AST/ExprCXX.h"
 #include "clang/Basic/SourceManager.h"
-
 using namespace clang;
 
 // Contains functions used by multiple transformations
