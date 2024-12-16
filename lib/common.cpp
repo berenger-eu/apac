@@ -9,7 +9,12 @@ std::string getVarDeclDefStr(const VarDecl &v) {
   std::stringstream SSprint;
   if (v.getInit()) {
     SSprint << v.getNameAsString();
-    SSprint << " = " << getInitString(v);
+    SSprint << " = ";
+    if (isa<CXXConstructExpr>(v.getInit())) {
+      SSprint << v.getType().getAsString() << "(" << getInitString(v) << ")";
+    } else {
+      SSprint << getInitString(v);
+    }
     SSprint << ";\n";
   }
   return SSprint.str();
