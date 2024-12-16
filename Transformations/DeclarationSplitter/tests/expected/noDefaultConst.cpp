@@ -17,14 +17,14 @@ private:
 
 int main() {
   int a;
-  a(5);
+  a = 5;
 
   int b;
   int c;
   int d;
   b = 5;
   c = 5;
-  d(4);
+  d = 4;
 
   Point p(4, 5);
   Point p2(4, 3);

@@ -2,10 +2,19 @@
 
 std::string getCompleteVarDeclStr(const VarDecl &v) {
   std::stringstream SSprint;
-  SSprint << v.getType().getAsString() << " " << getVarDeclDefStr(v);
+  SSprint << v.getType().getAsString() << " " << getVarDeclDeclDefStr(v);
   return SSprint.str();
 }
 std::string getVarDeclDefStr(const VarDecl &v) {
+  std::stringstream SSprint;
+  if (v.getInit()) {
+    SSprint << v.getNameAsString();
+    SSprint << " = " << getInitString(v);
+    SSprint << ";\n";
+  }
+  return SSprint.str();
+}
+std::string getVarDeclDeclDefStr(const VarDecl &v) {
   std::stringstream SSresult;
   // type varName
   if (v.getInit()) {
