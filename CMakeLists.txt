@@ -24,7 +24,7 @@ add_subdirectory(lib)
 add_subdirectory(Transformations)
 add_subdirectory(mainProgram)
 
-set(EXECUTABLES stackheap constify gotoRet unstack declarationSplitter taskGraph apac)
+set(EXECUTABLES duplicateFunctions stackheap constify gotoRet unstack declarationSplitter taskGraph)
 
 add_custom_target(test 
 COMMENT "Building project"
