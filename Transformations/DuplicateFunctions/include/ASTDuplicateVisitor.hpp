@@ -22,7 +22,9 @@ public:
     if (isInHeaders(TheRewriter.getSourceMgr(), f->getBeginLoc())) {
       return true;
     }
-    functions.push_back(f);
+    if (f->getNameAsString() != "main") {
+      functions.push_back(f);
+    }
     return true;
   }
   void addDuplicateFunctions() {
@@ -40,7 +42,7 @@ public:
       SSprint << ")";
       SSprint << getStmtAsStringFull(f->getBody(),
                                      f->getASTContext().getLangOpts());
-      TheRewriter.InsertText(f->getEndLoc(), SSprint.str());
+      TheRewriter.InsertTextAfterToken(f->getEndLoc(), SSprint.str());
     }
     llvm::errs() << "Added " << functions.size() << " functions\n";
   }

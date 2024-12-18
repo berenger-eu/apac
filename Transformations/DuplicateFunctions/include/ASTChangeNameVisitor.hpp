@@ -25,8 +25,20 @@ public:
       if (f->getNameAsString() != "main") {
         currentFunctionDecl = f;
         llvm::errs() << "FunctionDecl\n";
-        TheRewriter.ReplaceText(SourceRange(f->getBeginLoc(), f->getEndLoc()),
-                                "int " + f->getNameAsString() + "_apacSeq");
+        std::stringstream SSprint;
+        SSprint << f->getReturnType().getAsString() << " "
+                << f->getNameInfo().getAsString() << "_apacSeq" << "(";
+        for (auto &param : f->parameters()) {
+          SSprint << param->getType().getAsString() << " "
+                  << param->getNameAsString();
+          if (param != f->parameters().back()) {
+            SSprint << ", ";
+          }
+        }
+        SSprint << ")";
+        TheRewriter.ReplaceText(
+            SourceRange(f->getTypeSpecStartLoc(), f->getTypeSpecEndLoc()),
+            SSprint.str());
         return RecursiveASTVisitor::TraverseFunctionDecl(f);
       }
     }
