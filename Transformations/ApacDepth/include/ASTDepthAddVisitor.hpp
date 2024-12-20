@@ -26,7 +26,11 @@ public:
     bool result = true;
     if (!(f->getNameAsString().find("_apacSeq") != std::string::npos)) {
       functionsToModify.push_back(f);
+      auto recCalls = recursiveCallsStatements.size();
       traverseTree(f->getBody());
+      if (recCalls == recursiveCallsStatements.size()) {
+        functionsToModify.pop_back();
+      }
     }
 
     return result;
