@@ -17,7 +17,7 @@ public:
     auto recursiveCalls = VisitorDepthAdd.getRecursiveCallsStatements();
     SourceManager &sm = TheRewriter.getSourceMgr();
     auto codeBeginLoc = sm.getLocForStartOfFile(sm.getMainFileID());
-    modifyCode(TheRewriter, codeBeginLoc, functions);
+    modifyCode(TheRewriter, codeBeginLoc, functions, recursiveCalls);
   }
 
 private:

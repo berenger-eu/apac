@@ -37,3 +37,12 @@ void addFunctionDepth(Rewriter &TheRewriter,
     TheRewriter.InsertTextBefore(f->getBody()->getEndLoc(), SSprintAfter.str());
   }
 }
+
+void incrementFunctionDepth(Rewriter &TheRewriter,
+                            std::vector<Stmt *> placesToPlaceIncrement) {
+  for (auto &st : placesToPlaceIncrement) {
+    std::stringstream SSprint;
+    SSprint << "__apac_depth = __apac_depth_local + 1;\n";
+    TheRewriter.InsertTextBefore(st->getBeginLoc(), SSprint.str());
+  }
+}
