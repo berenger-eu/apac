@@ -2,7 +2,6 @@
 
 void addInitApacPart(Rewriter &TheRewriter, const SourceLocation &beginCodeLoc,
                      FunctionDecl *firstFunction) {
-  TheRewriter.InsertTextBefore(beginCodeLoc, "#include <omp.h>\n");
   if (firstFunction != nullptr) {
     std::stringstream SSprint;
 
@@ -13,6 +12,8 @@ void addInitApacPart(Rewriter &TheRewriter, const SourceLocation &beginCodeLoc,
             << "const static int __apac_depth_max = parallel_depth;\n\n";
     TheRewriter.InsertTextBefore(firstFunction->getBeginLoc(), SSprint.str());
   }
+  TheRewriter.InsertTextBefore(beginCodeLoc,
+                               "#include <omp.h>\n#include <cstring>\n");
 }
 
 void addFunctionDepth(Rewriter &TheRewriter,
