@@ -11,7 +11,7 @@ message(STATUS "Found LLVM libs ${LLVM_DEFINITIONS}")
 # Now build our tools
 set (COMMON_LIB ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib)
 set(INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../include ${COMMON_LIB})
-set(SOURCES apacDepth.cpp codeModification.cpp )
+set(SOURCES apacDepth.cpp codeModification.cpp ASTDepthAddVisitor.cpp )
 add_executable(apacDepth)
  
 target_sources(apacDepth PRIVATE ${SOURCES})

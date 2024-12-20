@@ -14,6 +14,7 @@ public:
   virtual void HandleTranslationUnit(ASTContext &Ctx) {
     VisitorDepthAdd.TraverseAST(Ctx);
     auto functions = VisitorDepthAdd.getFunctionsToModify();
+    auto recursiveCalls = VisitorDepthAdd.getRecursiveCallsStatements();
     SourceManager &sm = TheRewriter.getSourceMgr();
     auto codeBeginLoc = sm.getLocForStartOfFile(sm.getMainFileID());
     modifyCode(TheRewriter, codeBeginLoc, functions);
