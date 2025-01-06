@@ -465,7 +465,8 @@ void ASTTaskGraphVisitor::handleStmt(const Stmt &st, Instruction &instr,
 bool ASTTaskGraphVisitor::TraverseFunctionDecl(FunctionDecl *f) {
   if (isInHeaders(TheRewriter.getSourceMgr(), f->getBeginLoc()))
     return true;
-
+  if (f->getNameAsString().find("_apacSeq") != std::string::npos)
+    return true;
   // If function is not in headers and has a body and is a definition, then we
   // traverse it recursively Using traverse we can avoid visiting nodes that
   // we don't need
