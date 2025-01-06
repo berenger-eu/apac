@@ -16,6 +16,12 @@ public:
   ASTSplitterVisitor(Rewriter &R) : TheRewriter(R) {};
   inline bool VisitStmt(Stmt *) { return true; }
   bool VisitDeclStmt(DeclStmt *);
+  bool TraverseFunctionDecl(FunctionDecl *fDecl) {
+    if (fDecl->getNameAsString().find("_apacSeq") == std::string::npos) {
+      return RecursiveASTVisitor::TraverseFunctionDecl(fDecl);
+    }
+    return true;
+  }
 
 private:
   bool isValidSeparation(const VarDecl &);
