@@ -16,6 +16,12 @@ public:
   ASTUnstackVisitor(Rewriter &R)
       : TheRewriter(R), tempVarsCounter(0), callsToIgnore(0) {};
   inline bool VisitStmt(Stmt *) { return true; }
+  bool TraverseFunctionDecl(FunctionDecl *fDecl) {
+    if (fDecl->getNameAsString().find("_apacSeq") == std::string::npos) {
+      return RecursiveASTVisitor::TraverseFunctionDecl(fDecl);
+    }
+    return true;
+  }
   // Resets the counter for variables
   bool VisitFunctionDecl(FunctionDecl *);
   // Used so that we do not Visit callExpr twice
