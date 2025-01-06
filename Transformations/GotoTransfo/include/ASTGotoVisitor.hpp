@@ -16,6 +16,12 @@ class ASTGotoVisitor : public RecursiveASTVisitor<ASTGotoVisitor> {
 public:
   ASTGotoVisitor(Rewriter &R) : TheRewriter(R), functionsCounter(0) {};
   inline bool VisitStmt(Stmt *) { return true; }
+  bool TraverseFunctionDecl(FunctionDecl *fDecl) {
+    if (fDecl->getNameAsString().find("_apacSeq") == std::string::npos) {
+      return RecursiveASTVisitor::TraverseFunctionDecl(fDecl);
+    }
+    return true;
+  }
   bool VisitFunctionDecl(FunctionDecl *);
 
 private:
