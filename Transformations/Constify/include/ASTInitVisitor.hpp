@@ -6,6 +6,12 @@ public:
   ASTInitVisitor(Rewriter &R, SymTab &SymTableIn)
       : TheRewriter(R), SymT(SymTableIn) {};
   inline bool VisitStmt(Stmt *) { return true; };
+  bool TraverseFunctionDecl(FunctionDecl *fDecl) {
+    if (fDecl->getNameAsString().find("_apacSeq") == std::string::npos) {
+      return RecursiveASTVisitor::TraverseFunctionDecl(fDecl);
+    }
+    return true;
+  }
   bool VisitCXXThisExpr(CXXThisExpr *);
   bool VisitCXXMethodDecl(CXXMethodDecl *);
   bool VisitFieldDecl(FieldDecl *);

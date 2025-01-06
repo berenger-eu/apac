@@ -8,6 +8,12 @@ public:
   // To avoid errors on unused Stmt
   inline bool VisitStmt(Stmt *) { return true; };
   // bool VisitFunctionDecl(FunctionDecl *);
+  bool TraverseFunctionDecl(FunctionDecl *fDecl) {
+    if (fDecl->getNameAsString().find("_apacSeq") == std::string::npos) {
+      return RecursiveASTVisitor::TraverseFunctionDecl(fDecl);
+    }
+    return true;
+  }
   bool VisitDeclStmt(DeclStmt *);
   bool VisitParmVarDecl(ParmVarDecl *);
   bool VisitCXXMethodDecl(CXXMethodDecl *);

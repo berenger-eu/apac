@@ -1,0 +1,6 @@
+digraph G {
+subgraph cluster_f0 {
+    invisibleNodeScope_1 [style=invis];
+    0 [label="n = 654;"];
+}
+}

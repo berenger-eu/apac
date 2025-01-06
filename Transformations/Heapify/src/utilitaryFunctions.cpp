@@ -12,6 +12,9 @@ bool foundCorrectFunction(Decl &dec, const std::string &soughtFunctionName) {
     // If function name is NULL, then we're trying to put on the heap all
     // variables, Otherwise, we will only traverse the Function Declaration if
     // it's the one we're looking for
+    if (fDec.getNameAsString().find("_apacSeq") != std::string::npos) {
+      return false;
+    }
     return (soughtFunctionName.empty() ||
             (fDec.getNameAsString().compare(soughtFunctionName) == 0));
   }
