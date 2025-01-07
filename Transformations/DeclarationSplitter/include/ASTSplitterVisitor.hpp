@@ -22,6 +22,12 @@ public:
     }
     return true;
   }
+  inline bool TraverseFunctionTemplateDecl(FunctionTemplateDecl *fDecl) {
+    if (fDecl->getNameAsString().find("invalid_ref") == std::string::npos) {
+      return RecursiveASTVisitor::TraverseFunctionTemplateDecl(fDecl);
+    }
+    return true;
+  }
 
 private:
   bool isValidSeparation(const VarDecl &);

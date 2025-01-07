@@ -27,6 +27,13 @@ public:
       currentOrderManager->addInstructionToManager(d);
     return true;
   }
+  inline bool TraverseFunctionTemplateDecl(FunctionTemplateDecl *fDecl) {
+    if (fDecl->getNameAsString().find("invalid_ref") == std::string::npos) {
+      return RecursiveASTVisitor::TraverseFunctionTemplateDecl(fDecl);
+    }
+    return true;
+  }
+
   inline bool TraverseGotoStmt(GotoStmt *g) {
     if (isInHeaders(TheRewriter.getSourceMgr(), g->getBeginLoc()))
       return true;

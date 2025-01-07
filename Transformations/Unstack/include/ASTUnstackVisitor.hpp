@@ -22,6 +22,12 @@ public:
     }
     return true;
   }
+  inline bool TraverseFunctionTemplateDecl(FunctionTemplateDecl *fDecl) {
+    if (fDecl->getNameAsString().find("invalid_ref") == std::string::npos) {
+      return RecursiveASTVisitor::TraverseFunctionTemplateDecl(fDecl);
+    }
+    return true;
+  }
   // Resets the counter for variables
   bool VisitFunctionDecl(FunctionDecl *);
   // Used so that we do not Visit callExpr twice

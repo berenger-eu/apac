@@ -8,6 +8,12 @@ public:
       : TheRewriter(R), functionHeap(funHeap), variableHeap(varHeap) {};
   inline bool VisitStmt(Stmt *) { return true; }
   bool VisitFunctionDecl(FunctionDecl *);
+  inline bool TraverseFunctionTemplateDecl(FunctionTemplateDecl *fDecl) {
+    if (fDecl->getNameAsString().find("invalid_ref") == std::string::npos) {
+      return RecursiveASTVisitor::TraverseFunctionTemplateDecl(fDecl);
+    }
+    return true;
+  }
 
 private:
   // Like Visit functions, but called by VisitCompoundStmt and not by default
