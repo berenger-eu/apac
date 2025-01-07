@@ -232,6 +232,7 @@ std::string OutputHandler::createPragmaTaskWait(
               ->getNameAsString();
     }
   }
+  if (!dependString.empty())
   ssPrint << "depend (inout:" << dependString << ")";
   return ssPrint.str();
 }
