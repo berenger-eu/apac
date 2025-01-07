@@ -250,7 +250,7 @@ std::string OutputHandler::createPragmaTaskString(
     const StmtOrder &instructionsOrderManager,
     const InstructionGroup &instructionGroup) const {
   std::stringstream ssPrint;
-  ssPrint << "#pragma omp task ";
+  ssPrint << "#pragma omp task default(shared) ";
   auto instr = instructionGroup.begin()->first;
   auto node = instructionsOrderManager.getNode(instr);
 
