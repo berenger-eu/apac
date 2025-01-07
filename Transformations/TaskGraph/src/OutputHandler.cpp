@@ -114,11 +114,11 @@ std::string OutputHandler::modifiedStringForInstruction(
   std::stringstream ssPrint;
   // If the instruction contains a group of instructions (for,if,...)
   StmtOrder *subOrder = instructionsOrderManager.getSubStmtOrder(instr).get();
-  TheRewriter.RemoveText(
-      SourceRange(instr->getBeginLoc(),
-                  Lexer::getLocForEndOfToken(instr->getEndLoc(), 0,
-                                             TheRewriter.getSourceMgr(),
-                                             TheRewriter.getLangOpts())));
+  SourceManager &SM = TheRewriter.getSourceMgr();
+  std::string strTemp = std::string(
+      TheRewriter.getRewrittenText(instr->getSourceRange()).size(), ' ');
+
+  TheRewriter.ReplaceText(instr->getSourceRange(), strTemp);
   if (subOrder != nullptr) {
     // Special case for if statement, we need to add else
     if (isa<IfStmt>(instr))

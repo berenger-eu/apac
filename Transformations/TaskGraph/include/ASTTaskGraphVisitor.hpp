@@ -27,6 +27,13 @@ public:
       currentOrderManager->addInstructionToManager(d);
     return true;
   }
+  inline bool TraverseGotoStmt(GotoStmt *g) {
+    if (isInHeaders(TheRewriter.getSourceMgr(), g->getBeginLoc()))
+      return true;
+    if (!ignoreStmtPragma)
+      currentOrderManager->addInstructionToManager(g);
+    return true;
+  }
   inline bool TraverseCXXMethodDecl(CXXMethodDecl *m) {
     return TraverseFunctionDecl(m);
   }
