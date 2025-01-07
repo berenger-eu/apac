@@ -19,6 +19,12 @@ public:
   inline bool TraverseCXXMethodDecl(CXXMethodDecl *m) {
     return TraverseFunctionDecl(m);
   }
+  inline bool TraverseFunctionTemplateDecl(FunctionTemplateDecl *fDecl) {
+    if (fDecl->getNameAsString().find("invalid_ref") == std::string::npos) {
+      return RecursiveASTVisitor::TraverseFunctionTemplateDecl(fDecl);
+    }
+    return true;
+  }
   inline bool TraverseFunctionDecl(FunctionDecl *f) {
     if (!isInHeaders(TheRewriter.getSourceMgr(), f->getBeginLoc())) {
       llvm::errs() << "FunctionDecl\n";
