@@ -187,12 +187,22 @@ void OutputHandler::isPragmaValid(const StmtOrder &instructionsOrderManager,
       addPragma.setTaskWaitFalse();
     }
     // Instruction is a delete, so no task can be created
-    if (isa<CXXDeleteExpr>(instr))
+    else if (isa<CXXDeleteExpr>(instr))
       addPragma.setTaskFalse();
+    else if (isa<GotoStmt>(instr)) {
+      addPragma.setTaskFalse();
+    }
     // Instruction is a complex instruction, so no task should be created
-    std::shared_ptr<Node> node;
-    if (instrPair->second != nullptr)
-      addPragma.setTaskFalse();
+    else if (instrPair->second != nullptr) {
+      if (isa<IfStmt>(instr)) {
+        addPragma.setTaskFalse();
+      } else {
+        addPragma.setTaskFalse();
+        addPragma.setTaskWaitFalse();
+      }
+    } else {
+      addPragma.setTaskWaitFalse();
+    }
   }
 }
 std::string OutputHandler::createPragmaTaskWait(
@@ -233,7 +243,7 @@ std::string OutputHandler::createPragmaTaskWait(
     }
   }
   if (!dependString.empty())
-  ssPrint << "depend (inout:" << dependString << ")";
+    ssPrint << "depend (inout:" << dependString << ")";
   return ssPrint.str();
 }
 std::string OutputHandler::createPragmaTaskString(
