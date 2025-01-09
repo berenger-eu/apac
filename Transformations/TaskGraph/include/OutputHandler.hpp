@@ -6,7 +6,9 @@
 struct pragmaStatus {
   bool isTaskWaitValid = true;
   bool isTaskValid = true;
+  bool hasFunctionCall = false;
   inline bool isPragmaValid() { return (isTaskValid || isTaskWaitValid); };
+  void setFunctionCallTrue() { hasFunctionCall = true; }
   void setTaskWaitFalse() { isTaskWaitValid = false; }
   void setTaskFalse() { isTaskValid = false; }
 };
@@ -44,9 +46,9 @@ private:
   void createPragmaString(const StmtOrder &instructionsOrderManager,
                           const InstructionGroup &instructionGroup,
                           std::string &pragmaStart, std::string &pragmaEnd);
-  std::string
-  createPragmaTaskString(const StmtOrder &instructionsOrderManager,
-                         const InstructionGroup &instructionGroup) const;
+  std::string createPragmaTaskString(const StmtOrder &instructionsOrderManager,
+                                     const InstructionGroup &instructionGroup,
+                                     bool hasFunctionCall) const;
   std::string
   createPragmaTaskWait(const StmtOrder &instructionsOrderManager,
                        const InstructionGroup &instructionGroup) const;
