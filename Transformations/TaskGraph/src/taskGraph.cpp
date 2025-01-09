@@ -19,10 +19,16 @@ return (*ptr);}\n\n";
 class MyASTConsumer : public ASTConsumer {
 public:
   MyASTConsumer(Rewriter &R)
-      : VisitorTaskGraph(R, orderManager), TheRewriter(R) {}
+      : VisitorTaskGraph(R, orderManager), VisitorDepthAdd(R), TheRewriter(R) {}
 
   // Parse all the file
   virtual void HandleTranslationUnit(ASTContext &Ctx) {
+    VisitorDepthAdd.TraverseAST(Ctx);
+    SourceManager &sm = TheRewriter.getSourceMgr();
+    auto codeBeginLoc = sm.getLocForStartOfFile(sm.getMainFileID());
+
+    auto functions = VisitorDepthAdd.getFunctionsToModify();
+    modifyCode(TheRewriter, codeBeginLoc, functions);
     VisitorTaskGraph.TraverseAST(Ctx);
     for (auto instr : VisitorTaskGraph.functionsInstructionsVector)
       for (auto instrI : instr)
@@ -49,6 +55,7 @@ public:
 private:
   StmtOrder orderManager;
   ASTTaskGraphVisitor VisitorTaskGraph;
+  ASTDepthAddVisitor VisitorDepthAdd;
   Rewriter &TheRewriter;
 };
 

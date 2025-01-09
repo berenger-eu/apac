@@ -1,6 +1,8 @@
+#include "ASTDepthAddVisitor.hpp"
 #include "ASTTaskGraphVisitor.hpp"
 #include "Graph.hpp"
 #include "OutputHandler.hpp"
+#include "codeModification.hpp"
 #include "clang/AST/ASTConsumer.h"
 #include "clang/Basic/Diagnostic.h"
 #include "clang/Basic/FileManager.h"
