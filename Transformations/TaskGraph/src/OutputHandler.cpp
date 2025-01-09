@@ -204,6 +204,35 @@ void OutputHandler::isPragmaValid(const StmtOrder &instructionsOrderManager,
       addPragma.setTaskWaitFalse();
     }
   }
+  // Check if there is a function call, needed for firstprivate and depth
+  // increment
+  if (addPragma.isTaskValid) {
+    bool hasFunctionCall = false;
+    for (auto instrPair : instructionGroup) {
+      auto instr = instrPair.first;
+      std::stack<const Stmt *> stackStmt;
+      stackStmt.push(instr);
+      auto curInstr = instr;
+
+      while (!stackStmt.empty() && !hasFunctionCall) {
+        curInstr = stackStmt.top();
+        stackStmt.pop();
+
+        if (isa<CallExpr>(curInstr)) {
+          llvm::errs() << "Function call in task\n";
+          hasFunctionCall = true;
+        } else {
+          for (auto it = curInstr->child_begin(); it != curInstr->child_end();
+               ++it) {
+            if (isa<Stmt>(*it))
+              stackStmt.push(cast<Stmt>(*it));
+          }
+        }
+      }
+    }
+    if (hasFunctionCall)
+      addPragma.setFunctionCallTrue();
+  }
 }
 std::string OutputHandler::createPragmaTaskWait(
     const StmtOrder &instructionsOrderManager,
@@ -246,9 +275,10 @@ std::string OutputHandler::createPragmaTaskWait(
     ssPrint << "depend (inout:" << dependString << ")";
   return ssPrint.str();
 }
-std::string OutputHandler::createPragmaTaskString(
-    const StmtOrder &instructionsOrderManager,
-    const InstructionGroup &instructionGroup) const {
+std::string
+OutputHandler::createPragmaTaskString(const StmtOrder &instructionsOrderManager,
+                                      const InstructionGroup &instructionGroup,
+                                      bool hasFunctionCall) const {
   std::stringstream ssPrint;
   ssPrint << "#pragma omp task default(shared) ";
   auto instr = instructionGroup.begin()->first;
@@ -265,6 +295,8 @@ std::string OutputHandler::createPragmaTaskString(
     return "";
   }
   ssPrint << createDependsString(node);
+  if (hasFunctionCall)
+    ssPrint << " firstprivate(__apac_depth_local) ";
   return ssPrint.str();
 }
 std::string
@@ -306,11 +338,14 @@ void OutputHandler::createPragmaString(
   struct pragmaStatus addPragma;
   isPragmaValid(instructionsOrderManager, instructionGroup, addPragma);
   std::stringstream ssPragmaStart;
-  if (addPragma.isTaskValid)
+  if (addPragma.isTaskValid) {
     ssPragmaStart << createPragmaTaskString(instructionsOrderManager,
-                                            instructionGroup)
+                                            instructionGroup,
+                                            addPragma.hasFunctionCall)
                   << "\n{\n";
-  else if (addPragma.isTaskWaitValid)
+    if (addPragma.hasFunctionCall)
+      ssPragmaStart << "__apac_depth = __apac_depth_local + 1;\n";
+  } else if (addPragma.isTaskWaitValid)
     ssPragmaStart << createPragmaTaskWait(instructionsOrderManager,
                                           instructionGroup)
                   << "\n";
