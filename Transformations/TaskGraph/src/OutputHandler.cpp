@@ -196,6 +196,9 @@ void OutputHandler::isPragmaValid(const StmtOrder &instructionsOrderManager,
     else if (instrPair->second != nullptr) {
       if (isa<IfStmt>(instr)) {
         addPragma.setTaskFalse();
+        auto node = instructionsOrderManager.getNode(instr);
+        if (node->inOutDep.size() == 0 && node->inDep.size() == 0)
+          addPragma.setTaskWaitFalse();
       } else {
         addPragma.setTaskFalse();
         addPragma.setTaskWaitFalse();
