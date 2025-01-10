@@ -28,7 +28,8 @@ public:
     auto codeBeginLoc = sm.getLocForStartOfFile(sm.getMainFileID());
 
     auto functions = VisitorDepthAdd.getFunctionsToModify();
-    modifyCode(TheRewriter, codeBeginLoc, functions);
+    auto returnStmts = VisitorDepthAdd.getReturnStmts();
+    modifyCode(TheRewriter, codeBeginLoc, functions, returnStmts);
     VisitorTaskGraph.TraverseAST(Ctx);
     for (auto instr : VisitorTaskGraph.functionsInstructionsVector)
       for (auto instrI : instr)
@@ -50,6 +51,7 @@ public:
     }
     outputHandler.GenerateDotGraph(graphs, "taskGraphOpt.dot");
     outputHandler.modifyFile(orderManager);
+    handleTaskGroups(TheRewriter, functions, returnStmts);
   }
 
 private:

@@ -24,6 +24,13 @@ public:
     }
     return true;
   }
+  bool VisitReturnStmt(ReturnStmt *r) {
+    if (isInHeaders(TheRewriter.getSourceMgr(), r->getBeginLoc())) {
+      return true;
+    }
+    returnStmts.push_back(r);
+    return true;
+  }
   bool TraverseFunctionDecl(FunctionDecl *f) {
 
     if (isInHeaders(TheRewriter.getSourceMgr(), f->getBeginLoc())) {
@@ -32,6 +39,7 @@ public:
     bool result = true;
     if (!(f->getNameAsString().find("_apacSeq") != std::string::npos)) {
       functionsToModify.push_back(f);
+      result = RecursiveASTVisitor::TraverseFunctionDecl(f);
     }
 
     return result;
@@ -39,8 +47,10 @@ public:
   inline std::vector<FunctionDecl *> getFunctionsToModify() {
     return functionsToModify;
   }
+  inline std::vector<ReturnStmt *> getReturnStmts() { return returnStmts; }
 
 private:
   std::vector<FunctionDecl *> functionsToModify;
+  std::vector<ReturnStmt *> returnStmts;
   Rewriter &TheRewriter;
 };

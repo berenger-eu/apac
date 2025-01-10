@@ -37,3 +37,17 @@ void addFunctionDepth(Rewriter &TheRewriter,
     TheRewriter.InsertTextBefore(f->getBody()->getEndLoc(), SSprintAfter.str());
   }
 }
+void handleTaskGroups(Rewriter &TheRewriter,
+                      std::vector<FunctionDecl *> &functions,
+                      std::vector<ReturnStmt *> &returnStmts) {
+  for (auto &f : functions) {
+    if (f->hasBody()) {
+      Stmt *firstStmt = *(f->getBody()->child_begin());
+      TheRewriter.InsertText(firstStmt->getEndLoc(),
+                             "#pragma omp taskgroup\n{\n");
+    }
+  }
+  for (auto &r : returnStmts) {
+    TheRewriter.InsertTextBefore(r->getBeginLoc(), ";}\n");
+  }
+}
