@@ -360,36 +360,15 @@ void ASTTaskGraphVisitor::handleCallExpr(const CallExpr &c,
       if (isa<CXXConstructExpr>(d))
         d = cast<CXXConstructExpr>(d)->getArg(0);
       if (isa<DeclRefExpr>(d->IgnoreParenImpCasts())) {
-        // const VarDecl *v = cast<VarDecl>(
-        //     cast<DeclRefExpr>(d->IgnoreParenImpCasts())->getDecl());
-        AliasType type = getAliasType(&p);
-        const auto alias = aliasTable.getOrAddAliasArg(d, type);
-        addDependencyRead(curInstr, alias);
-        addDependencyWrite(curInstr, alias);
+        handleStmt(*d, curInstr, true);
       }
     } else if (!(isFullConstType(p.getType())) &&
                (isReferenceQualType(p.getType()) ||
                 isPointerQualType(p.getType()))) {
-      const DeclRefExpr *d = getSingleDeclRefExprInsideExpr(b);
       // If the parameter can be modified (parameter is either a reference or
       // a pointer AND it's not completely const)
       //   then there might be a write, so we assume there is one
-      if (d) {
-        // const VarDecl *v = cast<VarDecl>(d->getDecl());
-        AliasType type = getAliasType(&p);
-        auto alias = aliasTable.getOrAddAliasArg(d, type);
-
-        addDependencyRead(curInstr, alias);
-        addDependencyWrite(curInstr, alias);
-        std::unordered_set<std::shared_ptr<aliasArg>> aliases =
-            aliasTable.getAliased(alias);
-
-        for (auto &ali : aliases) {
-          addDependencyRead(curInstr, ali);
-          addDependencyWrite(curInstr, ali);
-        }
-      } else
-        llvm::errs() << "Failed to find DeclRefExpr\n";
+      handleStmt(*b, curInstr, true);
     }
     // Otherwise, we look through the expression since it is the same as
     // looking through any expression
