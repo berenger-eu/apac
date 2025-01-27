@@ -368,7 +368,12 @@ void ASTTaskGraphVisitor::handleCallExpr(const CallExpr &c,
       // If the parameter can be modified (parameter is either a reference or
       // a pointer AND it's not completely const)
       //   then there might be a write, so we assume there is one
-      handleStmt(*b, curInstr, true);
+      const Expr *choosenExpr = b;
+      if (getSingleArraySubscriptExprInsideExpr(b) != nullptr)
+        choosenExpr = getSingleArraySubscriptExprInsideExpr(b);
+      else if (getSingleDeclRefExprInsideExpr(b) != nullptr)
+        choosenExpr = getSingleDeclRefExprInsideExpr(b);
+      handleStmt(*choosenExpr, curInstr, true);
     }
     // Otherwise, we look through the expression since it is the same as
     // looking through any expression
