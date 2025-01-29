@@ -52,6 +52,8 @@ private:
   std::string
   createPragmaTaskWait(const StmtOrder &instructionsOrderManager,
                        const InstructionGroup &instructionGroup) const;
+  std::string createFirstPrivateString(const std::shared_ptr<Node> &node,
+                                       bool hasFunctionCall) const;
 
   int invisibleNodeCounter;
   Rewriter &TheRewriter;
