@@ -54,7 +54,18 @@ QualType getNonReferenceQualType(QualType qType);
 // Returns the leafs (CallExpr,DeclRefExpr,...) of a given statement
 // TODO: Check usefulness and remove/replace if not needed
 void getLeafs(clang::Stmt *s, std::vector<clang::Stmt *> &leafs);
+// Returns the leafs of a given statement as elements of the template type
+template <typename T>
+void getLeafsOfType(clang::Stmt *s, std::vector<T *> &leafs) {
+  if (!s)
+    return;
 
+  if (isa<T>(s))
+    leafs.push_back(cast<T>(s));
+  for (Stmt *child : s->children()) {
+    getLeafsOfType(child, leafs);
+  }
+}
 // Returns the DeclRefExpr (single) of a given Expr, none if there are multiple
 const DeclRefExpr *getSingleDeclRefExprInsideExpr(const Expr *e);
 // Returns all DeclRefExpr inside a given Expr
