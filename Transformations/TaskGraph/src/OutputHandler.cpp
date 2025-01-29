@@ -298,8 +298,47 @@ OutputHandler::createPragmaTaskString(const StmtOrder &instructionsOrderManager,
     return "";
   }
   ssPrint << createDependsString(node);
-  if (hasFunctionCall)
-    ssPrint << " firstprivate(__apac_depth_local) ";
+  ssPrint << createFirstPrivateString(node, hasFunctionCall);
+  return ssPrint.str();
+}
+std::string
+OutputHandler::createFirstPrivateString(const std::shared_ptr<Node> &node,
+                                        bool hasFunctionCall) const {
+  std::stringstream ssPrint;
+  std::unordered_set<const DeclRefExpr *> firstPrivateSet;
+  for (auto instr : node->instructionPtr) {
+    for (auto alias : instr->dependencies) {
+
+      if (alias.first->hasUnknownIndex) {
+
+        assert(alias.first->expression != nullptr);
+        alias.first->expression->getIdx()->dump();
+        auto indexesExprVector =
+            getArraySubscriptsIndexes(alias.first->expression);
+        for (auto indexExpr : indexesExprVector) {
+          auto variablesVector = getAllDeclRefExprInsideExpr(indexExpr);
+          for (auto it = temp.begin(); it != temp.end(); ++it) {
+            firstPrivateSet.insert(*it);
+          }
+        }
+      }
+    }
+  }
+  if (!firstPrivateSet.empty() || hasFunctionCall) {
+    ssPrint << " firstprivate(";
+    if (hasFunctionCall) {
+      ssPrint << " __apac_depth_local";
+      if (!firstPrivateSet.empty())
+        ssPrint << ",";
+    }
+
+    for (auto it = firstPrivateSet.begin(); it != firstPrivateSet.end(); ++it) {
+      if (it != firstPrivateSet.begin())
+        ssPrint << ",";
+      ssPrint << (*it)->getDecl()->getNameAsString();
+    }
+    ssPrint << ") ";
+  }
   return ssPrint.str();
 }
 std::string
