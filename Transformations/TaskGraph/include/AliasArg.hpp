@@ -31,6 +31,9 @@ struct aliasArg {
   const AliasType type;
   const std::vector<int> indexes;
   std::string indexString;
+  // One of the expressions that the aliasArg is refering to (to easily parse it
+  // using clang)
+  const clang::ArraySubscriptExpr *expression = nullptr;
   int id;
   static int curId;
   // Elements that point to current element
@@ -42,8 +45,10 @@ struct aliasArg {
 
   aliasArg(const clang::VarDecl &decl, AliasType t,
            std::vector<int> indexes = std::vector<int>(),
-           std::string indexString = "")
-      : declaration(decl), type(t), indexes(indexes), indexString(indexString) {
+           std::string indexString = "",
+           const clang::ArraySubscriptExpr *exp = nullptr)
+      : declaration(decl), type(t), indexes(indexes), indexString(indexString),
+        expression(exp) {
     id = curId++;
     for (int &index : indexes)
       if (index == -1) {

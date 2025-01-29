@@ -66,15 +66,16 @@ void addAliasPtr(const VarDecl *var, const std::vector<int> &,
   inline std::shared_ptr<aliasArg>
   getOrAddAliasArg(const VarDecl *v, const AliasType &type,
                    const std::vector<int> &indexes = std::vector<int>(),
-                   std::string indexString = "") {
+                   std::string indexString = "",
+                   const ArraySubscriptExpr *arrayAccessExpr = nullptr) {
     // If variable does not exist in table add it
     if (getAliasArg(v) == nullptr)
       addElementToAliasTable(v, type);
     // If element (variable and indexes) does not exist in table add it
     if (getAliasArg(v, indexes) == nullptr)
-      addElementToAliasTable(v, type, indexes, indexString);
+      addElementToAliasTable(v, type, indexes, indexString, arrayAccessExpr);
     if (getAliasArg(v, indexes, indexString) == nullptr)
-      addElementToAliasTable(v, type, indexes, indexString);
+      addElementToAliasTable(v, type, indexes, indexString, arrayAccessExpr);
     return getAliasArg(v, indexes, indexString);
   }
   inline std::shared_ptr<aliasArg>
@@ -83,6 +84,7 @@ void addAliasPtr(const VarDecl *var, const std::vector<int> &,
     const VarDecl *v = nullptr;
     std::vector<int> indexes;
     std::string indexString;
+    const ArraySubscriptExpr *arrayAccessExpr = nullptr;
     if (type == AliasType::None)
       type = getAliasType(expr);
     if (isa<DeclRefExpr>(expr->IgnoreImpCasts()))
@@ -103,13 +105,15 @@ void addAliasPtr(const VarDecl *var, const std::vector<int> &,
           break;
         }
       }
-      if (foundUnknownIndex)
+      if (foundUnknownIndex) {
+        arrayAccessExpr = a;
         indexString = ssIndexString.str();
+      }
     }
 
     if (v == nullptr || type == AliasType::None)
       return nullptr;
-    return getOrAddAliasArg(v, type, indexes, indexString);
+    return getOrAddAliasArg(v, type, indexes, indexString, arrayAccessExpr);
   }
   const AliasTableMapStruct &getAliasTable() const { return aliasTableMap; }
   int getNbElements() const { return aliasTableMap.nbElements(); }
@@ -150,12 +154,15 @@ private:
   inline const NamedDecl *getKey(const VarDecl *v) const {
     return v->getCanonicalDecl();
   }
-  void addElementToAliasTable(const VarDecl *v, const AliasType &type,
-                              std::vector<int> indexes = std::vector<int>(),
-                              std::string indexString = "") {
+  void
+  addElementToAliasTable(const VarDecl *v, const AliasType &type,
+                         std::vector<int> indexes = std::vector<int>(),
+                         std::string indexString = "",
+                         const ArraySubscriptExpr *arrayAccessExpr = nullptr) {
     const auto &key = getKey(v);
     if (key != nullptr) {
-      aliasTableMap.insert({aliasArg(*v, type, indexes, indexString), indexes});
+      aliasTableMap.insert(
+          {aliasArg(*v, type, indexes, indexString, arrayAccessExpr), indexes});
     }
   }
 
