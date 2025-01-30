@@ -55,7 +55,7 @@ private:
   Rewriter TheRewriter;
 };
 
-int main(int argc, const char **argv) {
+bool HeapifyHandler::run(int argc, const char **argv) {
   if (argc != 4 && argc != 2) {
     std::cerr << "Call with following format : ./stackheap <file.cpp>\n"
               << "\t./stackheap <file.cpp> <function> <variable>\n";
@@ -98,4 +98,8 @@ int main(int argc, const char **argv) {
     }
   }
   return retVal;
+}
+
+int main(int argc, const char **argv) {
+  return HeapifyHandler::run(argc, argv);
 }

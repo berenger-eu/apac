@@ -49,7 +49,7 @@ private:
   Rewriter TheRewriter;
 };
 
-int main(int argc, const char **argv) {
+bool GotoRetHandler::run(int argc, const char **argv) {
   if (argc < 2) {
     std::cerr << "Call with following format : ./gotoRet <file.cpp> "
                  "[<file.cpp> ...]\n";
@@ -68,4 +68,8 @@ int main(int argc, const char **argv) {
   // return a new MyFrontendAction object every time.
   // To further customize this, we could create our own factory class.
   return tool.run(newFrontendActionFactory<MyFrontendAction>().get());
+}
+
+int main(int argc, const char **argv) {
+  return GotoRetHandler::run(argc, argv);
 }

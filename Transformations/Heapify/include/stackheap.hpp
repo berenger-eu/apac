@@ -17,3 +17,8 @@
 #include "clang/Tooling/Tooling.h"
 
 #include "llvm/Support/raw_ostream.h"
+
+class HeapifyHandler {
+public:
+  static bool run(int argc, const char **argv);
+};
