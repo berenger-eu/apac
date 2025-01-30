@@ -54,6 +54,9 @@ private:
                        const InstructionGroup &instructionGroup) const;
   std::string createFirstPrivateString(const std::shared_ptr<Node> &node,
                                        bool hasFunctionCall) const;
+  // Create the pragma string for a taskwait related to array accesses
+  // If tab[i] is in deps, then we need to add taskwait (i) etc
+  std::string createTaskwaitIndexes(const std::shared_ptr<Node> &node) const;
 
   int invisibleNodeCounter;
   Rewriter &TheRewriter;

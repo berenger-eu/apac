@@ -283,9 +283,11 @@ OutputHandler::createPragmaTaskString(const StmtOrder &instructionsOrderManager,
                                       const InstructionGroup &instructionGroup,
                                       bool hasFunctionCall) const {
   std::stringstream ssPrint;
-  ssPrint << "#pragma omp task default(shared) ";
+
   auto instr = instructionGroup.begin()->first;
   auto node = instructionsOrderManager.getNode(instr);
+  ssPrint << createTaskwaitIndexes(node);
+  ssPrint << "#pragma omp task default(shared) ";
 
   if (node == nullptr) {
     llvm::errs() << "Node is null\n";
@@ -317,7 +319,8 @@ OutputHandler::createFirstPrivateString(const std::shared_ptr<Node> &node,
             getArraySubscriptsIndexes(alias.first->expression);
         for (auto indexExpr : indexesExprVector) {
           auto variablesVector = getAllDeclRefExprInsideExpr(indexExpr);
-          for (auto it = temp.begin(); it != temp.end(); ++it) {
+          for (auto it = variablesVector.begin(); it != variablesVector.end();
+               ++it) {
             firstPrivateSet.insert(*it);
           }
         }
@@ -394,4 +397,45 @@ void OutputHandler::createPragmaString(
   pragmaStart = ssPragmaStart.str();
   if (addPragma.isTaskValid)
     pragmaEnd = "}\n";
+}
+
+std::string
+OutputHandler::createTaskwaitIndexes(const std::shared_ptr<Node> &node) const {
+  std::stringstream ssPrint;
+  std::unordered_set<const DeclRefExpr *> firstPrivateSet;
+  for (auto &inDep : node->inDep) {
+    if (inDep->hasUnknownIndex) {
+      assert(inDep->expression != nullptr);
+      auto indexesExprVector = getArraySubscriptsIndexes(inDep->expression);
+      for (auto indexExpr : indexesExprVector) {
+        auto variablesVector = getAllDeclRefExprInsideExpr(indexExpr);
+        for (auto it = variablesVector.begin(); it != variablesVector.end();
+             ++it) {
+          firstPrivateSet.insert(*it);
+        }
+      }
+    }
+  }
+  for (auto &inOutDep : node->inOutDep) {
+    if (inOutDep->hasUnknownIndex) {
+      assert(inOutDep->expression != nullptr);
+      auto indexesExprVector = getArraySubscriptsIndexes(inOutDep->expression);
+      for (auto indexExpr : indexesExprVector) {
+        auto variablesVector = getAllDeclRefExprInsideExpr(indexExpr);
+        for (auto it = variablesVector.begin(); it != variablesVector.end();
+             ++it) {
+          firstPrivateSet.insert(*it);
+        }
+      }
+    }
+  }
+  if (!firstPrivateSet.empty())
+    ssPrint << "#pragma omp taskwait (";
+  for (auto &firstPrivate : firstPrivateSet) {
+    if (firstPrivate != *firstPrivateSet.begin())
+      ssPrint << ",";
+    ssPrint << firstPrivate->getDecl()->getNameAsString();
+  }
+  ssPrint << ")\n";
+  return ssPrint.str();
 }
