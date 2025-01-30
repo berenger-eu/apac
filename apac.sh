@@ -16,6 +16,7 @@ declSplitName="declarationSplitter"
 gotoName="gotoRet"
 stackHeapName="stackheap"
 taskGraphName="taskGraph"
+duplicateFunctionsName="duplicateFunctions"
 
 unstackTransfo="$transformationBin/$unstackName"
 constifyTransfo="$transformationBin/$constifyName"
@@ -23,6 +24,7 @@ declSplitTransfo="$transformationBin/$declSplitName"
 gotoTransfo="$transformationBin/$gotoName"
 stackHeapTransfo="$transformationBin/$stackHeapName"
 taskGraphTransfo="$transformationBin/$taskGraphName"
+duplicateFunctions="$transformationBin/$duplicateFunctionsName"
 
 
 
@@ -37,79 +39,59 @@ inputFileNameNoExt="${inputFileName%.*}"
 # path/to
 inputFolder=$(dirname "$realInputFile")
 
-curUsedFolder=$inputFolder
-curUsedFile=$inputFileName
 
-rm $inputFolder/$inputFileNameNoExt/* 
-rmdir $inputFolder/$inputFileNameNoExt/
 
+function run_transformation {
+    local transformation=$1
+    local transformationName=$2
+    local inputFile=$3
+    
+local    outputFile="$curUsedFolder/$inputFileNameNoExt"_"$transformationName"_"$counter.cpp"
+
+    $transformation $inputFile > $outputFile 2> /dev/null
+    if [ $? -ne 0 ]; then
+        echo "Failed to run $transformationName"
+        exit 1
+    fi
+    counter=$((counter+1))
+
+    curUsedFile=$outputFile
+}
+
+
+
+function run_const {
+    local inputFile=$1
+    $constifyTransfo $inputFile > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "Failed to run $constifyName"
+        exit 1
+    fi
+
+    local folderName=$(basename "$curUsedFile" .cpp)
+    local fileName=$(basename "$curUsedFile")
+    cp $curUsedFolder/$folderName/$fileName $curUsedFolder/$inputFileNameNoExt"_"$constifyName"_"$counter.cpp
+    curUsedFile=$curUsedFolder/$inputFileNameNoExt"_"$constifyName"_"$counter.cpp
+        counter=$((counter+1))
+}
+
+rm -rf $inputFolder/$inputFileNameNoExt/* 
+rmdir  $inputFolder/$inputFileNameNoExt/
+
+mkdir $inputFolder/$inputFileNameNoExt
+cp $realInputFile $inputFolder/$inputFileNameNoExt/$inputFileName
+curUsedFolder=$inputFolder/$inputFileNameNoExt
+curUsedFile=$curUsedFolder/$inputFileName
+counter=0
 
 
 # Run the transformations
-counter=0
+run_transformation $duplicateFunctions $duplicateFunctionsName $curUsedFile
+#run_const $curUsedFile
+#run_transformation $unstackTransfo $unstackName $curUsedFile $curUsedFile
+run_transformation $declSplitTransfo $declSplitName $curUsedFile
+run_transformation $gotoTransfo $gotoName $curUsedFile
+#run_transformation $stackHeapTransfo $stackHeapName $curUsedFile
+run_transformation $taskGraphTransfo $taskGraphName $curUsedFile
 
-$constifyTransfo "$inputFolder/$inputFileName" > /dev/null 2>&1
-if [ $? -ne 0 ]; then
-    echo "Failed to run $constifyName"
-    exit 1
-fi
-
-counter=$((counter+1))
-curUsedFolder=$inputFolder/$inputFileNameNoExt
-curUsedFile=$curUsedFolder/$inputFileName
-outputFile="$curUsedFolder/$inputFileNameNoExt"_"$unstackName"_"$counter.cpp"
-
-$unstackTransfo $curUsedFile > $outputFile 2> /dev/null
-if [ $? -ne 0 ]; then
-    echo "Failed to run $unstackName"
-    exit 1
-fi
-counter=$((counter+1))
-
-
-
-curUsedFile=$outputFile
-outputFile="$curUsedFolder/$inputFileNameNoExt"_"$gotoName"_"$counter.cpp"
-
-$gotoTransfo $curUsedFile > $outputFile    2> /dev/null
-if [ $? -ne 0 ]; then
-    echo "Failed to run $gotoName"
-    exit 1
-fi
-counter=$((counter+1))
-
-curUsedFile=$outputFile
-outputFile="$curUsedFolder/$inputFileNameNoExt"_"$declSplitName"_"$counter.cpp"
-
-$declSplitTransfo $curUsedFile > $outputFile 2> /dev/null
-if [ $? -ne 0 ]; then
-    echo "Failed to run $declSplitName"
-    exit 1
-fi
-counter=$((counter+1))
-
-curUsedFile=$outputFile
-outputFile="$curUsedFolder/$inputFileNameNoExt"_"$stackHeapName"_"$counter.cpp"
-$stackHeapTransfo $curUsedFile > $outputFile 2> /dev/null
-if [ $? -ne 0 ]; then
-    echo "Failed to run $stackHeapName"
-    exit 1
-fi
-counter=$((counter+1))
-
-
-
-
-
-
-curUsedFile=$outputFile
-outputFile="$curUsedFolder/$inputFileNameNoExt"_"$taskGraphName"_"$counter.cpp"
-
-$taskGraphTransfo $curUsedFile > $outputFile 2> /dev/null
-if [ $? -ne 0 ]; then
-    echo "Failed to run $taskGraphName"
-    exit 1
-fi
-counter=$((counter+1))
-
-
+echo "All transformations ran successfully"
