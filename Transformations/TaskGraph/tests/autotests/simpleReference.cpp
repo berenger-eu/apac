@@ -15,6 +15,7 @@ int main() {
   ref = ref2;
   j = 4;
   a++;
-  j = 1;
+  ref2++;
   ref++;
+  return 0;
 }

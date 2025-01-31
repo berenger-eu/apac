@@ -2,16 +2,23 @@
 
 void addInitApacPart(Rewriter &TheRewriter, const SourceLocation &beginCodeLoc,
                      FunctionDecl *firstFunction) {
-  TheRewriter.InsertTextBefore(beginCodeLoc, "#include <omp.h>\n");
+  std::string includeText = "#include <omp.h>\n#include <cstring>\n";
+  bool printedHeader = false;
   if (firstFunction != nullptr) {
     std::stringstream SSprint;
-
+    if (firstFunction->getBeginLoc() == beginCodeLoc) {
+      printedHeader = true;
+      SSprint << includeText;
+    }
     SSprint << "const int nb_cores = omp_get_max_threads();\n"
             << "const int parallel_depth = ffs(nb_cores);// log2(nb_cores);\n"
             << "int __apac_depth = 0;\n"
             << "#pragma omp threadprivate(__apac_depth)\n"
             << "const static int __apac_depth_max = parallel_depth;\n\n";
     TheRewriter.InsertTextBefore(firstFunction->getBeginLoc(), SSprint.str());
+  }
+  if (!printedHeader) {
+    TheRewriter.InsertTextBefore(beginCodeLoc, includeText);
   }
 }
 
