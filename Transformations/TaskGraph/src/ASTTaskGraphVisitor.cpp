@@ -161,7 +161,9 @@ void ASTTaskGraphVisitor::handleCXXOperatorCallExpr(
       }
       // AliasType type = getAliasType(declOrArray);
       auto aliasVar = aliasTable.getOrAddAliasArg(declOrArray);
-      aliasTable.addAliasReference(aliasVar, aliasRef);
+      if (aliasRef->type == Reference && aliasRef->aliased.empty())
+        aliasTable.addAliasReference(aliasVar, aliasRef);
+      // aliasTable.addAliasReference(aliasVar, aliasRef);
       addDependencyRead(instr, aliasVar);
       addDependencyWrite(instr, aliasRef);
     }
