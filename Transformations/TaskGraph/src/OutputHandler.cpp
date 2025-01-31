@@ -429,13 +429,14 @@ OutputHandler::createTaskwaitIndexes(const std::shared_ptr<Node> &node) const {
       }
     }
   }
-  if (!firstPrivateSet.empty())
+  if (!firstPrivateSet.empty()) {
     ssPrint << "#pragma omp taskwait (";
-  for (auto &firstPrivate : firstPrivateSet) {
-    if (firstPrivate != *firstPrivateSet.begin())
-      ssPrint << ",";
-    ssPrint << firstPrivate->getDecl()->getNameAsString();
+    for (auto &firstPrivate : firstPrivateSet) {
+      if (firstPrivate != *firstPrivateSet.begin())
+        ssPrint << ",";
+      ssPrint << firstPrivate->getDecl()->getNameAsString();
+    }
+    ssPrint << ")\n";
   }
-  ssPrint << ")\n";
   return ssPrint.str();
 }
