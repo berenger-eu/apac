@@ -1,9 +1,6 @@
 digraph G {
 subgraph cluster_f0 {
-    invisibleNodeScope_2 [style=invis];
-}
-subgraph cluster_f1 {
-    invisibleNodeScope_3 [style=invis];
+    invisibleNodeScope_1 [style=invis];
     0 [label="apacMemeBloc__a_0 = new int [2][2][2];
 a = apacMemeBloc__a_0;"];
     2 [label="b = 4;"];
