@@ -2,7 +2,8 @@
 
 void addInitApacPart(Rewriter &TheRewriter, const SourceLocation &beginCodeLoc,
                      FunctionDecl *firstFunction) {
-  TheRewriter.InsertTextBefore(beginCodeLoc, "#include <omp.h>\n");
+  TheRewriter.InsertTextBefore(beginCodeLoc,
+                               "#include <omp.h>\n#include <cstring>\n");
   if (firstFunction != nullptr) {
     std::stringstream SSprint;
 
