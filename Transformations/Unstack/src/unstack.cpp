@@ -10,15 +10,18 @@ using namespace clang::tooling;
 // by the Clang parser.
 class MyASTConsumer : public ASTConsumer {
 public:
-  MyASTConsumer(Rewriter &R) : VisitorUnstack(R) {}
+  MyASTConsumer(Rewriter &R) : VisitorUnstack(R), transformer(R) {}
 
   // Parse all the file
   virtual void HandleTranslationUnit(ASTContext &Ctx) {
     VisitorUnstack.TraverseAST(Ctx);
+    auto functions = VisitorUnstack.getCallsToUnstack();
+    transformer.transformFunctionsCalls(functions);
   }
 
 private:
   ASTUnstackVisitor VisitorUnstack;
+  UnstackTransformer transformer;
 };
 
 class MyFrontendAction : public ASTFrontendAction {
