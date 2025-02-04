@@ -1,10 +1,4 @@
-int *minPtr(int *a, int *b) {
-  if (a < b) {
-    return a;
-  } else {
-    return b;
-  }
-}
+int *minPtr(int *a, int *b) { return a; }
 
 int main() {
   int i, j;
@@ -12,5 +6,8 @@ int main() {
   j = 4;
   int *p;
   p = minPtr(&i, &j);
+  j++;
+  *p = 5;
+  i++;
   return 0;
 }

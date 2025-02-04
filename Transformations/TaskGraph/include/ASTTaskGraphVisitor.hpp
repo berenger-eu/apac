@@ -143,6 +143,11 @@ private:
                   bool isRead = true);
   void handleMemberCallExpr(const CXXMemberCallExpr &, Instruction &,
                             bool isWrite = false);
+  void handleBinaryAssignment(const BinaryOperator &, Instruction &,
+                              bool isWrite = false);
+  void handlePointersBinaryAssignment(
+      const BinaryOperator &, Instruction &, const VarDecl *, const Expr *,
+      std::unordered_set<std::shared_ptr<aliasArg>> &);
   void computeAliasesForRHS(const Expr *bop,
                             std::unordered_set<std::shared_ptr<aliasArg>> &,
                             Instruction &instr);

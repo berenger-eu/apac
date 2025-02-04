@@ -237,95 +237,135 @@ void ASTTaskGraphVisitor::handleBinaryOperator(const BinaryOperator &bop,
                                                bool isWrite) {
   // Special case for assignment operators, because it is a write
   if (bop.isAssignmentOp()) {
-    // Most likely unnecessary since left side has to be a lvalue because of
-    // the assignment operator
-    const VarDecl *mainVariable = nullptr;
-    const ArraySubscriptExpr *array;
-    std::vector<int> indexes;
-    const DeclRefExpr *d;
-    const Expr *declOrArrayExpr;
-    // Array
-    if ((array = getSingleArraySubscriptExprInsideExpr(bop.getLHS())) !=
-        nullptr) {
-      const auto baseDeclExpr = getArrayBaseDeclRefExpr(array);
-      mainVariable = cast<VarDecl>(baseDeclExpr->getDecl());
-      indexes = getArraySubscriptsIndexesValues(array);
-      declOrArrayExpr = array;
-    }
-    // Variable (not array)
-    else if ((d = getSingleDeclRefExprInsideExpr(bop.getLHS()))) {
-      mainVariable = cast<VarDecl>(d->getDecl());
-      declOrArrayExpr = d;
-    } else
-      handleStmt(*bop.getLHS(), curInstr, true);
-
-    // TODO:Error for member expr
-
-    std::unordered_set<std::shared_ptr<aliasArg>> aliasesLeft;
-    // setLeftVars.insert(v);
-    computeAliasesForRHS(bop.getLHS(), aliasesLeft, curInstr);
-    // aliasTable.getModifiedVariables(setLeftVars,depth);
-    if (isPointerQualType(bop.getLHS()->getType())) {
-      // Separate this part in a different function to make it more
-      // understandable
-
-      // If a single pointer is aliased, then we know that its aliased
-      // elements will change If there are multiple, it's because we can't be
-      // sure which one is aliased, so we can't remove the dependencies
-      if (aliasesLeft.size() == 1)
-        aliasTable.removeDependencyPtr(*aliasesLeft.begin());
-
-      std::unordered_set<std::shared_ptr<aliasArg>> aliasesRHS;
-      computeAliasesForRHS(bop.getRHS(), aliasesRHS, curInstr);
-      const Expr *declOrArrayExprRHS = nullptr;
-      if (getSingleArraySubscriptExprInsideExpr(bop.getRHS()))
-        declOrArrayExprRHS =
-            getSingleArraySubscriptExprInsideExpr(bop.getRHS());
-      else if (getSingleDeclRefExprInsideExpr(bop.getRHS()))
-        declOrArrayExprRHS = getSingleDeclRefExprInsideExpr(bop.getRHS());
-      else
-        ;
-      if (declOrArrayExprRHS) {
-        declOrArrayExprRHS->getType().dump();
-        int depth = getPtrDepthAccess(declOrArrayExprRHS->getType(),
-                                      bop.getRHS()->getType(),
-                                      mainVariable->getASTContext());
-        if (depth == -1) {
-          for (auto &aliasLeft : aliasesLeft) {
-            for (auto &aliasRight : aliasesRHS) {
-              aliasTable.addAliasPtr(aliasRight, aliasLeft);
-            }
-          }
-        }
-      }
-      for (auto &aliasLeft : aliasesLeft)
-        for (auto &aliasRight : aliasesRHS)
-          aliasTable.addAliasedToElement(aliasRight, aliasLeft);
-    }
-    // It's an assignment, so all aliases are written
-    for (auto &alias : aliasesLeft) {
-      addDependencyWrite(curInstr, alias);
-      if (isa<CompoundAssignOperator>(bop))
-        addDependencyRead(curInstr, alias);
-    }
-    // If we have a pointer, then the aliases are related to the pointed
-    // values when depth > 0 So we have to add a read dependency on the
-    // pointer itself
-    auto aliasMain = aliasTable.getOrAddAliasArg(declOrArrayExpr,
-                                                 getAliasType(bop.getLHS()));
-    int depth =
-        getPtrDepthAccess(declOrArrayExpr->getType(), bop.getLHS()->getType(),
-                          mainVariable->getASTContext());
-    if (depth > 0)
-      addDependencyRead(curInstr, aliasMain);
-    handleStmt(*bop.getRHS(), curInstr);
-
+    handleBinaryAssignment(bop, curInstr, isWrite);
   }
   // Otherwise, we just look through the expression on both sides
   else {
     handleStmt(*bop.getLHS(), curInstr);
     handleStmt(*bop.getRHS(), curInstr);
   }
+}
+void ASTTaskGraphVisitor::handleBinaryAssignment(const BinaryOperator &bop,
+                                                 Instruction &curInstr,
+                                                 bool isWrite) {
+  // Most likely unnecessary since left side has to be a lvalue because of
+  // the assignment operator
+  const VarDecl *mainVariable = nullptr;
+  const ArraySubscriptExpr *array;
+  std::vector<int> indexes;
+  const DeclRefExpr *d;
+  const Expr *declOrArrayExpr;
+  // Array
+  if ((array = getSingleArraySubscriptExprInsideExpr(bop.getLHS())) !=
+      nullptr) {
+    const auto baseDeclExpr = getArrayBaseDeclRefExpr(array);
+    mainVariable = cast<VarDecl>(baseDeclExpr->getDecl());
+    indexes = getArraySubscriptsIndexesValues(array);
+    declOrArrayExpr = array;
+  }
+  // Variable (not array)
+  else if ((d = getSingleDeclRefExprInsideExpr(bop.getLHS()))) {
+    mainVariable = cast<VarDecl>(d->getDecl());
+    declOrArrayExpr = d;
+  } else
+    handleStmt(*bop.getLHS(), curInstr, true);
+
+  // TODO:Error for member expr
+
+  std::unordered_set<std::shared_ptr<aliasArg>> aliasesLeft;
+  // setLeftVars.insert(v);
+  computeAliasesForRHS(bop.getLHS(), aliasesLeft, curInstr);
+  // aliasTable.getModifiedVariables(setLeftVars,depth);
+  if (isPointerQualType(bop.getLHS()->getType())) {
+    handlePointersBinaryAssignment(bop, curInstr, mainVariable, declOrArrayExpr,
+                                   aliasesLeft);
+  }
+  // It's an assignment, so all aliases are written
+  for (auto &alias : aliasesLeft) {
+    addDependencyWrite(curInstr, alias);
+    if (isa<CompoundAssignOperator>(bop))
+      addDependencyRead(curInstr, alias);
+  }
+  // If we have a pointer, then the aliases are related to the pointed
+  // values when depth > 0 So we have to add a read dependency on the
+  // pointer itself
+  auto aliasMain =
+      aliasTable.getOrAddAliasArg(declOrArrayExpr, getAliasType(bop.getLHS()));
+  int depth =
+      getPtrDepthAccess(declOrArrayExpr->getType(), bop.getLHS()->getType(),
+                        mainVariable->getASTContext());
+  if (depth > 0)
+    addDependencyRead(curInstr, aliasMain);
+  handleStmt(*bop.getRHS(), curInstr);
+}
+void ASTTaskGraphVisitor::handlePointersBinaryAssignment(
+    const BinaryOperator &bop, Instruction &curInstr,
+    const VarDecl *mainVariable, const Expr *declOrArrayExpr,
+    std::unordered_set<std::shared_ptr<aliasArg>> &aliasesLeft) {
+
+  // If a single pointer is aliased, then we know that its aliased
+  // elements will change If there are multiple, it's because we can't be
+  // sure which one is aliased, so we can't remove the dependencies
+  if (aliasesLeft.size() == 1)
+    aliasTable.removeDependencyPtr(*aliasesLeft.begin());
+
+  std::unordered_set<std::shared_ptr<aliasArg>> aliasesRHS;
+  computeAliasesForRHS(bop.getRHS(), aliasesRHS, curInstr);
+  const Expr *declOrArrayExprRHS = nullptr;
+  if (getSingleArraySubscriptExprInsideExpr(bop.getRHS())) {
+    declOrArrayExprRHS = getSingleArraySubscriptExprInsideExpr(bop.getRHS());
+    declOrArrayExprRHS->dump();
+  } else if (getSingleDeclRefExprInsideExpr(bop.getRHS())) {
+
+    declOrArrayExprRHS = getSingleDeclRefExprInsideExpr(bop.getRHS());
+  } else if (isa<CallExpr>(bop.getRHS()->IgnoreParenImpCasts())) {
+    std::vector<const Expr *> declOrArrayExprRHSVect;
+
+    auto rightCall = cast<CallExpr>(bop.getRHS()->IgnoreParenImpCasts());
+    std::stack<const CallExpr *> callStack;
+    callStack.push(rightCall);
+    // We will check recursively all function arguments, and retrieve variables
+    // that might be returned by the function (if it returns a pointer)
+    while (!callStack.empty()) {
+      auto curCall = callStack.top();
+      auto rightFunction = curCall->getDirectCallee();
+      callStack.pop();
+      for (unsigned int i = 0; i < rightCall->getNumArgs(); i++) {
+        if (isPointerQualType(rightFunction->getParamDecl(i)->getType())) {
+          const Expr *arg = rightCall->getArg(i);
+          if (isa<CallExpr>(arg->IgnoreParenImpCasts()))
+            callStack.push(cast<CallExpr>(arg->IgnoreParenImpCasts()));
+          else {
+            auto depth =
+                getPtrDepthAccess(mainVariable->getType(), arg->getType(),
+                                  mainVariable->getASTContext());
+            if (depth == 0) {
+              for (auto &aliasLeft : aliasesLeft) {
+                for (auto &aliasRight : aliasesRHS) {
+                  aliasTable.addAliasPtr(aliasRight, aliasLeft);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  if (declOrArrayExprRHS != nullptr) {
+    int depth = getPtrDepthAccess(declOrArrayExprRHS->getType(),
+                                  bop.getRHS()->getType(),
+                                  mainVariable->getASTContext());
+    if (depth == -1) {
+      for (auto &aliasLeft : aliasesLeft) {
+        for (auto &aliasRight : aliasesRHS) {
+          aliasTable.addAliasPtr(aliasRight, aliasLeft);
+        }
+      }
+    }
+  }
+  for (auto &aliasLeft : aliasesLeft)
+    for (auto &aliasRight : aliasesRHS)
+      aliasTable.addAliasedToElement(aliasRight, aliasLeft);
 }
 void ASTTaskGraphVisitor::handleMemberCallExpr(const CXXMemberCallExpr &c,
                                                Instruction &curInstr,
