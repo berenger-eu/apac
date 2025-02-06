@@ -15,7 +15,7 @@ namespace unstack {
 struct Node {
   CallExpr *call;
   int id;
-  std::vector<std::shared_ptr<Node>> children;
+  std::unordered_map<CallExpr *, std::shared_ptr<Node>> children;
   Node(CallExpr *c, int &idCounter) : call(c), id(idCounter) { idCounter++; }
   void dump() {
     llvm::errs() << "Node id : " << id
@@ -24,7 +24,7 @@ struct Node {
                         call->getDirectCallee()->getASTContext().getLangOpts())
                  << "\n";
     for (auto child : children) {
-      child->dump();
+      child.second->dump();
     }
   }
 };
@@ -58,7 +58,8 @@ private:
   // previous example was 1
   std::string createCallArgString(std::shared_ptr<Node> node, Expr *argExpr,
                                   int &childCounter);
-  std::string createTempVarStringRoot(std::shared_ptr<Node> rootNode);
+  std::string createTempVarStringHelper(std::shared_ptr<Node> rootNode,
+                                        bool isRoot);
   // Creates the instruction for one of the temporary variable
   // String :  type __tempVar_x;
   //            __tempVar_x = unstackedCall;
@@ -79,4 +80,4 @@ private:
   std::map<SourceLocation, std::vector<std::shared_ptr<Node>>> callRoots;
   Rewriter &TheRewriter;
 };
-}
+} // namespace unstack

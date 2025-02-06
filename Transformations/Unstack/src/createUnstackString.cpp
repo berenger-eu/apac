@@ -19,28 +19,53 @@ void UnstackTransformer::buildSubTree(std::shared_ptr<Node> rootNode,
   for (auto arg : calExp->arguments()) {
     findTopCallsInExpr(arg, subTopCalls);
   }
+  llvm::errs() << " tez\n";
   for (auto call : subTopCalls) {
-    rootNode->children.push_back(std::make_shared<Node>(call, tempVarsCounter));
-    buildSubTree(rootNode->children.back(), tempVarsCounter);
+    llvm::errs() << getExprAsString(call, TheRewriter.getLangOpts()) << "\n";
+    rootNode->children.insert(
+        {call, std::make_shared<Node>(call, tempVarsCounter)});
+    buildSubTree(rootNode->children[call], tempVarsCounter);
   }
+  llvm::errs() << " toz\n";
 }
 
 void UnstackTransformer::modifyCalls() {
   for (auto locRootsPair : callRoots) {
     std::stringstream SSresultLoc;
     for (auto root : locRootsPair.second) {
-      SSresultLoc << createTempVarStringRoot(root);
+      SSresultLoc << createTempVarStringHelper(root, true);
     }
     TheRewriter.InsertText(locRootsPair.first, SSresultLoc.str());
+    std::vector<std::shared_ptr<Node>> nodes;
+    for (auto root : locRootsPair.second) {
+      auto &callExp = root->call;
+      std::vector<CallExpr *> subTopCalls;
+      for (auto arg : callExp->arguments()) {
+        findTopCallsInExpr(arg, subTopCalls);
+      }
+      for (auto call : subTopCalls) {
+        nodes.push_back(root->children[call]);
+      }
+    }
+    for (auto node : nodes) {
+      auto &callExp = node->call;
+      std::stringstream SSresult;
+      SSresult << " __tempVar_" << node->id << " ";
+      llvm::errs() << SSresult.str() << "\n";
+      TheRewriter.ReplaceText(callExp->getSourceRange(), SSresult.str());
+    }
   }
 }
 std::string
-UnstackTransformer::createTempVarStringRoot(std::shared_ptr<Node> rootNode) {
+UnstackTransformer::createTempVarStringHelper(std::shared_ptr<Node> node,
+                                              bool isRoot = false) {
   std::stringstream SSresult;
-  for (auto child : rootNode->children) {
-    SSresult << createTempVarStringRoot(child);
+  for (auto child : node->children) {
+    SSresult << createTempVarStringHelper(child.second);
   }
-  SSresult << createTempVarString(rootNode);
+  if (!isRoot)
+    SSresult << createTempVarString(node);
+
   return SSresult.str();
 }
 
@@ -54,10 +79,11 @@ std::string UnstackTransformer::createCallArgString(std::shared_ptr<Node> node,
   argExpr = argExpr->IgnoreImpCasts();
   // If it's a call, we can replace it by the corresponding variable
   if (isa<CallExpr>(argExpr)) {
+    CallExpr *callExpr = cast<CallExpr>(argExpr);
     if (childCounter >= node->children.size()) {
       return getExprAsString(argExpr, TheRewriter.getLangOpts());
     }
-    res << " __tempVar_" << node->children.at(childCounter)->id << " ";
+    res << " __tempVar_" << node->children[callExpr]->id << " ";
     childCounter++;
   }
   // If it's a BinaryOperator, then we have to look at both expressions
