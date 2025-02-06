@@ -5,20 +5,24 @@ static llvm::cl::OptionCategory ToolingSampleCategory("Tooling Sample");
 using namespace clang;
 using namespace clang::driver;
 using namespace clang::tooling;
-
+using namespace unstack;
 // Implementation of the ASTConsumer interface for reading an AST produced
 // by the Clang parser.
 class MyASTConsumer : public ASTConsumer {
 public:
-  MyASTConsumer(Rewriter &R) : VisitorUnstack(R) {}
+  MyASTConsumer(Rewriter &R) : VisitorUnstack(R), transformer(R) {}
 
   // Parse all the file
   virtual void HandleTranslationUnit(ASTContext &Ctx) {
     VisitorUnstack.TraverseAST(Ctx);
+    auto functions = VisitorUnstack.getCallsToUnstack();
+    transformer.transformFunctionsCalls(functions);
+    transformer.modifyCalls();
   }
 
 private:
   ASTUnstackVisitor VisitorUnstack;
+  UnstackTransformer transformer;
 };
 
 class MyFrontendAction : public ASTFrontendAction {

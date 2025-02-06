@@ -1,4 +1,6 @@
 #include "ASTUnstackVisitor.hpp"
+#include "createUnstackString.hpp"
+
 #include "clang/AST/ASTConsumer.h"
 #include "clang/Basic/Diagnostic.h"
 #include "clang/Basic/FileManager.h"
