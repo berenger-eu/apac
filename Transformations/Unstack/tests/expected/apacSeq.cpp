@@ -9,8 +9,7 @@ void func_apacSeq(long long n) {
 }
 int main() {
   long n;
-  int __tempVar_0 = f(5);
-  int __tempVar_1 = f(__tempVar_0);
-  __tempVar_1;
+  int __tempVar_1 = f(5);
+  f(__tempVar_1);
   return 0;
 }
