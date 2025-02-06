@@ -11,6 +11,23 @@
 
 #include "common.hpp"
 using namespace clang;
+namespace unstack {
+struct Node {
+  CallExpr *call;
+  int id;
+  std::vector<std::shared_ptr<Node>> children;
+  Node(CallExpr *c, int &idCounter) : call(c), id(idCounter) { idCounter++; }
+  void dump() {
+    llvm::errs() << "Node id : " << id
+                 << getExprAsString(
+                        call,
+                        call->getDirectCallee()->getASTContext().getLangOpts())
+                 << "\n";
+    for (auto child : children) {
+      child->dump();
+    }
+  }
+};
 class UnstackTransformer {
 
 public:
@@ -20,6 +37,14 @@ public:
           functionCalls) {
     for (auto function : functionCalls)
       transformFunctionCalls(function);
+  }
+  void modifyCalls();
+  void dump() {
+    for (auto locRootsPair : callRoots) {
+      for (auto root : locRootsPair.second) {
+        root->dump();
+      }
+    }
   }
 
 private:
@@ -31,12 +56,15 @@ private:
   //  This Expr : f(g(1)) will return the string : f(__temp_var_1)
   // The queue contains the ids to use in order, so the first element in the
   // previous example was 1
-  std::string createCallArgString(Expr *, std::queue<int> &);
+  std::string createCallArgString(std::shared_ptr<Node> node, Expr *argExpr,
+                                  int &childCounter);
+  std::string createTempVarStringRoot(std::shared_ptr<Node> rootNode);
   // Creates the instruction for one of the temporary variable
   // String :  type __tempVar_x;
   //            __tempVar_x = unstackedCall;
-  std::string createTempVarString(CallExpr *, int, std::queue<int> &);
+  std::string createTempVarString(std::shared_ptr<Node> node);
 
+  void buildSubTree(std::shared_ptr<Node> node, int &tempVarsCounter);
   inline void transformFunctionCalls(
       std::map<SourceLocation, std::vector<CallExpr *>> callLocations) {
     int tempVarCounter = 0;
@@ -46,5 +74,9 @@ private:
       }
     }
   }
+
+  std::vector<std::shared_ptr<Node>> callNodes;
+  std::map<SourceLocation, std::vector<std::shared_ptr<Node>>> callRoots;
   Rewriter &TheRewriter;
 };
+}

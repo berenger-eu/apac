@@ -5,7 +5,7 @@ static llvm::cl::OptionCategory ToolingSampleCategory("Tooling Sample");
 using namespace clang;
 using namespace clang::driver;
 using namespace clang::tooling;
-
+using namespace unstack;
 // Implementation of the ASTConsumer interface for reading an AST produced
 // by the Clang parser.
 class MyASTConsumer : public ASTConsumer {
@@ -17,6 +17,7 @@ public:
     VisitorUnstack.TraverseAST(Ctx);
     auto functions = VisitorUnstack.getCallsToUnstack();
     transformer.transformFunctionsCalls(functions);
+    transformer.modifyCalls();
   }
 
 private:
