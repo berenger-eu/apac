@@ -6,19 +6,21 @@ bool ASTGotoVisitor::VisitFunctionDecl(FunctionDecl *fDecl) {
     return true;
   }
   // Declares the result in the transformed source file, only if it's not void
+  std::stringstream SSprint;
   if (!fDecl->getReturnType().getTypePtr()->isVoidType()) {
-    std::stringstream SSprint;
     // Declares the result
     SSprint << "\nwrapper_t<"
             << fDecl->getReturnType().getAsString(TheRewriter.getLangOpts())
             << "> __result;\n";
-    TheRewriter.InsertTextAfterToken(fDecl->getBody()->getBeginLoc(),
-                                     SSprint.str());
   }
+  SSprint << "{\n";
+  TheRewriter.InsertTextAfterToken(fDecl->getBody()->getBeginLoc(),
+                                   SSprint.str());
 
   // Adds the exit section
   std::stringstream SSexit;
   // TODO:Handle other cases with no returns
+  SSexit << "\n}\n";
   if (!fDecl->getReturnType().getTypePtr()->isVoidType()) {
     SSexit << "__exit" << functionsCounter << ": return *__result;\n";
   } else {
