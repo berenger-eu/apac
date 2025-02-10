@@ -1,4 +1,4 @@
-#include <memory>
+#include "_apac_header.hpp"
 void f();
 void f() {
   int a = 1;
@@ -13,11 +13,11 @@ __exit1:
 }
 
 int main() {
-  std::unique_ptr<int> __result;
+  wrapper_t<int> __result;
 
   f();
   g();
-  __result = std::make_unique<int>(0);
+  __result = build_wrapper<int>(0);
   goto __exit2;
 __exit2:
   return *__result;

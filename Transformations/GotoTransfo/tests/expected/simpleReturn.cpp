@@ -1,14 +1,14 @@
-#include <memory>
+#include "_apac_header.hpp"
 char fun() {
-  std::unique_ptr<char> __result;
-  __result = std::make_unique<char>('c');
+  wrapper_t<char> __result;
+  __result = build_wrapper<char>('c');
   goto __exit0;
 __exit0:
   return *__result;
 }
 int main() {
-  std::unique_ptr<int> __result;
-  __result = std::make_unique<int>(4);
+  wrapper_t<int> __result;
+  __result = build_wrapper<int>(4);
   goto __exit1;
 __exit1:
   return *__result;

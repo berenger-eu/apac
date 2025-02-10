@@ -1,28 +1,4 @@
-#include "ASTGotoVisitor.hpp"
-#include "clang/AST/ASTConsumer.h"
-#include "clang/Basic/Diagnostic.h"
-#include "clang/Basic/FileManager.h"
-#include "clang/Basic/TargetInfo.h"
-#include "clang/Basic/TargetOptions.h"
-#include <iostream>
 
-#include "clang/Frontend/CompilerInstance.h"
-#include "clang/Lex/Preprocessor.h"
-#include "clang/Parse/ParseAST.h"
-
-#include "clang/Rewrite/Frontend/Rewriters.h"
-
-#include "clang/Tooling/CommonOptionsParser.h"
-#include "clang/Tooling/Tooling.h"
-
-#include "llvm/Support/raw_ostream.h"
-
-class GotoRetHandler {
-public:
-  static bool run(int argc, const char **argv);
-};
-
-std::string gotoHeader = R"(
 #include <memory>
 #include <type_traits>
 #include <utility>
@@ -89,4 +65,3 @@ wrapper_t<T> build_wrapper(Args &&...args) {
     return std::make_unique<T>(std::forward<Args>(args)...);
   }
 }
-)";

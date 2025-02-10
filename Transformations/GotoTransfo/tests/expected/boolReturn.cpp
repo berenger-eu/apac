@@ -1,7 +1,7 @@
-#include <memory>
+#include "_apac_header.hpp"
 bool h() {
-  std::unique_ptr<bool> __result;
-  __result = std::make_unique<bool>(true);
+  wrapper_t<bool> __result;
+  __result = build_wrapper<bool>(true);
   goto __exit0;
 __exit0:
   return *__result;
