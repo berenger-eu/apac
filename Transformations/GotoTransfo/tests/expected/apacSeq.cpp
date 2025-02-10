@@ -6,11 +6,13 @@ void func_apacSeq(long long n) {
 
 int main() {
   wrapper_t<int> __result;
+  {
 
-  long n;
-  n = 654;
-  __result = build_wrapper<int>(0);
-  goto __exit0;
+    long n;
+    n = 654;
+    __result = build_wrapper<int>(0);
+    goto __exit0;
+  }
 __exit0:
   return *__result;
 }
