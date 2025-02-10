@@ -9,7 +9,7 @@ bool ASTGotoVisitor::VisitFunctionDecl(FunctionDecl *fDecl) {
   if (!fDecl->getReturnType().getTypePtr()->isVoidType()) {
     std::stringstream SSprint;
     // Declares the result
-    SSprint << "\nstd::unique_ptr<"
+    SSprint << "\nwrapper_t<"
             << fDecl->getReturnType().getAsString(TheRewriter.getLangOpts())
             << "> __result;\n";
     TheRewriter.InsertTextAfterToken(fDecl->getBody()->getBeginLoc(),
@@ -68,10 +68,10 @@ std::string createGotoString(const ReturnStmt &retStmt,
                              const Rewriter &TheRewriter,
                              const unsigned int &exitCounter) {
   std::stringstream SSprint;
-  // Replaces return with __result=std::make_unique<type>(); if there is a
+  // Replaces return with __result=build_wrapper<type>(); if there is a
   // return value
   if (retStmt.getRetValue()) {
-    SSprint << "__result = std::make_unique<"
+    SSprint << "__result = build_wrapper<"
             << retStmt.getRetValue()->getType().getAsString(
                    TheRewriter.getLangOpts())
             << ">("
