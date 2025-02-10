@@ -1,4 +1,4 @@
-#include <memory>
+#include "_apac_header.hpp"
 class point {
 
 public:
@@ -11,15 +11,15 @@ public:
 };
 
 point createPoint() {
-  std::unique_ptr<point> __result;
-  __result = std::make_unique<point>(point(1, 2));
+  wrapper_t<point> __result;
+  __result = build_wrapper<point>(point(1, 2));
   goto __exit1;
 __exit1:
   return *__result;
 }
 int main() {
-  std::unique_ptr<int> __result;
-  __result = std::make_unique<int>(0);
+  wrapper_t<int> __result;
+  __result = build_wrapper<int>(0);
   goto __exit2;
 __exit2:
   return *__result;
