@@ -13,50 +13,45 @@ int __apac_depth = 0;
 const static int __apac_depth_max = parallel_depth;
 int main() {
   int __apac_depth_local = __apac_depth;
-  int __apac_depth_ok = (__apac_depth_local < __apac_depth_max);
-  if (__apac_depth_ok) {
-    int a, j;
+  int a, j;
 #pragma omp taskgroup
-    {
-      std::reference_wrapper<int> ref = invalid_ref<int>();
-      std::reference_wrapper<int> ref2 = invalid_ref<int>();
+  {
+    std::reference_wrapper<int> ref = invalid_ref<int>();
+    std::reference_wrapper<int> ref2 = invalid_ref<int>();
 #pragma omp task default(shared) depend(inout : ref2, j)                       \
     firstprivate(__apac_depth_local)
-      {
-        __apac_depth = __apac_depth_local + 1;
-        ref2 = j;
-      }
+    {
+      __apac_depth = __apac_depth_local + 1;
+      ref2 = j;
+    }
 #pragma omp task default(shared) depend(inout : a, ref)                        \
     firstprivate(__apac_depth_local)
-      {
-        __apac_depth = __apac_depth_local + 1;
-        a = 4;
-        ref = a;
-      }
+    {
+      __apac_depth = __apac_depth_local + 1;
+      a = 4;
+      ref = a;
+    }
 #pragma omp task default(shared) depend(inout : a, ref) depend(in : ref2, j)   \
     firstprivate(__apac_depth_local)
-      {
-        __apac_depth = __apac_depth_local + 1;
-        ref = ref2;
-      }
+    {
+      __apac_depth = __apac_depth_local + 1;
+      ref = ref2;
+    }
 #pragma omp task default(shared) depend(in : ref2, j)                          \
     firstprivate(__apac_depth_local)
-      {
-        __apac_depth = __apac_depth_local + 1;
-        j = 4;
-        ref2++;
-      }
+    {
+      __apac_depth = __apac_depth_local + 1;
+      j = 4;
+      ref2++;
+    }
 #pragma omp task default(shared) depend(in : a, ref)                           \
     firstprivate(__apac_depth_local)
-      {
-        __apac_depth = __apac_depth_local + 1;
-        a++;
-        ref++;
-      }
-      ;
+    {
+      __apac_depth = __apac_depth_local + 1;
+      a++;
+      ref++;
     }
-    return 0;
-  } else {
-    return main_apacSeq();
+    ;
   }
+  return 0;
 }

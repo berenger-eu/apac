@@ -11,19 +11,14 @@ int __apac_depth = 0;
 const static int __apac_depth_max = parallel_depth;
 int main() {
   int __apac_depth_local = __apac_depth;
-  int __apac_depth_ok = (__apac_depth_local < __apac_depth_max);
-  if (__apac_depth_ok) {
-    long n;
+  long n;
 #pragma omp taskgroup
-    {
+  {
 #pragma omp task default(shared)
-      {
-        n = 654;
-      }
-      ;
+    {
+      n = 654;
     }
-    return 0;
-  } else {
-    return main_apacSeq();
+    ;
   }
+  return 0;
 }
