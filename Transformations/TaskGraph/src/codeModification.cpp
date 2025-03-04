@@ -26,19 +26,22 @@ void addFunctionDepth(Rewriter &TheRewriter,
                       std::vector<FunctionDecl *> &functions) {
   for (auto &f : functions) {
     std::stringstream SSprintBefore, SSprintAfter;
-    SSprintBefore
-        << "int __apac_depth_local = __apac_depth;\n"
-        << "int __apac_depth_ok = (__apac_depth_local < __apac_depth_max);\n"
-        << "if(__apac_depth_ok) {\n";
-    SSprintAfter << "}\nelse {\n"
-                 << "return " << f->getNameAsString() + "_apacSeq(";
-    for (auto &param : f->parameters()) {
-      SSprintAfter << param->getNameAsString();
-      if (param != f->parameters().back()) {
-        SSprintAfter << ", ";
+    SSprintBefore << "int __apac_depth_local = __apac_depth;\n";
+
+    if (f->getNameAsString().find("main") == std::string::npos) {
+      SSprintBefore
+          << "int __apac_depth_ok = (__apac_depth_local < __apac_depth_max);\n"
+          << "if(__apac_depth_ok) {\n";
+      SSprintAfter << "}\nelse {\n"
+                   << "return " << f->getNameAsString() + "_apacSeq(";
+      for (auto &param : f->parameters()) {
+        SSprintAfter << param->getNameAsString();
+        if (param != f->parameters().back()) {
+          SSprintAfter << ", ";
+        }
       }
+      SSprintAfter << ");\n}\n";
     }
-    SSprintAfter << ");\n}\n";
     TheRewriter.InsertTextAfterToken(f->getBody()->getBeginLoc(),
                                      SSprintBefore.str());
     TheRewriter.InsertTextBefore(f->getBody()->getEndLoc(), SSprintAfter.str());
