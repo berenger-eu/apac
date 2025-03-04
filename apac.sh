@@ -17,6 +17,8 @@ gotoName="gotoRet"
 stackHeapName="stackheap"
 taskGraphName="taskGraph"
 duplicateFunctionsName="duplicateFunctions"
+$mainParallelName="mainParallel"
+
 
 unstackTransfo="$transformationBin/$unstackName"
 constifyTransfo="$transformationBin/$constifyName"
@@ -25,7 +27,7 @@ gotoTransfo="$transformationBin/$gotoName"
 stackHeapTransfo="$transformationBin/$stackHeapName"
 taskGraphTransfo="$transformationBin/$taskGraphName"
 duplicateFunctions="$transformationBin/$duplicateFunctionsName"
-
+mainParallel="$transformationBin/$mainParallelName"
 
 
 inputFile=$1
@@ -93,5 +95,6 @@ run_transformation $declSplitTransfo $declSplitName $curUsedFile
 run_transformation $gotoTransfo $gotoName $curUsedFile
 #run_transformation $stackHeapTransfo $stackHeapName $curUsedFile
 run_transformation $taskGraphTransfo $taskGraphName $curUsedFile
+run_transformation $mainParallel $mainParallelName $curUsedFile
 
 echo "All transformations ran successfully"
