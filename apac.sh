@@ -17,7 +17,7 @@ gotoName="gotoRet"
 stackHeapName="stackheap"
 taskGraphName="taskGraph"
 duplicateFunctionsName="duplicateFunctions"
-$mainParallelName="mainParallel"
+mainParallelName="mainParallel"
 
 
 unstackTransfo="$transformationBin/$unstackName"
