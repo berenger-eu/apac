@@ -273,6 +273,7 @@ int getPtrDepthAccess(QualType qt1, QualType qt2, const ASTContext &aContext) {
   int returnValue = 0;
   // If both types are the same, then we return 0 since they have the same depth
   qt2 = qt2.getSingleStepDesugaredType(aContext);
+  qt1 = qt1.getSingleStepDesugaredType(aContext);
   if (isReferenceQualType(qt2))
     qt2 = getNonReferenceQualType(qt2);
   if (qt1 != qt2) {
@@ -284,7 +285,9 @@ int getPtrDepthAccess(QualType qt1, QualType qt2, const ASTContext &aContext) {
     // Else, we compare type pointed by qt1 until we find the same type as qt2
     // The number of iteration is the depth of the pointer access
     else {
-      while (qt1 != qt2 && qt1.getTypePtrOrNull() && qt2.getTypePtrOrNull()) {
+      int depth = 0;
+      while (qt1 != qt2 && qt1.getTypePtrOrNull() && qt2.getTypePtrOrNull() &&
+             depth < 10) {
         if (isPointerQualType(qt1)) {
           returnValue++;
           qt1 = qt1->getPointeeType();
@@ -294,6 +297,11 @@ int getPtrDepthAccess(QualType qt1, QualType qt2, const ASTContext &aContext) {
           qt1 = aContext.getAsArrayType(qt1)->getElementType();
         }
         qt1 = qt1.getSingleStepDesugaredType(aContext);
+        qt2 = qt2.getSingleStepDesugaredType(aContext);
+        depth++;
+      }
+      if (depth == 10) {
+        returnValue = 0;
       }
     }
   }
