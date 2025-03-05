@@ -158,6 +158,31 @@ QualType getNonReferenceQualType(QualType qType) {
   return qType;
 }
 
+void getLowestType(std::vector<Expr *> &exprs,
+                   std::vector<QualType> &lowestTypes,
+                   const ASTContext &aContext) {
+  for (auto &expr : exprs) {
+    auto curType = expr->getType();
+    curType = getUnreferencedQType(curType, aContext);
+    while (isPointerQualType(curType)) {
+      curType = curType->getPointeeType();
+    }
+    lowestTypes.push_back(curType);
+  }
+}
+
+void getLowestType(std::vector<const Expr *> &exprs,
+                   std::vector<QualType> &lowestTypes,
+                   const ASTContext &aContext) {
+  for (auto &expr : exprs) {
+    auto curType = expr->getType();
+    curType = getUnreferencedQType(curType, aContext);
+    while (isPointerQualType(curType)) {
+      curType = curType->getPointeeType();
+    }
+    lowestTypes.push_back(curType);
+  }
+}
 void getLeafs(Stmt *st, std::vector<Stmt *> &leafs) {
   std::queue<Stmt *> vectNodes;
   vectNodes.push(st);
