@@ -66,6 +66,17 @@ void getLeafsOfType(clang::Stmt *s, std::vector<T *> &leafs) {
     getLeafsOfType(child, leafs);
   }
 }
+template <typename T>
+void getLeafsOfType(const clang::Stmt *s, std::vector<const T *> &leafs) {
+  if (!s)
+    return;
+
+  if (isa<T>(s))
+    leafs.push_back(cast<T>(s));
+  for (const Stmt *child : s->children()) {
+    getLeafsOfType(child, leafs);
+  }
+}
 // Returns the DeclRefExpr (single) of a given Expr, none if there are multiple
 const DeclRefExpr *getSingleDeclRefExprInsideExpr(const Expr *e);
 // Returns all DeclRefExpr inside a given Expr
