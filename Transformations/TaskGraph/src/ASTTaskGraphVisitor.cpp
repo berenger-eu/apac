@@ -141,30 +141,60 @@ void ASTTaskGraphVisitor::handleCXXOperatorCallExpr(
       auto aliasRef = aliasTable.getOrAddAliasArg(c.getArg(0), Reference);
       const DeclRefExpr *d;
       const ArraySubscriptExpr *array;
-      const Expr *declOrArray;
-
+      std::vector<const Expr *> declOrArray;
       if ((array = getSingleArraySubscriptExprInsideExpr(c.getArg(1))) !=
           nullptr) {
         // const auto baseDeclExpr =
         //     getSingleDeclRefExprInsideExpr(getArrayBaseDeclRefExpr(array));
         //  v2 = cast<VarDecl>(baseDeclExpr->getDecl());
         indexes = getArraySubscriptsIndexesValues(array);
-        declOrArray = array;
+        declOrArray.push_back(array);
 
       } else if ((d = getSingleDeclRefExprInsideExpr(c.getArg(1))) != nullptr) {
         // v2 = cast<VarDecl>(d->getDecl());
-        declOrArray = d;
+        declOrArray.push_back(d);
 
+      } else {
+        std::vector<const CallExpr *> callExprVect;
+        getLeafsOfType<CallExpr>(c.getArg(1), callExprVect);
+        if (!callExprVect.empty()) {
+
+          std::vector<QualType> types;
+          auto rightCall = callExprVect.front();
+          auto functionCalled = rightCall->getDirectCallee();
+          auto calQType = rightCall->getType();
+          std::vector<const Expr *> arguments;
+          for (auto arg : rightCall->arguments())
+            arguments.push_back(arg);
+          getLowestType(
+              arguments, types,
+              callExprVect.front()->getDirectCallee()->getASTContext());
+          for (int i = 0; i < arguments.size(); i++) {
+            // TODO: Handle Pointers
+            if ((calQType == types[i]) &&
+                (isReferenceQualType(
+                    functionCalled->getParamDecl(i)->getType()))) {
+
+              declOrArray.push_back(arguments[i]);
+            }
+          }
       } else {
         handleStmt(*c.getArg(1), instr);
         return;
+        }
+      }
+      bool refAliasedEmpty = aliasRef->aliased.empty();
+      for (auto declOrArray : declOrArray) {
+        declOrArray->dump();
       }
       // AliasType type = getAliasType(declOrArray);
-      auto aliasVar = aliasTable.getOrAddAliasArg(declOrArray);
-      if (aliasRef->type == Reference && aliasRef->aliased.empty())
+      for (auto declOrArrayExpr : declOrArray) {
+        auto aliasVar = aliasTable.getOrAddAliasArg(declOrArrayExpr);
+        if (aliasRef->type == Reference && refAliasedEmpty)
         aliasTable.addAliasReference(aliasVar, aliasRef);
       // aliasTable.addAliasReference(aliasVar, aliasRef);
       addDependencyRead(instr, aliasVar);
+      }
       addDependencyWrite(instr, aliasRef);
     }
   } else
