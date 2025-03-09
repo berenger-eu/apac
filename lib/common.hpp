@@ -28,6 +28,7 @@ std::string getStmtAsStringFull(const Stmt *statement,
 // single instruction Useful to create multiple single declarations from a
 // single multiple declaration Format: "type varName [= initValue];\n"
 std::string getCompleteVarDeclStr(const VarDecl &);
+std::string getCompleteVarDeclStr(const VarDecl &, const LangOptions &);
 
 // From a VarDecl Type, get the string :
 //  <varName> [= <init>];

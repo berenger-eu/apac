@@ -5,6 +5,12 @@ std::string getCompleteVarDeclStr(const VarDecl &v) {
   SSprint << v.getType().getAsString() << " " << getVarDeclDeclDefStr(v);
   return SSprint.str();
 }
+std::string getCompleteVarDeclStr(const VarDecl &v,
+                                  const LangOptions &langOpt) {
+  std::stringstream SSprint;
+  SSprint << v.getType().getAsString(langOpt) << " " << getVarDeclDeclDefStr(v);
+  return SSprint.str();
+}
 std::string getVarDeclDefStr(const VarDecl &v) {
   std::stringstream SSprint;
   if (v.getInit()) {
