@@ -1,16 +1,20 @@
 #include "ASTHeapifyVisitor.hpp"
 using namespace clang;
 
-bool ASTHeapifyVisitor::VisitFunctionDecl(FunctionDecl *fDecl) {
+bool ASTHeapifyVisitor::TraverseFunctionDecl(FunctionDecl *fDecl) {
   // In case we were trying to look for a function defined in the header
-  if (isInHeaders(TheRewriter.getSourceMgr(), fDecl->getEndLoc())) {
+  if (isInHeaders(TheRewriter.getSourceMgr(), fDecl->getEndLoc()) ||
+      !foundCorrectFunction(*fDecl, functionHeap.name)) {
     return true;
   }
   functionHeap.found = true;
-  subVisitCompoundStmt(cast<CompoundStmt>(fDecl->getBody()));
-  // End of the function, so we clear all variablesEncountered so far
+  // auto traverseReturnValue =
+  // RecursiveASTVisitor::TraverseFunctionDecl(fDecl);
+  auto traverseReturnValue =
+      subVisitCompoundStmt(cast<CompoundStmt>(fDecl->getBody()));
+  //  End of the function, so we clear all variablesEncountered so far
   currentVarsEncountered.clear();
-  return true;
+  return traverseReturnValue;
 }
 
 bool ASTHeapifyVisitor::subVisitCompoundStmt(CompoundStmt *coSt) {

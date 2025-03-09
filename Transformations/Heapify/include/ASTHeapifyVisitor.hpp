@@ -7,13 +7,14 @@ public:
                     struct item_found &varHeap)
       : TheRewriter(R), functionHeap(funHeap), variableHeap(varHeap) {};
   inline bool VisitStmt(Stmt *) { return true; }
-  bool VisitFunctionDecl(FunctionDecl *);
+  bool TraverseFunctionDecl(FunctionDecl *);
   inline bool TraverseFunctionTemplateDecl(FunctionTemplateDecl *fDecl) {
     if (fDecl->getNameAsString().find("invalid_ref") == std::string::npos) {
       return RecursiveASTVisitor::TraverseFunctionTemplateDecl(fDecl);
     }
     return true;
   }
+  bool subVisitCompoundStmt(CompoundStmt *coSt);
 
 private:
   // Like Visit functions, but called by VisitCompoundStmt and not by default
@@ -23,7 +24,6 @@ private:
   void subVisitForStmt(ForStmt *);
   void subVisitWhileStmt(WhileStmt *);
   bool deleteSegmentAtStmt(Stmt &st);
-  bool subVisitCompoundStmt(CompoundStmt *coSt);
   void handleSubStmt(Stmt *);
   std::string stringDeclStmt(DeclStmt *, std::vector<struct item_found> &);
   void handleDeclStmt(DeclStmt *, std::vector<struct item_found> &);

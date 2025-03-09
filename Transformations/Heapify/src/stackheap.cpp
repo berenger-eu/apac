@@ -16,15 +16,10 @@ public:
 
   // Override the method that gets called for each parsed top-level
   // declaration.
-  virtual bool HandleTopLevelDecl(DeclGroupRef DR) {
-    for (DeclGroupRef::iterator b = DR.begin(), e = DR.end(); b != e; ++b) {
-      Decl *dec = *b;
-      if (foundCorrectFunction(*dec, functionHeap.name)) {
-        VisitorHeapify.TraverseDecl(dec);
-      }
-      // Traverse the declaration using our AST visitor.
-    }
-    return true;
+
+  // Parse all the AST
+  virtual void HandleTranslationUnit(ASTContext &Ctx) {
+    VisitorHeapify.TraverseAST(Ctx);
   }
 
 private:
