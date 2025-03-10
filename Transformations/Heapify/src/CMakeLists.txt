@@ -12,7 +12,7 @@ message(STATUS "Found LLVM libs ${LLVM_DEFINITIONS}")
 set (COMMON_LIB ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib)
 set(INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../include ${COMMON_LIB})
 
-set(SOURCES fileModification.cpp stringManipulation.cpp utilitaryFunctions.cpp ASTHeapifyVisitor.cpp stackheap.cpp)
+set(SOURCES fileModification.cpp utilitaryFunctions.cpp ASTHeapifyVisitor.cpp stackheap.cpp)
 add_executable(stackheap)
  
 target_sources(stackheap PRIVATE ${SOURCES})
