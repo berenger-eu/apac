@@ -12,7 +12,8 @@ struct item_found variableHeap;
 // by the Clang parser.
 class MyASTConsumer : public ASTConsumer {
 public:
-  MyASTConsumer(Rewriter &R) : VisitorHeapify(R, functionHeap, variableHeap) {}
+  MyASTConsumer(Rewriter &R)
+      : VisitorHeapify(R, functionHeap, variableHeap), TheRewriter(R) {}
 
   // Override the method that gets called for each parsed top-level
   // declaration.
@@ -20,10 +21,15 @@ public:
   // Parse all the AST
   virtual void HandleTranslationUnit(ASTContext &Ctx) {
     VisitorHeapify.TraverseAST(Ctx);
+    auto &topScopes = VisitorHeapify.getTopScopes();
+    auto &scopes = VisitorHeapify.getScopes();
+    computeNeededHeap(topScopes);
+    modifyFile(scopes, TheRewriter);
   }
 
 private:
   ASTHeapifyVisitor VisitorHeapify;
+  Rewriter &TheRewriter;
 };
 
 class MyFrontendAction : public ASTFrontendAction {

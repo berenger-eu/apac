@@ -64,3 +64,26 @@ bool isInitNew(VarDecl &v) {
   }
   return result;
 }
+
+bool computeNeededHeapScope(std::shared_ptr<ScopeInfo> scope) {
+  for (auto &subScope : scope->subScopes) {
+    computeNeededHeapScope(subScope);
+  }
+  scope->doesNotNeedHeap = scope->hasReturnGoto;
+  if (scope->doesNotNeedHeap != 1) {
+    bool subScopesNeedHeap = false;
+    for (auto &subScope : scope->subScopes) {
+      subScopesNeedHeap = subScopesNeedHeap && subScope->doesNotNeedHeap;
+    }
+    if (subScopesNeedHeap)
+      scope->doesNotNeedHeap = 0;
+  }
+  return scope->doesNotNeedHeap;
+}
+
+void computeNeededHeap(
+    const std::vector<std::shared_ptr<ScopeInfo>> &topScopes) {
+  for (auto &scope : topScopes) {
+    computeNeededHeapScope(scope);
+  }
+}

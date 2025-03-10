@@ -1,29 +1,9 @@
 #include "stringManipulation.hpp"
 using namespace clang;
 
-// Builds the string to delete a variable
-std::string createDeleteString(const struct item_found &item) {
-  std::stringstream SSprint;
-  SSprint << "delete ";
-  if (item.array) {
-    SSprint << "[] ";
-  }
-  SSprint << getApacMemBlockStr(item) << ";\n";
-  return SSprint.str();
-}
-
-std::string createDeleteSegment(const std::vector<item_found> &itemsToDelete) {
-  std::stringstream SSprint;
-  // We iterate over all elements that have to be deleted
-  // and create the corresponding text part
-  for (auto b = itemsToDelete.begin(); b != itemsToDelete.end(); b++) {
-    SSprint << createDeleteString(*b);
-  }
-  return SSprint.str();
-}
-
+/*
 std::string createCreationStringArray(const struct item_found &itFound,
-                                      const LangOptions &langOpts) {
+const LangOptions &langOpts) {
   std::stringstream SSprint;
   VarDecl &v = *(itFound.declaration);
   std::string strTempMemType = itFound.qTypeTempMem.getAsString(langOpts);
@@ -54,24 +34,6 @@ std::string createCreationStringArray(const struct item_found &itFound,
   return SSprint.str();
 }
 
-std::string createCreationStringNonArray(const struct item_found &itFound,
-                                         const LangOptions &langOpts) {
-  std::stringstream SSprint;
-  VarDecl &v = *(itFound.declaration);
-  std::string strTempMemType = itFound.qTypeTempMem.getAsString(langOpts);
-  std::string strNewType = itFound.qTypeNew.getAsString(langOpts);
-  std::string strVarType = itFound.qTypeVar.getAsString(langOpts);
-  std::string apacMemBloc = getApacMemBlockStr(itFound);
 
-  SSprint << strTempMemType << ' ' << apacMemBloc << " = new " << strNewType;
-  if (v.getInit() != NULL) {
-    SSprint << '(' << getInitString(v) << ')';
-  } else {
-    SSprint << "()";
-  }
 
-  SSprint << ";\n"
-          << strVarType << v.getNameAsString() << "= *(" << apacMemBloc
-          << ");\n";
-  return SSprint.str();
-}
+*/

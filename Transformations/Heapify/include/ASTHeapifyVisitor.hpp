@@ -1,4 +1,4 @@
-#include "stringManipulation.hpp"
+#pragma once
 #include "utilitaryFunctions.hpp"
 using namespace clang;
 class ASTHeapifyVisitor : public RecursiveASTVisitor<ASTHeapifyVisitor> {
@@ -14,27 +14,43 @@ public:
     }
     return true;
   }
-  bool subVisitCompoundStmt(CompoundStmt *coSt);
+  bool TraverseCompoundStmt(CompoundStmt *coSt);
+  inline bool VisitGotoStmt(GotoStmt *gSt) {
+    scopeStack.top()->hasReturnGoto = true;
+    return true;
+  }
+  inline bool VisitReturnStmt(ReturnStmt *rSt) {
+    scopeStack.top()->hasReturnGoto = true;
+    return true;
+  }
+  bool VisitDeclStmt(DeclStmt *st);
+
+  inline const std::vector<std::shared_ptr<ScopeInfo>> &getTopScopes() {
+    return topScopes;
+  }
+  inline const std::unordered_map<CompoundStmt *, std::shared_ptr<ScopeInfo>> &
+  getScopes() {
+    return scopes;
+  }
 
 private:
   // Like Visit functions, but called by VisitCompoundStmt and not by default
   // when encountering specific nodes
+  /*
   std::string subVisitVarDecl(VarDecl &, std::vector<struct item_found> &);
-  void subVisitIfStmt(IfStmt *);
-  void subVisitForStmt(ForStmt *);
-  void subVisitWhileStmt(WhileStmt *);
+
   bool deleteSegmentAtStmt(Stmt &st);
-  void handleSubStmt(Stmt *);
   std::string stringDeclStmt(DeclStmt *, std::vector<struct item_found> &);
   void handleDeclStmt(DeclStmt *, std::vector<struct item_found> &);
   void initItem(struct item_found &, VarDecl &);
   void deleteSectionAfterCreatedScope(const SourceLocation &,
-                                      const std::vector<struct item_found> &);
-
+  const std::vector<struct item_found> &);
+  */
   Rewriter &TheRewriter;
+
+  std::unordered_map<CompoundStmt *, std::shared_ptr<ScopeInfo>> scopes;
+  std::stack<std::shared_ptr<ScopeInfo>> scopeStack;
+  std::vector<std::shared_ptr<ScopeInfo>> topScopes;
   struct item_found functionHeap;
   struct item_found variableHeap;
-  std::unordered_map<std::string, int> varCounter;
-  std::vector<struct item_found>
-      currentVarsEncountered; // TODO implement in cleaner manner
 };
