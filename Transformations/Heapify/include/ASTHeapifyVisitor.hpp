@@ -34,18 +34,6 @@ public:
   }
 
 private:
-  // Like Visit functions, but called by VisitCompoundStmt and not by default
-  // when encountering specific nodes
-  /*
-  std::string subVisitVarDecl(VarDecl &, std::vector<struct item_found> &);
-
-  bool deleteSegmentAtStmt(Stmt &st);
-  std::string stringDeclStmt(DeclStmt *, std::vector<struct item_found> &);
-  void handleDeclStmt(DeclStmt *, std::vector<struct item_found> &);
-  void initItem(struct item_found &, VarDecl &);
-  void deleteSectionAfterCreatedScope(const SourceLocation &,
-  const std::vector<struct item_found> &);
-  */
   Rewriter &TheRewriter;
 
   std::unordered_map<CompoundStmt *, std::shared_ptr<ScopeInfo>> scopes;
