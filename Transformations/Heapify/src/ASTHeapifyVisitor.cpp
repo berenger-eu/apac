@@ -16,8 +16,11 @@ bool ASTHeapifyVisitor::TraverseCompoundStmt(CompoundStmt *coSt) {
   std::shared_ptr<ScopeInfo> topScope = std::make_shared<ScopeInfo>();
   if (scopeStack.empty())
     topScopes.push_back(topScope);
-  else
+  else {
     scopeStack.top()->subScopes.push_back(topScope);
+    topScope->parent = scopeStack.top();
+  }
+
   scopeStack.push(topScope);
   scopes.insert({coSt, topScope});
   auto returnValue = RecursiveASTVisitor::TraverseCompoundStmt(coSt);
@@ -35,7 +38,7 @@ bool ASTHeapifyVisitor::VisitDeclStmt(DeclStmt *declSt) {
       auto varDecl = cast<VarDecl>(curDecl);
       if (foundCorrectVariable(*varDecl, variableHeap.name) &&
           !isInitNew(*varDecl))
-        scopeStack.top()->variables.push_back(varDecl);
+        scopeStack.top()->variablesCurScope.push_back(varDecl);
     }
   }
   return true;

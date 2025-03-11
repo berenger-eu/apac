@@ -21,4 +21,9 @@ bool isInitNew(VarDecl &);
 
 void computeNeededHeap(
     const std::vector<std::shared_ptr<ScopeInfo>> &topScopes);
-// Inline functions
+
+void computeScopeVariables(
+    std::shared_ptr<ScopeInfo> scope, int id,
+    std::unordered_map<VarDecl *, std::shared_ptr<item_found>> &varToItem);
+
+void initItem(struct item_found &item, VarDecl &vDec, int &id);

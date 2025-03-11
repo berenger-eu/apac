@@ -24,6 +24,9 @@ public:
     auto &topScopes = VisitorHeapify.getTopScopes();
     auto &scopes = VisitorHeapify.getScopes();
     computeNeededHeap(topScopes);
+    std::unordered_map<VarDecl *, std::shared_ptr<item_found>> varToItem;
+    for (auto &scope : topScopes)
+      computeScopeVariables(scope, 0, varToItem);
     modifyFile(scopes, TheRewriter);
   }
 

@@ -16,12 +16,20 @@ public:
   }
   bool TraverseCompoundStmt(CompoundStmt *coSt);
   inline bool VisitGotoStmt(GotoStmt *gSt) {
-    scopeStack.top()->hasReturnGoto = true;
+    gotoReturnHandle(gSt);
     return true;
   }
   inline bool VisitReturnStmt(ReturnStmt *rSt) {
-    scopeStack.top()->hasReturnGoto = true;
+    gotoReturnHandle(rSt);
     return true;
+  }
+  inline void gotoReturnHandle(Stmt *st) {
+    if (scopeStack.top()->hasReturnGoto)
+      return;
+    scopeStack.top()->hasReturnGoto = true;
+    scopeStack.top()->goToReturnStmts.push_back(st);
+    scopeStack.top()->variablesToDelete =
+        scopeStack.top()->getVariablesToDelete();
   }
   bool VisitDeclStmt(DeclStmt *st);
 
