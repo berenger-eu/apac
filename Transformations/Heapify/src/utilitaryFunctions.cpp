@@ -98,6 +98,7 @@ void computeScopeVariables(
         initItem(*item, *var, id);
         id++;
         scope->variablesToHeap.push_back(item);
+        varToItem.insert({var, item});
       }
     }
   }
@@ -106,6 +107,7 @@ void computeScopeVariables(
     computeScopeVariables(subScope, id, varToItem);
   }
   for (auto &varDel : scope->variablesToDelete) {
+    llvm::errs() << "SizeDelete" << scope->variablesToDelete.size() << "\n";
     if (varToItem.count(varDel) == 1) {
       scope->itemsToDelete.push_back(varToItem[varDel]);
     }

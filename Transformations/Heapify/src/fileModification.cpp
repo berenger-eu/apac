@@ -19,7 +19,9 @@ void modifyFile(const std::unordered_map<CompoundStmt *,
                              createDeleteSegment(scopeInfo->variablesToHeap));
     }
     for (auto &gotoRetStmt : scopeInfo->goToReturnStmts) {
-      TheRewriter.InsertText(gotoRetStmt->getEndLoc(),
+      llvm::errs() << "test\n";
+      llvm::errs() << scopeInfo->itemsToDelete.size() << "\n";
+      TheRewriter.InsertText(gotoRetStmt->getBeginLoc(),
                              createDeleteSegment(scopeInfo->itemsToDelete));
     }
   }
