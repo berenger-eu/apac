@@ -1,4 +1,6 @@
 int main() {
-  bool a = false;
+  {
+    bool a = false;
+  }
   return 0;
 }
