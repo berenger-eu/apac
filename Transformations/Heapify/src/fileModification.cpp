@@ -52,21 +52,21 @@ std::string
 createCreationStringNonArray(const std::shared_ptr<struct item_found> &itFound,
                              const LangOptions &langOpts) {
   std::stringstream SSprint;
-  VarDecl &v = *(itFound->declaration);
+  VarDecl *v = (itFound->declaration);
   std::string strTempMemType = itFound->qTypeTempMem.getAsString(langOpts);
   std::string strNewType = itFound->qTypeNew.getAsString(langOpts);
   std::string strVarType = itFound->qTypeVar.getAsString(langOpts);
   std::string apacMemBloc = getApacMemBlockStr(itFound);
 
   SSprint << strTempMemType << ' ' << apacMemBloc << " = new " << strNewType;
-  if (v.getInit() != NULL) {
+  if (v->getInit() != NULL) {
     SSprint << '(' << getInitString(v) << ')';
   } else {
     SSprint << "()";
   }
 
   SSprint << ";\n"
-          << strVarType << v.getNameAsString() << "= *(" << apacMemBloc
+          << strVarType << v->getNameAsString() << "= *(" << apacMemBloc
           << ");\n";
   return SSprint.str();
 }
@@ -74,7 +74,7 @@ std::string
 createCreationStringArray(const std::shared_ptr<struct item_found> &itFound,
                           const LangOptions &langOpts) {
   std::stringstream SSprint;
-  VarDecl &v = *(itFound->declaration);
+  VarDecl *v = (itFound->declaration);
   std::string strTempMemType = itFound->qTypeTempMem.getAsString(langOpts);
   std::string strNewType = itFound->qTypeNew.getAsString(langOpts);
   std::string strVarType = itFound->qTypeVar.getAsString(langOpts);
@@ -91,7 +91,7 @@ createCreationStringArray(const std::shared_ptr<struct item_found> &itFound,
   }
 
   SSprint << strStart << " = new " << strNewType;
-  if (v.getInit() != NULL) {
+  if (v->getInit() != NULL) {
     SSprint << getInitString(v);
   }
 

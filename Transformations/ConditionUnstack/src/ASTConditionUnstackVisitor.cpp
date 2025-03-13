@@ -8,7 +8,7 @@ bool ASTConditionUnstackVisitor::VisitWhileStmt(WhileStmt *whileSt) {
     for (auto decl : whileStCond->decls()) {
       if (isa<VarDecl>(decl)) {
         auto varDecl = cast<VarDecl>(decl);
-        SSprint << getCompleteVarDeclStr(*varDecl, TheRewriter.getLangOpts());
+        SSprint << getCompleteVarDeclStr(varDecl);
         TheRewriter.ReplaceText(
             SourceRange(whileStCond->getBeginLoc(), whileStCond->getEndLoc()),
             (cast<VarDecl>(whileStCond->getSingleDecl()))->getNameAsString());
@@ -31,7 +31,7 @@ bool ASTConditionUnstackVisitor::VisitIfStmt(IfStmt *ifSt) {
       for (auto decl : ifStInit->decls()) {
         if (isa<VarDecl>(decl)) {
           auto varDecl = cast<VarDecl>(decl);
-          SSprint << getCompleteVarDeclStr(*varDecl, TheRewriter.getLangOpts());
+          SSprint << getCompleteVarDeclStr(varDecl);
         }
       }
       TheRewriter.RemoveText(
@@ -42,7 +42,7 @@ bool ASTConditionUnstackVisitor::VisitIfStmt(IfStmt *ifSt) {
       for (auto decl : ifStCond->decls()) {
         if (isa<VarDecl>(decl)) {
           auto varDecl = cast<VarDecl>(decl);
-          SSprint << getCompleteVarDeclStr(*varDecl, TheRewriter.getLangOpts());
+          SSprint << getCompleteVarDeclStr(varDecl);
           TheRewriter.ReplaceText(
               SourceRange(ifStCond->getBeginLoc(), ifStCond->getEndLoc()),
               (cast<VarDecl>(ifStCond->getSingleDecl()))->getNameAsString());
@@ -70,7 +70,7 @@ bool ASTConditionUnstackVisitor::VisitForStmt(ForStmt *forSt) {
     for (auto decl : forStCond->decls()) {
       if (isa<VarDecl>(decl)) {
         auto varDecl = cast<VarDecl>(decl);
-        SSprint << getCompleteVarDeclStr(*varDecl, TheRewriter.getLangOpts());
+        SSprint << getCompleteVarDeclStr(varDecl);
         TheRewriter.ReplaceText(
             SourceRange(forStCond->getBeginLoc(), forStCond->getEndLoc()),
             (cast<VarDecl>(forStCond->getSingleDecl()))->getNameAsString());

@@ -36,8 +36,8 @@ public:
         if (isa<VarDecl>(decl)) {
           VarDecl *varDecl = cast<VarDecl>(decl);
           llvm::errs() << "VarDecl: " << varDecl->getNameAsString() << "\n";
-          llvm::errs() << getCompleteVarDeclStr(*varDecl) << "\n";
-          SSresult << getCompleteVarDeclStr(*varDecl);
+          llvm::errs() << getCompleteVarDeclStr(varDecl) << "\n";
+          SSresult << getCompleteVarDeclStr(varDecl);
         }
       }
       llvm::errs() << SSresult.str() << "\n";
