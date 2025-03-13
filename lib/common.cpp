@@ -13,23 +13,23 @@ std::string getCompleteVarDeclStr(const VarDecl &v,
 }
 std::string getVarDeclDefStr(const VarDecl &v) {
   std::stringstream SSprint;
+  SSprint << v.getNameAsString();
   if (v.getInit()) {
-    SSprint << v.getNameAsString();
     SSprint << " = ";
     if (isa<CXXConstructExpr>(v.getInit())) {
       SSprint << v.getType().getAsString() << "(" << getInitString(v) << ")";
     } else {
       SSprint << getInitString(v);
     }
-    SSprint << ";\n";
   }
+  SSprint << ";\n";
   return SSprint.str();
 }
 std::string getVarDeclDeclDefStr(const VarDecl &v) {
   std::stringstream SSresult;
   // type varName
+  SSresult << v.getNameAsString();
   if (v.getInit()) {
-    SSresult << v.getNameAsString();
     //= initValue
     switch (v.getInitStyle()) {
     case VarDecl::CallInit:
@@ -42,8 +42,8 @@ std::string getVarDeclDeclDefStr(const VarDecl &v) {
       llvm::errs() << "Unknown Initialization Style\n";
       break;
     }
-    SSresult << ";\n";
   }
+  SSresult << ";\n";
   return SSresult.str();
 }
 std::string getVarDeclDeclStr(const VarDecl &v) {
