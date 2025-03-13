@@ -30,7 +30,7 @@ public:
   }
 
 private:
-  bool isValidSeparation(const VarDecl &);
-  void stringVarDecl(const VarDecl &, std::stringstream &, std::stringstream &);
+  bool isValidSeparation(VarDecl *);
+  void stringVarDecl(VarDecl *, std::stringstream &, std::stringstream &);
   Rewriter &TheRewriter;
 };

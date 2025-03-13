@@ -1,4 +1,7 @@
+#pragma once
 #include "ASTHeapifyVisitor.hpp"
+#include "fileModification.hpp"
+#include "utilitaryFunctions.hpp"
 
 #include "clang/AST/ASTConsumer.h"
 #include "clang/Basic/Diagnostic.h"

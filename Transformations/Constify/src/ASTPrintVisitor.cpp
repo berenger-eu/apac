@@ -68,7 +68,7 @@ void ASTPrintVisitor::PrepareRewriteVarDecl(VarDecl *v,
     addConstToVar(v);
   }
   // We prepare the change in the text ( Type VarName)
-  stream << getCompleteVarDeclStr(*v);
+  stream << getCompleteVarDeclStr(v);
 }
 
 void ASTPrintVisitor::rewriteSingleDecl(VarDecl *vd) {

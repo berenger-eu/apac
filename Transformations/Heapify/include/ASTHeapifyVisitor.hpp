@@ -1,4 +1,4 @@
-#include "stringManipulation.hpp"
+#pragma once
 #include "utilitaryFunctions.hpp"
 using namespace clang;
 class ASTHeapifyVisitor : public RecursiveASTVisitor<ASTHeapifyVisitor> {
@@ -7,34 +7,46 @@ public:
                     struct item_found &varHeap)
       : TheRewriter(R), functionHeap(funHeap), variableHeap(varHeap) {};
   inline bool VisitStmt(Stmt *) { return true; }
-  bool VisitFunctionDecl(FunctionDecl *);
+  bool TraverseFunctionDecl(FunctionDecl *);
   inline bool TraverseFunctionTemplateDecl(FunctionTemplateDecl *fDecl) {
     if (fDecl->getNameAsString().find("invalid_ref") == std::string::npos) {
       return RecursiveASTVisitor::TraverseFunctionTemplateDecl(fDecl);
     }
     return true;
   }
+  bool TraverseCompoundStmt(CompoundStmt *coSt);
+  inline bool VisitGotoStmt(GotoStmt *gSt) {
+    gotoReturnHandle(gSt);
+    return true;
+  }
+  inline bool VisitReturnStmt(ReturnStmt *rSt) {
+    gotoReturnHandle(rSt);
+    return true;
+  }
+  inline void gotoReturnHandle(Stmt *st) {
+    if (scopeStack.top()->hasReturnGoto)
+      return;
+    scopeStack.top()->hasReturnGoto = true;
+    scopeStack.top()->goToReturnStmts.push_back(st);
+    scopeStack.top()->variablesToDelete =
+        scopeStack.top()->getVariablesToDelete();
+  }
+  bool VisitDeclStmt(DeclStmt *st);
+
+  inline const std::vector<std::shared_ptr<ScopeInfo>> &getTopScopes() {
+    return topScopes;
+  }
+  inline const std::unordered_map<CompoundStmt *, std::shared_ptr<ScopeInfo>> &
+  getScopes() {
+    return scopes;
+  }
 
 private:
-  // Like Visit functions, but called by VisitCompoundStmt and not by default
-  // when encountering specific nodes
-  std::string subVisitVarDecl(VarDecl &, std::vector<struct item_found> &);
-  void subVisitIfStmt(IfStmt *);
-  void subVisitForStmt(ForStmt *);
-  void subVisitWhileStmt(WhileStmt *);
-  bool deleteSegmentAtStmt(Stmt &st);
-  bool subVisitCompoundStmt(CompoundStmt *coSt);
-  void handleSubStmt(Stmt *);
-  std::string stringDeclStmt(DeclStmt *, std::vector<struct item_found> &);
-  void handleDeclStmt(DeclStmt *, std::vector<struct item_found> &);
-  void initItem(struct item_found &, VarDecl &);
-  void deleteSectionAfterCreatedScope(const SourceLocation &,
-                                      const std::vector<struct item_found> &);
-
   Rewriter &TheRewriter;
+
+  std::unordered_map<CompoundStmt *, std::shared_ptr<ScopeInfo>> scopes;
+  std::stack<std::shared_ptr<ScopeInfo>> scopeStack;
+  std::vector<std::shared_ptr<ScopeInfo>> topScopes;
   struct item_found functionHeap;
   struct item_found variableHeap;
-  std::unordered_map<std::string, int> varCounter;
-  std::vector<struct item_found>
-      currentVarsEncountered; // TODO implement in cleaner manner
 };

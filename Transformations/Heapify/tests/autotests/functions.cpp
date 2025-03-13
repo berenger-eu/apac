@@ -1,6 +1,8 @@
 void functionj() {
   int nm;
-  int m;
+  {
+    int m;
+  }
   return;
 }
 
