@@ -1,0 +1,1 @@
+int main() { int n = 0, *m = &n, ***p, l = 4, &j = n; }
