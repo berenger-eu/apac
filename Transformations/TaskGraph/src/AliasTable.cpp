@@ -259,6 +259,34 @@ void AliasTable::getPointersAliases(
       aliases.insert(alias);
 }
 
+void AliasTable::getPointerAccessedVariables(
+    std::unordered_set<std::shared_ptr<aliasArg>> &setResults,
+    const int &depth) {
+  // TODO : Handle remove aliases from the set when impossible to reach the
+  // depth
+  //  c references b,b1 ; b references a,a1;
+  //  getPointerAccessedVariables(c,2) (**c) should return {c,b,a,a1}, not b1
+  //  because b1 does not reference anything yet, so **c would fail if it tried
+  //  to access it So we assume that the code is correct and that b1 was
+  //  wrongfully considered as referenced by c
+  int curDepth = 0;
+  std::unordered_set<std::shared_ptr<aliasArg>> curSet, precSet;
+  precSet = setResults;
+  while (depth > curDepth) {
+    for (auto &dep : precSet) {
+      for (auto &ptr : dep->aliased) {
+        if (ptr == nullptr)
+          continue;
+        curSet.insert(ptr);
+        setResults.insert(ptr);
+      }
+    }
+    precSet = curSet;
+    curSet.clear();
+    curDepth++;
+  }
+}
+
 void AliasTable::getModifiedVariables(
     std::unordered_set<std::shared_ptr<aliasArg>> &setResults,
     const int &depth) {

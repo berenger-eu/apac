@@ -178,9 +178,9 @@ void ASTTaskGraphVisitor::handleCXXOperatorCallExpr(
               declOrArray.push_back(arguments[i]);
             }
           }
-      } else {
-        handleStmt(*c.getArg(1), instr);
-        return;
+        } else {
+          handleStmt(*c.getArg(1), instr);
+          return;
         }
       }
       bool refAliasedEmpty = aliasRef->aliased.empty();
@@ -191,9 +191,9 @@ void ASTTaskGraphVisitor::handleCXXOperatorCallExpr(
       for (auto declOrArrayExpr : declOrArray) {
         auto aliasVar = aliasTable.getOrAddAliasArg(declOrArrayExpr);
         if (aliasRef->type == Reference && refAliasedEmpty)
-        aliasTable.addAliasReference(aliasVar, aliasRef);
-      // aliasTable.addAliasReference(aliasVar, aliasRef);
-      addDependencyRead(instr, aliasVar);
+          aliasTable.addAliasReference(aliasVar, aliasRef);
+        // aliasTable.addAliasReference(aliasVar, aliasRef);
+        addDependencyRead(instr, aliasVar);
       }
       addDependencyWrite(instr, aliasRef);
     }
@@ -253,8 +253,14 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator &uop,
     for (auto &alias : aliases)
       addDependencyWrite(curInstr, alias);
 
-  if (depth > 0)
-    addDependencyRead(curInstr, aliasTable.getOrAddAliasArg(d, Pointer));
+  if (depth > 0) {
+    auto aliasDecl = aliasTable.getOrAddAliasArg(d);
+    std::unordered_set<std::shared_ptr<aliasArg>> aliases;
+    aliases.insert(aliasDecl);
+    aliasTable.getPointerAccessedVariables(aliases, depth);
+    for (auto alias : aliases)
+      addDependencyRead(curInstr, alias);
+  }
 
   // Otherwise, unary expression affects a temporary value so we ignore it but
   // still look through the expression
@@ -324,8 +330,14 @@ void ASTTaskGraphVisitor::handleBinaryAssignment(const BinaryOperator &bop,
   int depth =
       getPtrDepthAccess(declOrArrayExpr->getType(), bop.getLHS()->getType(),
                         mainVariable->getASTContext());
-  if (depth > 0)
-    addDependencyRead(curInstr, aliasMain);
+
+  if (depth > 0) {
+    std::unordered_set<std::shared_ptr<aliasArg>> aliases;
+    aliases.insert(aliasMain);
+    aliasTable.getPointerAccessedVariables(aliases, depth);
+    for (auto alias : aliases)
+      addDependencyRead(curInstr, alias);
+  }
   handleStmt(*bop.getRHS(), curInstr);
 }
 void ASTTaskGraphVisitor::handlePointersBinaryAssignment(
