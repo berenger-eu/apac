@@ -58,27 +58,42 @@ void n5(int *a, int &b, int c) {
 }
 
 void o(int a, int b, int c) {
-  int &d = a, *e = &b;
+  int &d = a;
+  int *e = &b;
+
   d = 1;
   *e = 1;
 }
 
 void c1(int *a, int *b, int *c, int *d) {
-  int *aa = a, *bb = b, *cc = c, *dd = d;
+  int *aa = a;
+  int *bb = b;
+  int *cc = c;
+  int *dd = d;
+
   *aa = 42;
   *dd = 12;
 }
 
 void c2(int *a, int *b, int *c, int *d) {
-  int *aa = a, *dd = d;
-  int *bb = b, *cc = c;
+  int *aa = a;
+  int *dd = d;
+
+  int *bb = b;
+  int *cc = c;
+
   *aa = 42;
   *dd = 12;
 }
 
 void c3(int *a, int *b, int *c, int *d) {
-  int *aa = a, *dd = d;
-  int const *bb = b, *cc = c, e = 2;
+  int *aa = a;
+  int *dd = d;
+
+  const int *bb = b;
+  const int *cc = c;
+  const int e = 2;
+
   *aa = 42;
   *dd = 12;
 }

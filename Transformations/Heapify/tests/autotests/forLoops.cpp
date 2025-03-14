@@ -3,7 +3,10 @@ int main() {
   for (; i < 10; i++) {
     int m = i;
   }
-  for (int j = 5; j < 10; j++) {
-    int m;
+  {
+    int j = 5;
+    for (; j < 10; j++) {
+      int m;
+    }
   }
 }

@@ -12,23 +12,27 @@ struct item_found variableHeap;
 // by the Clang parser.
 class MyASTConsumer : public ASTConsumer {
 public:
-  MyASTConsumer(Rewriter &R) : VisitorHeapify(R, functionHeap, variableHeap) {}
+  MyASTConsumer(Rewriter &R)
+      : VisitorHeapify(R, functionHeap, variableHeap), TheRewriter(R) {}
 
   // Override the method that gets called for each parsed top-level
   // declaration.
-  virtual bool HandleTopLevelDecl(DeclGroupRef DR) {
-    for (DeclGroupRef::iterator b = DR.begin(), e = DR.end(); b != e; ++b) {
-      Decl *dec = *b;
-      if (foundCorrectFunction(*dec, functionHeap.name)) {
-        VisitorHeapify.TraverseDecl(dec);
-      }
-      // Traverse the declaration using our AST visitor.
-    }
-    return true;
+
+  // Parse all the AST
+  virtual void HandleTranslationUnit(ASTContext &Ctx) {
+    VisitorHeapify.TraverseAST(Ctx);
+    auto &topScopes = VisitorHeapify.getTopScopes();
+    auto &scopes = VisitorHeapify.getScopes();
+    computeNeededHeap(topScopes);
+    std::unordered_map<VarDecl *, std::shared_ptr<item_found>> varToItem;
+    for (auto &scope : topScopes)
+      computeScopeVariables(scope, 0, varToItem);
+    modifyFile(scopes, TheRewriter);
   }
 
 private:
   ASTHeapifyVisitor VisitorHeapify;
+  Rewriter &TheRewriter;
 };
 
 class MyFrontendAction : public ASTFrontendAction {

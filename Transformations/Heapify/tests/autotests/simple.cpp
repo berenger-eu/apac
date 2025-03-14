@@ -1,4 +1,7 @@
 int main() {
-  int n = 5;
+  int m = 4;
+  {
+    int n = 5;
+  }
   return 2;
 }

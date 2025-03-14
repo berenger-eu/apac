@@ -1,10 +1,10 @@
 #include "ASTSplitterVisitor.hpp"
 using namespace clang;
 
-bool ASTSplitterVisitor::isValidSeparation(const VarDecl &v1) {
+bool ASTSplitterVisitor::isValidSeparation(VarDecl *v1) {
   bool result = true;
-  if (v1.getType()->isStructureOrClassType()) {
-    const CXXRecordDecl *cxxRecordDecl = v1.getType()->getAsCXXRecordDecl();
+  if (v1->getType()->isStructureOrClassType()) {
+    const CXXRecordDecl *cxxRecordDecl = v1->getType()->getAsCXXRecordDecl();
     auto it = cxxRecordDecl->ctor_begin();
     while (it != cxxRecordDecl->ctor_end() && result) {
       if (it->isDefaultConstructor() && it->isDeleted()) {
@@ -26,7 +26,7 @@ bool ASTSplitterVisitor::VisitDeclStmt(DeclStmt *declSt) {
   if (declSt->isSingleDecl() && isa<VarDecl>(declSt->getSingleDecl())) {
     VarDecl *v = cast<VarDecl>(declSt->getSingleDecl());
     if (v->getInit()) {
-      stringVarDecl(*v, SSprintDecl, SSprintInit);
+      stringVarDecl(v, SSprintDecl, SSprintInit);
       TheRewriter.RemoveText(
           SourceRange(v->getInit()->getBeginLoc(), v->getInit()->getEndLoc()));
     }
@@ -36,7 +36,7 @@ bool ASTSplitterVisitor::VisitDeclStmt(DeclStmt *declSt) {
          b++) {
       if (isa<VarDecl>(*b)) {
         VarDecl *v = cast<VarDecl>(*b);
-        stringVarDecl(*v, SSprintDecl, SSprintInit);
+        stringVarDecl(v, SSprintDecl, SSprintInit);
         /*
         if(b==dgr.begin())
             SSprintDecl<<v->getType().getAsString()<<" "<<v->getNameAsString();
@@ -61,16 +61,16 @@ bool ASTSplitterVisitor::VisitDeclStmt(DeclStmt *declSt) {
 
   return true;
 }
-void ASTSplitterVisitor::stringVarDecl(const VarDecl &v,
+void ASTSplitterVisitor::stringVarDecl(VarDecl *v,
                                        std::stringstream &SSprintDecl,
                                        std::stringstream &SSprintInit) {
   std::stringstream SSprint;
   if (!isValidSeparation(v)) {
     SSprintDecl << getCompleteVarDeclStr(v);
-  } else if (isReferenceQualType(v.getType())) {
+  } else if (isReferenceQualType(v->getType())) {
     const QualType &qType =
-        getUnreferencedQType(v.getType(), v.getASTContext());
-    const Expr *init = (v.getInit()->IgnoreCasts());
+        getUnreferencedQType(v->getType(), v->getASTContext());
+    const Expr *init = (v->getInit()->IgnoreCasts());
     // Or use somehow MaterializeTemporaryExpr
     int childrenSize = 0;
     for (auto it = init->child_begin(); it != init->child_end(); ++it) {
@@ -90,36 +90,37 @@ void ASTSplitterVisitor::stringVarDecl(const VarDecl &v,
         || !isa<DeclRefExpr>(init)) {
       // Creates std::reference_wrapper<type>
       SSprintDecl << "std::reference_wrapper<" << qType.getAsString() << "> "
-                  << v.getNameAsString()
+                  << v->getNameAsString()
                   //= invalid_ref<unqualified type>();
                   << " = invalid_ref<"
                   << qType.getUnqualifiedType().getAsString() << ">();\n";
-      SSprintDecl << v.getType().getAsString() << " __refT_"
-                  << v.getNameAsString() << "=" << getInitString(v) << ";\n";
-      SSprintInit << v.getNameAsString() << "= __refT_" << v.getNameAsString()
+      SSprintDecl << v->getType().getAsString() << " __refT_"
+                  << v->getNameAsString() << "=" << getInitString(v) << ";\n";
+      SSprintInit << v->getNameAsString() << "= __refT_" << v->getNameAsString()
                   << ";\n";
     } else {
       // Creates std::reference_wrapper<type>
       SSprintDecl << "std::reference_wrapper<" << qType.getAsString() << "> "
-                  << v.getNameAsString()
+                  << v->getNameAsString()
                   //= invalid_ref<type>();
                   << " = invalid_ref<" << qType.getAsString() << ">();\n";
       SSprintInit << getVarDeclDefStr(v);
     }
-  } else if (v.getType().isConstQualified() && v.getInit()) {
+  } else if (v->getType().isConstQualified() && v->getInit()) {
     // SSprintDecl<<getCompleteVarDeclStr(v);
 
-    const QualType &qType = getReferenceToQType(v.getType(), v.getASTContext());
+    const QualType &qType =
+        getReferenceToQType(v->getType(), v->getASTContext());
     // Creates std::reference_wrapper<type>
-    SSprintDecl << "std::reference_wrapper<" << v.getType().getAsString()
+    SSprintDecl << "std::reference_wrapper<" << v->getType().getAsString()
                 << "> "
-                << v.getNameAsString()
+                << v->getNameAsString()
                 //= invalid_ref<unqualified type>();
                 << " = invalid_ref<"
-                << v.getType().getUnqualifiedType().getAsString() << ">();\n";
-    SSprintDecl << qType.getAsString() << " __refT_" << v.getNameAsString()
+                << v->getType().getUnqualifiedType().getAsString() << ">();\n";
+    SSprintDecl << qType.getAsString() << " __refT_" << v->getNameAsString()
                 << "=" << getInitString(v) << ";\n";
-    SSprintInit << v.getNameAsString() << "= __refT_" << v.getNameAsString()
+    SSprintInit << v->getNameAsString() << "= __refT_" << v->getNameAsString()
                 << ";\n";
 
   } else {

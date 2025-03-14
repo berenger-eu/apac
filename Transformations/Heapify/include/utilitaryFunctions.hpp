@@ -1,3 +1,4 @@
+#pragma once
 #include "core.hpp"
 using namespace clang;
 
@@ -18,9 +19,11 @@ bool isInitAReference(VarDecl &);
 // True when there is a new in the initialization
 bool isInitNew(VarDecl &);
 
-// Inline functions
+void computeNeededHeap(
+    const std::vector<std::shared_ptr<ScopeInfo>> &topScopes);
 
-// Returns the Id of a variable
-inline unsigned int getUid(VarDecl &v) {
-  return varCounter[v.getNameAsString()];
-}
+void computeScopeVariables(
+    std::shared_ptr<ScopeInfo> scope, int id,
+    std::unordered_map<VarDecl *, std::shared_ptr<item_found>> &varToItem);
+
+void initItem(struct item_found &item, VarDecl &vDec, int &id);

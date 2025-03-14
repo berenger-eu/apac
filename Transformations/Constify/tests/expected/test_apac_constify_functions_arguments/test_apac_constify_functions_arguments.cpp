@@ -59,7 +59,6 @@ void n5(int *a, int &b, const int c) {
 
 void o(int a, int b, const int c) {
   int &d = a;
-
   int *e = &b;
 
   d = 1;
@@ -68,11 +67,8 @@ void o(int a, int b, const int c) {
 
 void c1(int *a, const int *const b, const int *const c, int *d) {
   int *aa = a;
-
   const int *const bb = b;
-
   const int *const cc = c;
-
   int *dd = d;
 
   *aa = 42;
@@ -81,11 +77,9 @@ void c1(int *a, const int *const b, const int *const c, int *d) {
 
 void c2(int *a, const int *const b, const int *const c, int *d) {
   int *aa = a;
-
   int *dd = d;
 
   const int *const bb = b;
-
   const int *const cc = c;
 
   *aa = 42;
@@ -94,13 +88,10 @@ void c2(int *a, const int *const b, const int *const c, int *d) {
 
 void c3(int *a, const int *const b, const int *const c, int *d) {
   int *aa = a;
-
   int *dd = d;
 
   const int *const bb = b;
-
   const int *const cc = c;
-
   const int e = 2;
 
   *aa = 42;

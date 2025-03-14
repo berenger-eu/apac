@@ -27,21 +27,24 @@ std::string getStmtAsStringFull(const Stmt *statement,
 // From a VarDecl Type, get the string corresponding to its declaration in a
 // single instruction Useful to create multiple single declarations from a
 // single multiple declaration Format: "type varName [= initValue];\n"
-std::string getCompleteVarDeclStr(const VarDecl &);
+// Most likely best method to use, relies almost only on Clang
+std::string getCompleteVarDeclStr(VarDecl *);
+// std::string getCompleteVarDeclStr(const VarDecl &);
+// std::string getCompleteVarDeclStr(const VarDecl &, const LangOptions &);
 
 // From a VarDecl Type, get the string :
 //  <varName> [= <init>];
 //  or <varName>(<init>);
 // To use when linked to the declaration
-std::string getVarDeclDeclDefStr(const VarDecl &v);
+std::string getVarDeclDeclDefStr(VarDecl *v);
 
 // From a VarDecl Type, get the string :
 //  <varName> [= <init>] ;
 // To use when separated from the declaration
-std::string getVarDeclDefStr(const VarDecl &);
+std::string getVarDeclDefStr(VarDecl *);
 // From a VarDecl Type, get the string :
 //  <type> <varName> ;
-std::string getVarDeclDeclStr(const VarDecl &v);
+std::string getVarDeclDeclStr(VarDecl *v);
 
 // True when the input is a pointer type
 bool isPointerQualType(clang::QualType);
@@ -172,8 +175,8 @@ inline QualType getPointerToQType(QualType qt, const ASTContext &aContext) {
 }
 
 // Returns the initialization part of a variable declaration as a string
-inline std::string getInitString(const VarDecl &v) {
-  return getExprAsString(v.getInit(), v.getASTContext().getLangOpts());
+inline std::string getInitString(VarDecl *v) {
+  return getExprAsString(v->getInit(), v->getASTContext().getLangOpts());
 }
 // True when the input location is in a system header or not in the main file
 inline bool isInHeaders(SourceManager &sm, SourceLocation sl) {

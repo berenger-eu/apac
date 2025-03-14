@@ -7,7 +7,10 @@ int main() {
   while ((i++) < 10) {
     int m;
   }
-  while (int i = -1) {
-    i++;
+  {
+    int i = -1;
+    while (i) {
+      i++;
+    }
   }
 }

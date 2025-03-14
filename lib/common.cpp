@@ -1,31 +1,38 @@
 #include "common.hpp"
 
-std::string getCompleteVarDeclStr(const VarDecl &v) {
+std::string getCompleteVarDeclStr(VarDecl *v) {
+  // We create a temporary DeclStmt to let clang format the variable declaration
+  DeclStmt tempSt =
+      DeclStmt(DeclGroupRef(v), v->getBeginLoc(), v->getBeginLoc());
+  return getStmtAsString(&tempSt, v->getASTContext().getLangOpts());
+}
+std::string getCompleteVarDeclStr(VarDecl *v, const LangOptions &langOpt) {
   std::stringstream SSprint;
-  SSprint << v.getType().getAsString() << " " << getVarDeclDeclDefStr(v);
+  SSprint << v->getType().getAsString(langOpt) << " "
+          << getVarDeclDeclDefStr(v);
   return SSprint.str();
 }
-std::string getVarDeclDefStr(const VarDecl &v) {
+std::string getVarDeclDefStr(VarDecl *v) {
   std::stringstream SSprint;
-  if (v.getInit()) {
-    SSprint << v.getNameAsString();
+  SSprint << v->getNameAsString();
+  if (v->getInit()) {
     SSprint << " = ";
-    if (isa<CXXConstructExpr>(v.getInit())) {
-      SSprint << v.getType().getAsString() << "(" << getInitString(v) << ")";
+    if (isa<CXXConstructExpr>(v->getInit())) {
+      SSprint << v->getType().getAsString() << "(" << getInitString(v) << ")";
     } else {
       SSprint << getInitString(v);
     }
-    SSprint << ";\n";
   }
+  SSprint << ";\n";
   return SSprint.str();
 }
-std::string getVarDeclDeclDefStr(const VarDecl &v) {
+std::string getVarDeclDeclDefStr(VarDecl *v) {
   std::stringstream SSresult;
   // type varName
-  if (v.getInit()) {
-    SSresult << v.getNameAsString();
+  SSresult << v->getNameAsString();
+  if (v->getInit()) {
     //= initValue
-    switch (v.getInitStyle()) {
+    switch (v->getInitStyle()) {
     case VarDecl::CallInit:
       SSresult << "(" << getInitString(v) << ")";
       break;
@@ -36,14 +43,15 @@ std::string getVarDeclDeclDefStr(const VarDecl &v) {
       llvm::errs() << "Unknown Initialization Style\n";
       break;
     }
-    SSresult << ";\n";
   }
+  SSresult << ";\n";
   return SSresult.str();
 }
-std::string getVarDeclDeclStr(const VarDecl &v) {
+std::string getVarDeclDeclStr(VarDecl *v) {
   std::stringstream SSresult;
   // type varName
-  SSresult << v.getType().getAsString() << " " << v.getNameAsString() << ";\n";
+  SSresult << v->getType().getAsString() << " " << v->getNameAsString()
+           << ";\n";
   return SSresult.str();
 }
 std::string getStmtAsString(const Stmt *statement, const LangOptions &langOpt,
