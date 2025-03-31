@@ -208,28 +208,12 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator &uop,
   Expr *subExpr = uop.getSubExpr();
   // If we have a variable
   const VarDecl *mainVariable = nullptr;
-  // For arrays
-  const ArraySubscriptExpr *array;
   std::vector<int> indexes;
-  // For variables (outside of arrays)
-  const DeclRefExpr *d;
   // Pointer either to the array or to the decl
-  const Expr *arrayOrDeclExpr;
+  const Expr *arrayOrDeclExpr = initVarFromExpr(subExpr, mainVariable, indexes);
   // If it's an operation on an array, then we look for the base variable, and
   // the indexes
-  if ((array = getSingleArraySubscriptExprInsideExpr(subExpr)) != nullptr) {
-    const auto baseDeclExpr =
-        getSingleDeclRefExprInsideExpr(getArrayBaseDeclRefExpr(array));
-    mainVariable = cast<VarDecl>(baseDeclExpr->getDecl());
-    indexes = getArraySubscriptsIndexesValues(array);
-    arrayOrDeclExpr = array;
-  }
-  // Else if it's an operation on a variable, then we look for the variable
-  else if ((d = getSingleDeclRefExprInsideExpr(subExpr)) != nullptr) {
-    // and we increment or decrement it, then it's a read and a write
-    mainVariable = cast<VarDecl>(d->getDecl());
-    arrayOrDeclExpr = d;
-  } else {
+  if (arrayOrDeclExpr == nullptr) {
     handleStmt(*subExpr, curInstr);
     return;
   }
@@ -254,7 +238,7 @@ void ASTTaskGraphVisitor::handleUnaryOperator(const UnaryOperator &uop,
       addDependencyWrite(curInstr, alias);
 
   if (depth > 0) {
-    auto aliasDecl = aliasTable.getOrAddAliasArg(d);
+    auto aliasDecl = aliasTable.getOrAddAliasArg(arrayOrDeclExpr);
     std::unordered_set<std::shared_ptr<aliasArg>> aliases;
     aliases.insert(aliasDecl);
     aliasTable.getPointerAccessedVariables(aliases, depth);
@@ -287,24 +271,13 @@ void ASTTaskGraphVisitor::handleBinaryAssignment(const BinaryOperator &bop,
   // Most likely unnecessary since left side has to be a lvalue because of
   // the assignment operator
   const VarDecl *mainVariable = nullptr;
-  const ArraySubscriptExpr *array;
   std::vector<int> indexes;
-  const DeclRefExpr *d;
-  const Expr *declOrArrayExpr;
-  // Array
-  if ((array = getSingleArraySubscriptExprInsideExpr(bop.getLHS())) !=
-      nullptr) {
-    const auto baseDeclExpr = getArrayBaseDeclRefExpr(array);
-    mainVariable = cast<VarDecl>(baseDeclExpr->getDecl());
-    indexes = getArraySubscriptsIndexesValues(array);
-    declOrArrayExpr = array;
-  }
-  // Variable (not array)
-  else if ((d = getSingleDeclRefExprInsideExpr(bop.getLHS()))) {
-    mainVariable = cast<VarDecl>(d->getDecl());
-    declOrArrayExpr = d;
-  } else
+  const Expr *declOrArrayExpr =
+      initVarFromExpr(bop.getLHS(), mainVariable, indexes);
+  if (declOrArrayExpr == nullptr) {
     handleStmt(*bop.getLHS(), curInstr, true);
+    return;
+  }
 
   // TODO:Error for member expr
 
@@ -348,18 +321,18 @@ void ASTTaskGraphVisitor::handlePointersBinaryAssignment(
   // If a single pointer is aliased, then we know that its aliased
   // elements will change If there are multiple, it's because we can't be
   // sure which one is aliased, so we can't remove the dependencies
-  if (aliasesLeft.size() == 1)
-    aliasTable.removeDependencyPtr(*aliasesLeft.begin());
+  // if (aliasesLeft.size() == 1)
+  aliasTable.removeDependencyPtr(*aliasesLeft.begin());
 
   std::unordered_set<std::shared_ptr<aliasArg>> aliasesRHS;
   computeAliasesForRHS(bop.getRHS(), aliasesRHS, curInstr);
   const Expr *declOrArrayExprRHS = nullptr;
-  if (getSingleArraySubscriptExprInsideExpr(bop.getRHS())) {
-    declOrArrayExprRHS = getSingleArraySubscriptExprInsideExpr(bop.getRHS());
-    declOrArrayExprRHS->dump();
-  } else if (getSingleDeclRefExprInsideExpr(bop.getRHS())) {
-
-    declOrArrayExprRHS = getSingleDeclRefExprInsideExpr(bop.getRHS());
+  if (declOrArrayExprRHS =
+          getSingleArraySubscriptExprInsideExpr(bop.getRHS())) {
+    ;
+  } else if (declOrArrayExprRHS =
+                 getSingleDeclRefExprInsideExpr(bop.getRHS())) {
+    ;
   } else if (isa<CallExpr>(bop.getRHS()->IgnoreParenImpCasts())) {
     std::vector<const Expr *> declOrArrayExprRHSVect;
 
@@ -403,11 +376,11 @@ void ASTTaskGraphVisitor::handlePointersBinaryAssignment(
           aliasTable.addAliasPtr(aliasRight, aliasLeft);
         }
       }
-    }
+    } else
+      for (auto &aliasLeft : aliasesLeft)
+        for (auto &aliasRight : aliasesRHS)
+          aliasTable.addAliasedToElement(aliasRight, aliasLeft);
   }
-  for (auto &aliasLeft : aliasesLeft)
-    for (auto &aliasRight : aliasesRHS)
-      aliasTable.addAliasedToElement(aliasRight, aliasLeft);
 }
 void ASTTaskGraphVisitor::handleMemberCallExpr(const CXXMemberCallExpr &c,
                                                Instruction &curInstr,
@@ -706,4 +679,25 @@ bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt *i) {
   functionsInstructionsVector.pop_back();
   functionsInstructionsVector.back().push_back(compInstr);
   return res;
+}
+
+const Expr *ASTTaskGraphVisitor::initVarFromExpr(const Expr *lhs,
+                                                 const VarDecl *&mainVariable,
+                                                 std::vector<int> &indexes) {
+  const ArraySubscriptExpr *array = nullptr;
+  const DeclRefExpr *d = nullptr;
+  const Expr *declOrArrayExpr = nullptr;
+  if ((array = getSingleArraySubscriptExprInsideExpr(lhs)) != nullptr) {
+    const auto baseDeclExpr = getArrayBaseDeclRefExpr(array);
+    mainVariable = cast<VarDecl>(baseDeclExpr->getDecl());
+    indexes = getArraySubscriptsIndexesValues(array);
+    declOrArrayExpr = array;
+  }
+  // Variable (not array)
+  else if ((d = getSingleDeclRefExprInsideExpr(lhs))) {
+    mainVariable = cast<VarDecl>(d->getDecl());
+    declOrArrayExpr = d;
+  }
+
+  return declOrArrayExpr;
 }
