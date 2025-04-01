@@ -2,10 +2,15 @@
 int *inPtrs(int *a, int *b, int c, int **d) { return a; }
 
 int main() {
-
+  int valA, valB, valC, valF;
   int *a, *b, *c;
   int d;
   int *f, **e;
+  a = &valA;
+  b = &valB;
+  c = &valC;
+  f = &valF;
+  e = &f;
   d = 4;
   *a = 1;
   *b = 2;
