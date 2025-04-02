@@ -57,6 +57,21 @@ void Node::computeInOutDep() {
       }
       ++itNext;
     }
+    auto itPrev = prev.begin(), endPrev = prev.end();
+    while (itPrev != endPrev && !isInOut) {
+      if ((*itPrev)->dependencies.count(dep.first) > 0) {
+        isInOut = true;
+        break;
+      } else if (dep.first->indexes.size() > 0) {
+        for (const auto &prevAlias : (*itPrev)->dependencies) {
+          if (indexesMatch(prevAlias.first->indexes, dep.first->indexes)) {
+            isInOut = true;
+            break;
+          }
+        }
+      }
+      ++itPrev;
+    }
     if (isInOut) {
       inOutDep.insert(dep.first);
     }

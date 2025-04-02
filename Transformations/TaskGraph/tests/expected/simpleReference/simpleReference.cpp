@@ -37,14 +37,14 @@ int main() {
       __apac_depth = __apac_depth_local + 1;
       ref = ref2;
     }
-#pragma omp task default(shared) depend(in : ref2, j)                          \
+#pragma omp task default(shared) depend(inout : ref2, j)                       \
     firstprivate(__apac_depth_local)
     {
       __apac_depth = __apac_depth_local + 1;
       j = 4;
       ref2++;
     }
-#pragma omp task default(shared) depend(in : a, ref)                           \
+#pragma omp task default(shared) depend(inout : a, ref)                        \
     firstprivate(__apac_depth_local)
     {
       __apac_depth = __apac_depth_local + 1;
