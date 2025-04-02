@@ -23,7 +23,7 @@ int main() {
     int j;
 #pragma omp task default(shared) depend(inout : j)
     { j = 4; }
-#pragma omp task default(shared) depend(in : a, p, j)
+#pragma omp task default(shared) depend(inout : j) depend(in : a, p)
     {
       j = *p;
       j = a;
