@@ -322,7 +322,6 @@ void ASTTaskGraphVisitor::handlePointersBinaryAssignment(
   // elements will change If there are multiple, it's because we can't be
   // sure which one is aliased, so we can't remove the dependencies
   // if (aliasesLeft.size() == 1)
-  aliasTable.removeDependencyPtr(*aliasesLeft.begin());
 
   std::unordered_set<std::shared_ptr<aliasArg>> aliasesRHS;
   computeAliasesForRHS(bop.getRHS(), aliasesRHS, curInstr);
@@ -371,6 +370,7 @@ void ASTTaskGraphVisitor::handlePointersBinaryAssignment(
                                   bop.getRHS()->getType(),
                                   mainVariable->getASTContext());
     if (depth == -1) {
+      aliasTable.removeDependencyPtr(*aliasesLeft.begin());
       for (auto &aliasLeft : aliasesLeft) {
         for (auto &aliasRight : aliasesRHS) {
           aliasTable.addAliasPtr(aliasRight, aliasLeft);
@@ -379,7 +379,7 @@ void ASTTaskGraphVisitor::handlePointersBinaryAssignment(
     } else
       for (auto &aliasLeft : aliasesLeft)
         for (auto &aliasRight : aliasesRHS)
-          aliasTable.addAliasedToElement(aliasRight, aliasLeft);
+          aliasTable.replaceAliasedToElement(aliasRight, aliasLeft);
   }
 }
 void ASTTaskGraphVisitor::handleMemberCallExpr(const CXXMemberCallExpr &c,

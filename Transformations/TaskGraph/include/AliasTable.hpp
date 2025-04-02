@@ -45,8 +45,8 @@ void addAliasPtr(const VarDecl *var, const std::vector<int> &,
   const VarDecl *ptr, const std::vector<int> &, const int &);
   */
   // Used to add aliased element of right AliasArg to left AliasArg
-  void addAliasedToElement(std::shared_ptr<aliasArg>,
-                           std::shared_ptr<aliasArg>);
+  void replaceAliasedToElement(std::shared_ptr<aliasArg>,
+                               std::shared_ptr<aliasArg>);
   // For a pointer, accessed with a given depth, get all the variables accessed
   // to reach the depth Example, **c=&b,b=&a, getModifiedVariables(c,2) will
   // return {c,b,a}
