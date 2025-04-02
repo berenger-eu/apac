@@ -1,0 +1,14 @@
+digraph G {
+subgraph cluster_f0 {
+    invisibleNodeScope_1 [style=invis];
+    0 [label="i = 1;"];
+    1 [label="x = 2;"];
+    2 [label="i = x;"];
+    3 [label="i = 1;"];
+    4 [label="x = 2;"];
+}
+    0 -> 2[label="  iRW"];
+    1 -> 2[label="  xR"];
+    2 -> 3[label="  iRW"];
+    2 -> 4[label="  xW"];
+}
