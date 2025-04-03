@@ -351,9 +351,18 @@ void ASTTaskGraphVisitor::handlePointersBinaryAssignment(
             callStack.push(cast<CallExpr>(arg->IgnoreParenImpCasts()));
           else {
             auto depth =
-                getPtrDepthAccess(bop.getLHS()->getType(), arg->getType(),
+                getPtrDepthAccess(arg->getType(), bop.getLHS()->getType(),
                                   mainVariable->getASTContext());
-            if (depth == 0) {
+            // So the argument is either :
+            //  - the same type as the LHS
+            //  - or a pointer that points to the same type as the LHS at some
+            //  point
+
+            // retrieve aliases, use depth to get modified variables, fuse
+            if (depth >= 0) {
+              std::unordered_set<std::shared_ptr<aliasArg>> aliasesRHS;
+              computeAliasesForRHS(arg, aliasesRHS, curInstr);
+              aliasTable.getModifiedVariables(aliasesRHS, depth);
               for (auto &aliasLeft : aliasesLeft) {
                 for (auto &aliasRight : aliasesRHS) {
                   aliasTable.fuseAliased(aliasRight, aliasLeft);
