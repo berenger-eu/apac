@@ -36,6 +36,12 @@ public:
   void removeDependencyPtr(const std::shared_ptr<aliasArg> &ptr);
   void addAliasReference(std::shared_ptr<aliasArg> &var,
                          std::shared_ptr<aliasArg> &ref);
+
+  // Used for assignment of a pointer to another pointer
+  // when using functions
+  void fuseAliased(const std::shared_ptr<aliasArg> &destPointer,
+                   const std::shared_ptr<aliasArg> &sourcePointer);
+
   // TODO: split function ?
   void addAliasPtr(std::shared_ptr<aliasArg> var,
                    std::shared_ptr<aliasArg> ptr);

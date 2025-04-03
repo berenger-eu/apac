@@ -326,11 +326,11 @@ void ASTTaskGraphVisitor::handlePointersBinaryAssignment(
   std::unordered_set<std::shared_ptr<aliasArg>> aliasesRHS;
   computeAliasesForRHS(bop.getRHS(), aliasesRHS, curInstr);
   const Expr *declOrArrayExprRHS = nullptr;
-  if (declOrArrayExprRHS =
-          getSingleArraySubscriptExprInsideExpr(bop.getRHS())) {
+  if ((declOrArrayExprRHS =
+           getSingleArraySubscriptExprInsideExpr(bop.getRHS())) != nullptr) {
     ;
-  } else if (declOrArrayExprRHS =
-                 getSingleDeclRefExprInsideExpr(bop.getRHS())) {
+  } else if ((declOrArrayExprRHS =
+                  getSingleDeclRefExprInsideExpr(bop.getRHS())) != nullptr) {
     ;
   } else if (isa<CallExpr>(bop.getRHS()->IgnoreParenImpCasts())) {
     std::vector<const Expr *> declOrArrayExprRHSVect;
@@ -351,12 +351,12 @@ void ASTTaskGraphVisitor::handlePointersBinaryAssignment(
             callStack.push(cast<CallExpr>(arg->IgnoreParenImpCasts()));
           else {
             auto depth =
-                getPtrDepthAccess(mainVariable->getType(), arg->getType(),
+                getPtrDepthAccess(bop.getLHS()->getType(), arg->getType(),
                                   mainVariable->getASTContext());
             if (depth == 0) {
               for (auto &aliasLeft : aliasesLeft) {
                 for (auto &aliasRight : aliasesRHS) {
-                  aliasTable.addAliasPtr(aliasRight, aliasLeft);
+                  aliasTable.fuseAliased(aliasRight, aliasLeft);
                 }
               }
             }

@@ -22,6 +22,19 @@ AliasTable::getAliased(std::shared_ptr<aliasArg> &v) {
   return aliases;
 }
 
+void AliasTable::fuseAliased(const std::shared_ptr<aliasArg> &sourcePointer,
+                             const std::shared_ptr<aliasArg> &destPointer) {
+
+  if (destPointer != nullptr && sourcePointer != nullptr &&
+      destPointer != sourcePointer) {
+
+    for (const auto &aliasedElem : sourcePointer->aliased) {
+      destPointer->aliased.insert(aliasedElem);
+      aliasedElem->pointers.insert(destPointer);
+    }
+  }
+}
+
 void AliasTable::addAliasReference(std::shared_ptr<aliasArg> &var,
                                    std::shared_ptr<aliasArg> &ref) {
   llvm::errs() << "Adding alias reference\n";
