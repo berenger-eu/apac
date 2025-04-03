@@ -24,5 +24,6 @@ int main() {
   *c = 6;
   *f = 11;
   **e = 12;
+  d = *a;
   return 0;
 }
