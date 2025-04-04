@@ -26,13 +26,19 @@ int main() {
     }
     int b;
 #pragma omp task default(shared)
-    { b = 4; }
+    {
+      b = 4;
+    }
     const int c = 4;
     int d, e;
 #pragma omp task default(shared) depend(inout : d)
-    { d = 4; }
+    {
+      d = 4;
+    }
 #pragma omp task default(shared) depend(inout : e)
-    { e = 7; }
+    {
+      e = 7;
+    }
 #pragma omp task default(shared) depend(in : apacMemeBloc__a_0, a)             \
     firstprivate(__apac_depth_local)
     {
