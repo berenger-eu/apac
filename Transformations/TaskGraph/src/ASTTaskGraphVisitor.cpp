@@ -362,10 +362,23 @@ void ASTTaskGraphVisitor::handlePointersBinaryAssignment(
             if (depth >= 0) {
               std::unordered_set<std::shared_ptr<aliasArg>> aliasesRHS;
               computeAliasesForRHS(arg, aliasesRHS, curInstr);
-              aliasTable.getModifiedVariables(aliasesRHS, depth);
-              for (auto &aliasLeft : aliasesLeft) {
-                for (auto &aliasRight : aliasesRHS) {
-                  aliasTable.fuseAliased(aliasRight, aliasLeft);
+              auto argVar = aliasTable.getOrAddAliasArg(
+                  getSingleDeclRefExprInsideExpr(arg));
+              assert(argVar != nullptr);
+              if (argVar != nullptr &&
+                  getPtrDepthAccess(arg->getType(),
+                                    argVar->declaration.getType(),
+                                    mainVariable->getASTContext()) == 1) {
+                for (auto &aliasLeft : aliasesLeft)
+                  for (auto &aliasRight : aliasesRHS)
+                    aliasTable.addAliasPtr(aliasRight, aliasLeft);
+              } else {
+
+                aliasTable.getModifiedVariables(aliasesRHS, depth);
+                for (auto &aliasLeft : aliasesLeft) {
+                  for (auto &aliasRight : aliasesRHS) {
+                    aliasTable.fuseAliased(aliasRight, aliasLeft);
+                  }
                 }
               }
             }
@@ -431,8 +444,8 @@ void ASTTaskGraphVisitor::handleCallExpr(const CallExpr &c,
     } else if (!(isFullConstType(p.getType())) &&
                (isReferenceQualType(p.getType()) ||
                 isPointerQualType(p.getType()))) {
-      // If the parameter can be modified (parameter is either a reference or
-      // a pointer AND it's not completely const)
+      // If the parameter can be modified (parameter is either a reference
+      // or a pointer AND it's not completely const)
       //   then there might be a write, so we assume there is one
       const Expr *choosenExpr = b;
       if (getSingleArraySubscriptExprInsideExpr(b) != nullptr)
@@ -461,7 +474,8 @@ void ASTTaskGraphVisitor::handleStmt(const Stmt &st, Instruction &instr,
 
     auto curExp = (cast<Expr>(st).IgnoreParenImpCasts());
     if (isa<DeclRefExpr>(curExp)) {
-      // const VarDecl *v = cast<VarDecl>(cast<DeclRefExpr>(curExp)->getDecl());
+      // const VarDecl *v =
+      // cast<VarDecl>(cast<DeclRefExpr>(curExp)->getDecl());
       auto alias = aliasTable.getOrAddAliasArg(curExp);
       if (isRead)
         addDependencyRead(instr, alias);
@@ -487,8 +501,8 @@ void ASTTaskGraphVisitor::handleStmt(const Stmt &st, Instruction &instr,
           // auto base = cast<VarDecl>(baseExpr->getDecl());
           auto indexes =
               getArraySubscriptsIndexesValues(cast<ArraySubscriptExpr>(curExp));
-          // We don't use the type of the base but the type of the expression
-          // (tab will be a pointer but tab[0] might not be one)
+          // We don't use the type of the base but the type of the
+          // expression (tab will be a pointer but tab[0] might not be one)
           auto alias = aliasTable.getOrAddAliasArg(arrayExpr);
           if (isRead)
             addDependencyRead(instr, alias);
@@ -517,9 +531,9 @@ bool ASTTaskGraphVisitor::TraverseFunctionDecl(FunctionDecl *f) {
     return true;
   if (f->getNameAsString().find("_apacSeq") != std::string::npos)
     return true;
-  // If function is not in headers and has a body and is a definition, then we
-  // traverse it recursively Using traverse we can avoid visiting nodes that
-  // we don't need
+  // If function is not in headers and has a body and is a definition, then
+  // we traverse it recursively Using traverse we can avoid visiting nodes
+  // that we don't need
   if (f->getBody() && f->isThisDeclarationADefinition()) {
     functionsInstructionsVector.push_back(std::vector<Instruction>());
     return RecursiveASTVisitor::TraverseFunctionDecl(f);
