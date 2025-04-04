@@ -3,6 +3,7 @@
 #include <sstream>
 #include <string>
 
+#include "transfoCommon.hpp"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Basic/SourceManager.h"
@@ -14,10 +15,16 @@ using namespace clang;
 class ASTMultipleDeclSplitter
     : public RecursiveASTVisitor<ASTMultipleDeclSplitter> {
 public:
-  ASTMultipleDeclSplitter(Rewriter &R) : TheRewriter(R) {};
+  ASTMultipleDeclSplitter(Rewriter &R, std::string &mainRef,
+                          std::vector<std::string> &functionsRef,
+                          std::vector<std::string> &functionsToIgnoreRef)
+      : TheRewriter(R), main(mainRef), functions(functionsRef),
+        functionsToIgnore(functionsToIgnoreRef) {};
+
   inline bool VisitStmt(Stmt *) { return true; }
   inline bool TraverseFunctionDecl(FunctionDecl *fDecl) {
-    if (fDecl->getNameAsString().find("_apacSeq") == std::string::npos) {
+    if (isToParseFunction(fDecl->getNameAsString(), functions,
+                          functionsToIgnore, main)) {
       return RecursiveASTVisitor::TraverseFunctionDecl(fDecl);
     }
     return true;
@@ -48,4 +55,7 @@ public:
 
 private:
   Rewriter &TheRewriter;
+  std::string &main;
+  std::vector<std::string> &functions;
+  std::vector<std::string> &functionsToIgnore;
 };
