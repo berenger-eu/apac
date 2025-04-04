@@ -1,0 +1,21 @@
+digraph G {
+subgraph cluster_f0 {
+    invisibleNodeScope_1 [style=invis];
+    0 [label="pa = &a;"];
+    1 [label="pb = &b;"];
+    2 [label="ppa = &pa;"];
+    3 [label="**ppa = 10;
+**ppa : a"];
+    4 [label="*ppa = pb;
+**ppa = 12;
+b = 2;
+*ppa : pa
+**ppa : b"];
+    6 [label="a = 1;"];
+}
+    0 -> 3[label="  paR"];
+    1 -> 4[label="  pbR"];
+    2 -> 3[label="  ppaR"];
+    3 -> 4[label="  paW"];
+    3 -> 6[label="  aRW"];
+}

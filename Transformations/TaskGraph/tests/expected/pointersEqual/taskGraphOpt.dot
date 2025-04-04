@@ -15,8 +15,8 @@ p = pa;"];
 (*pa)++;
 *pa : a"];
 }
-    0 -> 5[label="  aW"];
-    1 -> 7[label="  bW"];
+    0 -> 5[label="  aRW"];
+    1 -> 7[label="  bRW"];
     2 -> 5[label="  pR"];
     3 -> 6[label="  pbR"];
     5 -> 6[label="  pW"];

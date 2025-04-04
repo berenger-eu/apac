@@ -22,6 +22,19 @@ AliasTable::getAliased(std::shared_ptr<aliasArg> &v) {
   return aliases;
 }
 
+void AliasTable::fuseAliased(const std::shared_ptr<aliasArg> &sourcePointer,
+                             const std::shared_ptr<aliasArg> &destPointer) {
+
+  if (destPointer != nullptr && sourcePointer != nullptr &&
+      destPointer != sourcePointer) {
+
+    for (const auto &aliasedElem : sourcePointer->aliased) {
+      destPointer->aliased.insert(aliasedElem);
+      aliasedElem->pointers.insert(destPointer);
+    }
+  }
+}
+
 void AliasTable::addAliasReference(std::shared_ptr<aliasArg> &var,
                                    std::shared_ptr<aliasArg> &ref) {
   llvm::errs() << "Adding alias reference\n";
@@ -56,11 +69,15 @@ void AliasTable::addAliasPtr(std::shared_ptr<aliasArg> var,
     ptr->aliased.insert(var);
   }
 }
-void AliasTable::addAliasedToElement(std::shared_ptr<aliasArg> toAddAliaser,
-                                     std::shared_ptr<aliasArg> targetAlias) {
-  for (auto &aliasedElem : toAddAliaser->aliased) {
-    targetAlias->aliased.insert(aliasedElem);
-    aliasedElem->pointers.insert(targetAlias);
+void AliasTable::replaceAliasedToElement(
+    std::shared_ptr<aliasArg> toAddAliaser,
+    std::shared_ptr<aliasArg> targetAlias) {
+  if (toAddAliaser != targetAlias) {
+    removeDependencyPtr(targetAlias);
+    for (auto &aliasedElem : toAddAliaser->aliased) {
+      targetAlias->aliased.insert(aliasedElem);
+      aliasedElem->pointers.insert(targetAlias);
+    }
   }
 }
 
@@ -257,6 +274,34 @@ void AliasTable::getPointersAliases(
   if (v)
     for (const auto &alias : v->pointers)
       aliases.insert(alias);
+}
+
+void AliasTable::getPointerAccessedVariables(
+    std::unordered_set<std::shared_ptr<aliasArg>> &setResults,
+    const int &depth) {
+  // TODO : Handle remove aliases from the set when impossible to reach the
+  // depth
+  //  c references b,b1 ; b references a,a1;
+  //  getPointerAccessedVariables(c,2) (**c) should return {c,b,a,a1}, not b1
+  //  because b1 does not reference anything yet, so **c would fail if it tried
+  //  to access it So we assume that the code is correct and that b1 was
+  //  wrongfully considered as referenced by c
+  int curDepth = 0;
+  std::unordered_set<std::shared_ptr<aliasArg>> curSet, precSet;
+  precSet = setResults;
+  while (depth > curDepth) {
+    for (auto &dep : precSet) {
+      for (auto &ptr : dep->aliased) {
+        if (ptr == nullptr)
+          continue;
+        curSet.insert(ptr);
+        setResults.insert(ptr);
+      }
+    }
+    precSet = curSet;
+    curSet.clear();
+    curDepth++;
+  }
 }
 
 void AliasTable::getModifiedVariables(

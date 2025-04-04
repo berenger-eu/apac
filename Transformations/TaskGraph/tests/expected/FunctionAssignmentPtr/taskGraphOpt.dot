@@ -1,0 +1,60 @@
+digraph G {
+subgraph cluster_f0 {
+    invisibleNodeScope_2 [style=invis];
+}
+subgraph cluster_f1 {
+    invisibleNodeScope_3 [style=invis];
+    0 [label="a = &valA;
+*a = 1;
+*a : valA"];
+    1 [label="b = &valB;
+*b = 2;
+*b : valB"];
+    2 [label="c = &valC;
+*c = 3;
+*c : valC"];
+    3 [label="f = &valF;
+*f = 10;
+*f : valF"];
+    4 [label="e = &f;"];
+    5 [label="d = 4;"];
+    10 [label="*e = f;
+*e : f"];
+    11 [label="a = inPtrs(b, c, d, e);"];
+    12 [label="*a = 4;
+*a : valA
+*a : valB
+*a : valC
+*a : valF"];
+    13 [label="d = 5;"];
+    14 [label="*b = 5;
+*b : valB"];
+    15 [label="*c = 6;
+*c : valC"];
+    16 [label="*f = 11;
+**e = 12;
+*f : valF
+**e : valF"];
+    18 [label="d = *a;
+*a : valA
+*a : valB
+*a : valC
+*a : valF"];
+}
+    0 -> 11[label="  aW"];
+    1 -> 11[label="  bW"];
+    2 -> 11[label="  cW"];
+    3 -> 10[label="  fW"];
+    4 -> 10[label="  eR"];
+    5 -> 11[label="  dR"];
+    10 -> 11[label="  eW"];
+    11 -> 12[label="  aR"];
+    11 -> 13[label="  dW"];
+    12 -> 14[label="  valBRW"];
+    12 -> 15[label="  valCRW"];
+    12 -> 16[label="  valFRW"];
+    13 -> 18[label="  dRW"];
+    14 -> 18[label="  valBR"];
+    15 -> 18[label="  valCR"];
+    16 -> 18[label="  valFR"];
+}

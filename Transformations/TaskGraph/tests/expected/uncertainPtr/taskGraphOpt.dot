@@ -1,0 +1,22 @@
+digraph G {
+subgraph cluster_f0 {
+    invisibleNodeScope_2 [style=invis];
+}
+subgraph cluster_f1 {
+    invisibleNodeScope_3 [style=invis];
+    0 [label="i = 4;"];
+    1 [label="j = 4;"];
+    2 [label="p = minPtr(&i, &j);"];
+    3 [label="j++;"];
+    4 [label="i++;"];
+    5 [label="*p = 5;
+*p : i
+*p : j"];
+}
+    0 -> 2[label="  iRW"];
+    1 -> 2[label="  jRW"];
+    2 -> 3[label="  jRW"];
+    2 -> 4[label="  iRW"];
+    3 -> 5[label="  jRW"];
+    4 -> 5[label="  iRW"];
+}

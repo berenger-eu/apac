@@ -166,6 +166,31 @@ QualType getNonReferenceQualType(QualType qType) {
   return qType;
 }
 
+void getLowestType(std::vector<Expr *> &exprs,
+                   std::vector<QualType> &lowestTypes,
+                   const ASTContext &aContext) {
+  for (auto &expr : exprs) {
+    auto curType = expr->getType();
+    curType = getUnreferencedQType(curType, aContext);
+    while (isPointerQualType(curType)) {
+      curType = curType->getPointeeType();
+    }
+    lowestTypes.push_back(curType);
+  }
+}
+
+void getLowestType(std::vector<const Expr *> &exprs,
+                   std::vector<QualType> &lowestTypes,
+                   const ASTContext &aContext) {
+  for (auto &expr : exprs) {
+    auto curType = expr->getType();
+    curType = getUnreferencedQType(curType, aContext);
+    while (isPointerQualType(curType)) {
+      curType = curType->getPointeeType();
+    }
+    lowestTypes.push_back(curType);
+  }
+}
 void getLeafs(Stmt *st, std::vector<Stmt *> &leafs) {
   std::queue<Stmt *> vectNodes;
   vectNodes.push(st);
@@ -276,11 +301,37 @@ bool isFullConstType(const QualType &qType) {
   } while ((typeTemp = qTypeTemp.getTypePtrOrNull()) && !workDone);
   return returnValue;
 }
+int getPtrDepth(QualType qt, const ASTContext &aContext) {
+  int returnValue = 0;
+  if (isReferenceQualType(qt)) {
+    qt = getNonReferenceQualType(qt);
+  }
+  QualType previousType = qt;
+  do {
+    previousType = qt;
+    qt = qt.getSingleStepDesugaredType(aContext);
+    if (qt.getTypePtrOrNull() != nullptr) {
+      returnValue++;
+      qt = qt->getPointeeType();
+    } else if (qt->isArrayType() || qt->isConstantArrayType()) {
+      qt = aContext.getAsArrayType(qt)->getElementType();
+    }
+  } while ((qt.getTypePtrOrNull() != nullptr) && (qt != previousType));
 
+  return returnValue;
+}
 int getPtrDepthAccess(QualType qt1, QualType qt2, const ASTContext &aContext) {
   int returnValue = 0;
-  // If both types are the same, then we return 0 since they have the same depth
+  int depth1 = 0;
+  depth1 = getPtrDepth(qt1, aContext);
+  int depth2 = 0;
+  depth2 = getPtrDepth(qt2, aContext);
+  int depResult = 0;
+  depResult = depth1 - depth2;
+  //  If both types are the same, then we return 0 since they have the same
+  //  depth
   qt2 = qt2.getSingleStepDesugaredType(aContext);
+  qt1 = qt1.getSingleStepDesugaredType(aContext);
   if (isReferenceQualType(qt2))
     qt2 = getNonReferenceQualType(qt2);
   if (qt1 != qt2) {
@@ -292,7 +343,9 @@ int getPtrDepthAccess(QualType qt1, QualType qt2, const ASTContext &aContext) {
     // Else, we compare type pointed by qt1 until we find the same type as qt2
     // The number of iteration is the depth of the pointer access
     else {
-      while (qt1 != qt2 && qt1.getTypePtrOrNull() && qt2.getTypePtrOrNull()) {
+      int depth = 0;
+      while (qt1 != qt2 && qt1.getTypePtrOrNull() && qt2.getTypePtrOrNull() &&
+             depth < 10) {
         if (isPointerQualType(qt1)) {
           returnValue++;
           qt1 = qt1->getPointeeType();
@@ -302,9 +355,17 @@ int getPtrDepthAccess(QualType qt1, QualType qt2, const ASTContext &aContext) {
           qt1 = aContext.getAsArrayType(qt1)->getElementType();
         }
         qt1 = qt1.getSingleStepDesugaredType(aContext);
+        qt2 = qt2.getSingleStepDesugaredType(aContext);
+        depth++;
+      }
+      if (depth == 10) {
+        returnValue = 0;
       }
     }
   }
+  llvm::errs() << "Depth: " << returnValue << "\n"
+               << "Depth result: " << depResult << "\n";
+  assert(returnValue == depResult);
   return returnValue;
 }
 
