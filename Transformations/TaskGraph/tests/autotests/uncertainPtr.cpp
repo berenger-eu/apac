@@ -8,7 +8,7 @@ int main() {
   // Issue when using address of a variable
   p = minPtr(&i, &j);
   j++;
-  *p = 5;
   i++;
+  *p = 5;
   return 0;
 }
