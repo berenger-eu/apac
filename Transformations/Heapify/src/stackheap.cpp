@@ -6,6 +6,10 @@ using namespace clang;
 using namespace clang::driver;
 using namespace clang::tooling;
 
+std::string mainName;
+std::vector<std::string> functions;
+std::vector<std::string> functionsToIgnore;
+
 struct item_found functionHeap;
 struct item_found variableHeap;
 // Implementation of the ASTConsumer interface for reading an AST produced
@@ -13,7 +17,9 @@ struct item_found variableHeap;
 class MyASTConsumer : public ASTConsumer {
 public:
   MyASTConsumer(Rewriter &R)
-      : VisitorHeapify(R, functionHeap, variableHeap), TheRewriter(R) {}
+      : VisitorHeapify(R, functionHeap, variableHeap, mainName, functions,
+                       functionsToIgnore),
+        TheRewriter(R) {}
 
   // Override the method that gets called for each parsed top-level
   // declaration.
@@ -67,6 +73,10 @@ bool HeapifyHandler::run(int argc, const char **argv) {
   }
 
   int argcFiles = (argc - 2 == 2 ? argc - 2 : argc);
+  llvm::cl::opt<std::string> APACMainFilter("main");
+  llvm::cl::opt<std::string> APACIgnoreFilter("ignore");
+  llvm::cl::opt<std::string> APACFunctionFilter("functions");
+
   llvm::Expected<clang::tooling::CommonOptionsParser> option =
       CommonOptionsParser::create(argcFiles, argv, ToolingSampleCategory,
                                   llvm::cl::OneOrMore);
@@ -86,6 +96,10 @@ bool HeapifyHandler::run(int argc, const char **argv) {
     variableHeap.name = s2;
     functionHeap.found = false;
     variableHeap.found = false;
+  } else {
+    callParse(APACMainFilter.getValue(), APACFunctionFilter.getValue(),
+              APACIgnoreFilter.getValue(), mainName, functionsToIgnore,
+              functions);
   }
   int retVal = tool.run(newFrontendActionFactory<MyFrontendAction>().get());
   // Only when looking for a specific function and variable

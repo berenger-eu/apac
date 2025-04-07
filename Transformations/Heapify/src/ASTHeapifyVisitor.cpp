@@ -4,7 +4,9 @@ using namespace clang;
 bool ASTHeapifyVisitor::TraverseFunctionDecl(FunctionDecl *fDecl) {
   // In case we were trying to look for a function defined in the header
   if (isInHeaders(TheRewriter.getSourceMgr(), fDecl->getEndLoc()) ||
-      !foundCorrectFunction(*fDecl, functionHeap.name)) {
+      !foundCorrectFunction(*fDecl, functionHeap.name) ||
+      !isToParseFunction(fDecl->getNameAsString(), functions, functionsToIgnore,
+                         mainName)) {
     return true;
   }
   functionHeap.found = true;

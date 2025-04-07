@@ -7,6 +7,8 @@
 #include "clang/Basic/SourceManager.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 
+#include "transfoCommon.hpp"
+
 #include "common.hpp"
 
 using namespace clang;

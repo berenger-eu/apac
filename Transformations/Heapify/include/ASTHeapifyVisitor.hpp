@@ -4,8 +4,12 @@ using namespace clang;
 class ASTHeapifyVisitor : public RecursiveASTVisitor<ASTHeapifyVisitor> {
 public:
   ASTHeapifyVisitor(Rewriter &R, struct item_found &funHeap,
-                    struct item_found &varHeap)
-      : TheRewriter(R), functionHeap(funHeap), variableHeap(varHeap) {};
+                    struct item_found &varHeap, std::string &mainRef,
+                    std::vector<std::string> &functionsRef,
+                    std::vector<std::string> &functionsToIgnoreRef)
+      : TheRewriter(R), mainName(mainRef), functions(functionsRef),
+        functionsToIgnore(functionsToIgnoreRef), functionHeap(funHeap),
+        variableHeap(varHeap) {};
   inline bool VisitStmt(Stmt *) { return true; }
   bool TraverseFunctionDecl(FunctionDecl *);
   inline bool TraverseFunctionTemplateDecl(FunctionTemplateDecl *fDecl) {
@@ -43,7 +47,9 @@ public:
 
 private:
   Rewriter &TheRewriter;
-
+  std::string &mainName;
+  std::vector<std::string> &functions;
+  std::vector<std::string> &functionsToIgnore;
   std::unordered_map<CompoundStmt *, std::shared_ptr<ScopeInfo>> scopes;
   std::stack<std::shared_ptr<ScopeInfo>> scopeStack;
   std::vector<std::shared_ptr<ScopeInfo>> topScopes;
