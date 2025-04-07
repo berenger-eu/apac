@@ -54,6 +54,15 @@ bool isReferenceQualType(clang::QualType);
 // Returns the type of the reference
 QualType getNonReferenceQualType(QualType qType);
 
+// Returns the lowest type of a list of expressions
+// So, int* is int,int& is int
+// TODO: MyClass would be MyClassAttribute1,MyClassAttribute2,MyClassAttribute3
+void getLowestType(std::vector<Expr *> &exprs,
+                   std::vector<QualType> &lowestTypes,
+                   const ASTContext &aContext);
+void getLowestType(std::vector<const Expr *> &exprs,
+                   std::vector<QualType> &lowestTypes,
+                   const ASTContext &aContext);
 // Returns the leafs (CallExpr,DeclRefExpr,...) of a given statement
 // TODO: Check usefulness and remove/replace if not needed
 void getLeafs(clang::Stmt *s, std::vector<clang::Stmt *> &leafs);
@@ -66,6 +75,17 @@ void getLeafsOfType(clang::Stmt *s, std::vector<T *> &leafs) {
   if (isa<T>(s))
     leafs.push_back(cast<T>(s));
   for (Stmt *child : s->children()) {
+    getLeafsOfType(child, leafs);
+  }
+}
+template <typename T>
+void getLeafsOfType(const clang::Stmt *s, std::vector<const T *> &leafs) {
+  if (!s)
+    return;
+
+  if (isa<T>(s))
+    leafs.push_back(cast<T>(s));
+  for (const Stmt *child : s->children()) {
     getLeafsOfType(child, leafs);
   }
 }

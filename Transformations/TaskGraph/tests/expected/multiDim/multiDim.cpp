@@ -26,13 +26,19 @@ int main() {
     }
     int b;
 #pragma omp task default(shared)
-    { b = 4; }
+    {
+      b = 4;
+    }
     const int c = 4;
     int d, e;
 #pragma omp task default(shared) depend(inout : d)
-    { d = 4; }
+    {
+      d = 4;
+    }
 #pragma omp task default(shared) depend(inout : e)
-    { e = 7; }
+    {
+      e = 7;
+    }
 #pragma omp task default(shared) depend(in : apacMemeBloc__a_0, a)             \
     firstprivate(__apac_depth_local)
     {
@@ -52,7 +58,7 @@ int main() {
       __apac_depth = __apac_depth_local + 1;
       a[0][0][1] = d + e;
     }
-#pragma omp taskwait(e, d)
+#pragma omp taskwait depend(in : e, d)
 #pragma omp task default(shared) depend(inout : a[d][0][1], a[e][0][1])        \
     depend(in : apacMemeBloc__a_0, a, d, e)                                    \
     firstprivate(__apac_depth_local, e, d)
@@ -63,9 +69,9 @@ int main() {
       a[e][0][1] = a[d][0][1];
       a[e][0][1] = 9;
     }
-#pragma omp taskwait(e)
-#pragma omp task default(shared)                                               \
-    depend(in : apacMemeBloc__a_0, a, d, e, a[0][0][1], a[e + 1][0][1])        \
+#pragma omp taskwait depend(in : e)
+#pragma omp task default(shared) depend(inout : a[0][0][1], a[e + 1][0][1])    \
+    depend(in : apacMemeBloc__a_0, a, d, e)                                    \
     firstprivate(__apac_depth_local, e)
     {
       __apac_depth = __apac_depth_local + 1;

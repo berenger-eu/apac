@@ -1,0 +1,21 @@
+digraph G {
+subgraph cluster_f0 {
+    invisibleNodeScope_3 [style=invis];
+    0 [label="tab[4]++;"];
+}
+subgraph cluster_f1 {
+    invisibleNodeScope_4 [style=invis];
+    1 [label="ref++;"];
+}
+subgraph cluster_f2 {
+    invisibleNodeScope_5 [style=invis];
+    2 [label="apacMemeBloc__tab_0 = new int [10];
+tab = apacMemeBloc__tab_0;
+fdummy(tab);
+fdummyRef(tab[5]);"];
+    4 [label="x = 4;"];
+    7 [label="fdummyRef(tab[x]);"];
+}
+    2 -> 7[label="  tab[x]RW"];
+    4 -> 7[label="  xR"];
+}

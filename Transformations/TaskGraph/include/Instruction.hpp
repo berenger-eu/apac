@@ -31,7 +31,7 @@ struct Instruction {
   // If true, the instruction will not be fused with the next one
   // Mostly used when an instruction requires a taskwait (delete,
   // complexInstructions)
-  bool noFusion;
+  bool noFusion = false;
 
   unsigned int scopedInstructionsNumber; // Also takes in account number of
                                          // instructions in ComplexInstructions

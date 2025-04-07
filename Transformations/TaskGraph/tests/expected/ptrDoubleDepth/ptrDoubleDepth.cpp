@@ -10,29 +10,23 @@ int main() {
   int a, b;
 #pragma omp taskgroup
   {
-#pragma omp task default(shared) depend(inout : a)
-    { a = 4; }
-#pragma omp task default(shared) depend(inout : b)
-    { b = 5; }
     int *pa, *pb;
-    int *p;
+    int **ppa;
+#pragma omp task default(shared) depend(inout : pa)
+    { pa = &a; }
 #pragma omp task default(shared) depend(inout : pb)
     { pb = &b; }
-#pragma omp task default(shared) depend(inout : p)
-    {
-      pa = &a;
-      p = pa;
-    }
-#pragma omp task default(shared) depend(inout : a) depend(in : p)
-    { *p = 5; }
-#pragma omp task default(shared) depend(inout : p) depend(in : pb)
-    { p = pb; }
-#pragma omp task default(shared) depend(inout : b) depend(in : p)
-    { *p = 6; }
+#pragma omp task default(shared) depend(inout : ppa)
+    { ppa = &pa; }
+#pragma omp task default(shared) depend(inout : a) depend(in : pa, ppa)
+    { **ppa = 10; }
 #pragma omp task default(shared) depend(inout : a)
+    { a = 1; }
+#pragma omp task default(shared) depend(inout : pa) depend(in : pb, ppa)
     {
-      a++;
-      (*pa)++;
+      *ppa = pb;
+      **ppa = 12;
+      b = 2;
     }
     ;
   }

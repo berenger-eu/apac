@@ -156,6 +156,9 @@ private:
   void computeAliasesForRHS(const Expr *bop,
                             std::unordered_set<std::shared_ptr<aliasArg>> &,
                             Instruction &instr);
+  const Expr *initVarFromExpr(const Expr *expr, const VarDecl *&mainVariable,
+                              std::vector<int> &indexes);
+
   Rewriter &TheRewriter;
   std::string &mainName;
   std::vector<std::string> &functions;

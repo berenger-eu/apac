@@ -36,6 +36,12 @@ public:
   void removeDependencyPtr(const std::shared_ptr<aliasArg> &ptr);
   void addAliasReference(std::shared_ptr<aliasArg> &var,
                          std::shared_ptr<aliasArg> &ref);
+
+  // Used for assignment of a pointer to another pointer
+  // when using functions
+  void fuseAliased(const std::shared_ptr<aliasArg> &destPointer,
+                   const std::shared_ptr<aliasArg> &sourcePointer);
+
   // TODO: split function ?
   void addAliasPtr(std::shared_ptr<aliasArg> var,
                    std::shared_ptr<aliasArg> ptr);
@@ -45,8 +51,14 @@ void addAliasPtr(const VarDecl *var, const std::vector<int> &,
   const VarDecl *ptr, const std::vector<int> &, const int &);
   */
   // Used to add aliased element of right AliasArg to left AliasArg
-  void addAliasedToElement(std::shared_ptr<aliasArg>,
-                           std::shared_ptr<aliasArg>);
+  void replaceAliasedToElement(std::shared_ptr<aliasArg>,
+                               std::shared_ptr<aliasArg>);
+  // For a pointer, accessed with a given depth, get all the variables accessed
+  // to reach the depth Example, **c=&b,b=&a, getModifiedVariables(c,2) will
+  // return {c,b,a}
+  void getPointerAccessedVariables(
+      std::unordered_set<std::shared_ptr<aliasArg>> &setResults,
+      const int &depth);
   void getModifiedVariables(
       std::unordered_set<std::shared_ptr<aliasArg>> &setResults,
       const int &depth);

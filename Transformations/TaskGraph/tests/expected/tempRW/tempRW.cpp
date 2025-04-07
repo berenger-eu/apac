@@ -7,22 +7,21 @@ int __apac_depth = 0;
 const static int __apac_depth_max = parallel_depth;
 int main() {
   int __apac_depth_local = __apac_depth;
-  int i, j;
+  int i;
 #pragma omp taskgroup
   {
+    int x;
 #pragma omp task default(shared) depend(inout : i)
-    { i = 4; }
-#pragma omp task default(shared) depend(inout : j)
-    { j = 4; }
-    int c;
-#pragma omp task default(shared) depend(inout : c)
-    { c = 5; }
-#pragma omp task default(shared) depend(inout : c) depend(in : i, j)
+    { i = 1; }
+#pragma omp task default(shared) depend(inout : x)
+    { x = 2; }
+#pragma omp task default(shared) depend(inout : i) depend(in : x)
+    { i = x; }
+#pragma omp task default(shared) depend(inout : i)
+    { i = 1; }
+#pragma omp task default(shared) depend(inout : x)
     {
-      c = i + j;
-      c = i - j;
-      c = 2 * c;
-      c = 2 * c + j - i;
+      x = 2;
     }
     ;
   }
