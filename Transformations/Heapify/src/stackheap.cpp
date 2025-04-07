@@ -66,9 +66,10 @@ private:
 };
 
 bool HeapifyHandler::run(int argc, const char **argv) {
-  if (argc != 4 && argc != 2) {
+  if (argc < 2) {
     std::cerr << "Call with following format : ./stackheap <file.cpp>\n"
-              << "\t./stackheap <file.cpp> <function> <variable>\n";
+              << "\t./stackheap <file.cpp> [-functions -ignore -main -variable "
+                 "-variable-function]\n";
     exit(1);
   }
 
@@ -76,6 +77,8 @@ bool HeapifyHandler::run(int argc, const char **argv) {
   llvm::cl::opt<std::string> APACMainFilter("main");
   llvm::cl::opt<std::string> APACIgnoreFilter("ignore");
   llvm::cl::opt<std::string> APACFunctionFilter("functions");
+  llvm::cl::opt<std::string> APACVariableHeapFilter("variable");
+  llvm::cl::opt<std::string> APACVariableFunctionHeapFilter("variableFunction");
 
   llvm::Expected<clang::tooling::CommonOptionsParser> option =
       CommonOptionsParser::create(argcFiles, argv, ToolingSampleCategory,
@@ -89,11 +92,12 @@ bool HeapifyHandler::run(int argc, const char **argv) {
   // the helper newFrontendActionFactory to create a default factory that will
   // return a new MyFrontendAction object every time.
   // To further customize this, we could create our own factory class.
-  if (argc == 4) {
-    std::string s1(argv[argc - 2]);
-    std::string s2(argv[argc - 1]);
-    functionHeap.name = s1;
-    variableHeap.name = s2;
+  bool transfoSingleVariable =
+      (APACVariableHeapFilter.getValue() != "" &&
+       APACVariableFunctionHeapFilter.getValue() != "");
+  if (transfoSingleVariable) {
+    functionHeap.name = APACVariableFunctionHeapFilter.getValue();
+    variableHeap.name = APACVariableFunctionHeapFilter.getValue();
     functionHeap.found = false;
     variableHeap.found = false;
   } else {
@@ -103,7 +107,7 @@ bool HeapifyHandler::run(int argc, const char **argv) {
   }
   int retVal = tool.run(newFrontendActionFactory<MyFrontendAction>().get());
   // Only when looking for a specific function and variable
-  if (argc == 4) {
+  if (transfoSingleVariable) {
     std::stringstream SSprint;
     if (!functionHeap.found) {
       SSprint << "\nFunction not found\n ";
