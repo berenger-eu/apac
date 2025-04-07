@@ -3,6 +3,7 @@
 #include <sstream>
 #include <string>
 
+#include "transfoCommon.hpp"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Basic/SourceManager.h"
@@ -13,7 +14,11 @@
 using namespace clang;
 class ASTDuplicateVisitor : public RecursiveASTVisitor<ASTDuplicateVisitor> {
 public:
-  ASTDuplicateVisitor(Rewriter &R) : TheRewriter(R) {};
+  ASTDuplicateVisitor(Rewriter &R, std::string &mainRef,
+                      std::vector<std::string> &functionsRef,
+                      std::vector<std::string> &functionsToIgnoreRef)
+      : TheRewriter(R), mainName(mainRef), functions(functionsRef),
+        functionsToIgnore(functionsToIgnoreRef) {};
   inline bool VisitStmt(Stmt *) { return true; }
   inline bool TraverseCXXMethodDecl(CXXMethodDecl *m) {
     return TraverseFunctionDecl(m);
@@ -22,13 +27,15 @@ public:
     if (isInHeaders(TheRewriter.getSourceMgr(), f->getBeginLoc())) {
       return true;
     }
-    if (f->getNameAsString() != "main") {
-      functions.push_back(f);
+    if (isToParseFunction(f->getNameAsString(), functions, functionsToIgnore,
+                          mainName) &&
+        f->getNameAsString() != mainName) {
+      functionsDecl.push_back(f);
     }
     return true;
   }
   void addDuplicateFunctions() {
-    for (auto &f : functions) {
+    for (auto &f : functionsDecl) {
       std::stringstream SSprint;
       SSprint << f->getReturnType().getAsString() << " "
               << f->getNameInfo().getAsString() << "(";
@@ -44,10 +51,13 @@ public:
                                      f->getASTContext().getLangOpts());
       TheRewriter.InsertTextAfterToken(f->getEndLoc(), SSprint.str());
     }
-    llvm::errs() << "Added " << functions.size() << " functions\n";
+    llvm::errs() << "Added " << functionsDecl.size() << " functions\n";
   }
 
 private:
-  std::vector<FunctionDecl *> functions;
+  std::vector<FunctionDecl *> functionsDecl;
   Rewriter &TheRewriter;
+  std::string &mainName;
+  std::vector<std::string> &functions;
+  std::vector<std::string> &functionsToIgnore;
 };

@@ -3,8 +3,8 @@
 #include <sstream>
 #include <string>
 
+#include "transfoCommon.hpp"
 #include "clang/AST/ASTContext.h"
-
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Rewrite/Core/Rewriter.h"
@@ -14,10 +14,15 @@
 using namespace clang;
 class ASTGotoVisitor : public RecursiveASTVisitor<ASTGotoVisitor> {
 public:
-  ASTGotoVisitor(Rewriter &R) : TheRewriter(R), functionsCounter(0) {};
+  ASTGotoVisitor(Rewriter &R, std::string &mainRef,
+                 std::vector<std::string> &functionsRef,
+                 std::vector<std::string> &functionsToIgnoreRef)
+      : TheRewriter(R), mainName(mainRef), functions(functionsRef),
+        functionsToIgnore(functionsToIgnoreRef), functionsCounter(0) {};
   inline bool VisitStmt(Stmt *) { return true; }
   bool TraverseFunctionDecl(FunctionDecl *fDecl) {
-    if (fDecl->getNameAsString().find("_apacSeq") == std::string::npos) {
+    if (isToParseFunction(fDecl->getNameAsString(), functions,
+                          functionsToIgnore, mainName)) {
       return RecursiveASTVisitor::TraverseFunctionDecl(fDecl);
     }
     return true;
@@ -53,6 +58,9 @@ private:
   void handleSubStmt(Stmt *);
   // Used to give a unique number for the exit section of each function
   Rewriter &TheRewriter;
+  std::string &mainName;
+  std::vector<std::string> &functions;
+  std::vector<std::string> &functionsToIgnore;
   unsigned int functionsCounter;
 };
 

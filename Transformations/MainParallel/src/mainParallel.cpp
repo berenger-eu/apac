@@ -5,7 +5,8 @@ static llvm::cl::OptionCategory ToolingSampleCategory("Tooling Sample");
 using namespace clang;
 using namespace clang::driver;
 using namespace clang::tooling;
-
+std::string mainName;
+std::vector<std::string> functions, functionsToIgnore;
 std::string stringReferenceHandlerClass() {
   return "#include <functional>\n\
 #include <optional>\n\
@@ -18,7 +19,7 @@ return (*ptr);}\n\n";
 // by the Clang parser.
 class MyASTConsumer : public ASTConsumer {
 public:
-  MyASTConsumer(Rewriter &R) : VisitorMainPara(R), TheRewriter(R) {}
+  MyASTConsumer(Rewriter &R) : VisitorMainPara(R, mainName), TheRewriter(R) {}
 
   // Parse all the file
   virtual void HandleTranslationUnit(ASTContext &Ctx) {
@@ -59,6 +60,12 @@ bool MainParallelHandler::run(int argc, const char **argv) {
                  "[<file.cpp> ...]\n";
     exit(1);
   }
+  // The following lines are used to define the options that can be passed
+  // Template type for the type of the argument
+  // The init string is the name of the option
+  llvm::cl::opt<std::string> APACMainFilter("main");
+  llvm::cl::opt<std::string> APACIgnoreFilter("ignore");
+  llvm::cl::opt<std::string> APACFunctionFilter("functions");
   llvm::Expected<clang::tooling::CommonOptionsParser> option =
       CommonOptionsParser::create(argc, argv, ToolingSampleCategory,
                                   llvm::cl::OneOrMore);
@@ -71,6 +78,9 @@ bool MainParallelHandler::run(int argc, const char **argv) {
   // the helper newFrontendActionFactory to create a default factory that will
   // return a new MyFrontendAction object every time.
   // To further customize this, we could create our own factory class.
+  callParse(APACMainFilter.getValue(), APACFunctionFilter.getValue(),
+            APACIgnoreFilter.getValue(), mainName, functionsToIgnore,
+            functions);
   return tool.run(newFrontendActionFactory<MyFrontendAction>().get());
 }
 

@@ -3,17 +3,21 @@
 #include <sstream>
 #include <string>
 
+#include "common.hpp"
+#include "transfoCommon.hpp"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 
-#include "common.hpp"
-
 using namespace clang;
 class ASTDepthAddVisitor : public RecursiveASTVisitor<ASTDepthAddVisitor> {
 public:
-  ASTDepthAddVisitor(Rewriter &R) : TheRewriter(R) {};
+  ASTDepthAddVisitor(Rewriter &R, std::string &mainRef,
+                     std::vector<std::string> &functionsRef,
+                     std::vector<std::string> &functionsToIgnoreRef)
+      : TheRewriter(R), mainName(mainRef), functions(functionsRef),
+        functionsToIgnore(functionsToIgnoreRef) {};
   inline bool VisitStmt(Stmt *st) { return true; }
   inline bool TraverseCXXMethodDecl(CXXMethodDecl *m) {
     return TraverseFunctionDecl(m);
@@ -30,7 +34,8 @@ public:
       return true;
     }
     bool result = true;
-    if (!(f->getNameAsString().find("_apacSeq") != std::string::npos)) {
+    if (isToParseFunction(f->getNameAsString(), functions, functionsToIgnore,
+                          mainName)) {
       functionsToModify.push_back(f);
       auto recCalls = recursiveCallsStatements.size();
       traverseTree(f->getBody());
@@ -82,4 +87,7 @@ private:
   std::vector<FunctionDecl *> functionsToModify;
   std::vector<Stmt *> recursiveCallsStatements;
   Rewriter &TheRewriter;
+  std::string &mainName;
+  std::vector<std::string> &functions;
+  std::vector<std::string> &functionsToIgnore;
 };

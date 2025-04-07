@@ -1,5 +1,7 @@
 #pragma once
+#include "common.hpp"
 #include "helperFunctions.hpp"
+#include "transfoCommon.hpp"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Basic/SourceManager.h"
@@ -9,17 +11,20 @@
 #include <stack>
 #include <string>
 
-#include "common.hpp"
-
 using namespace clang;
 class ASTUnstackVisitor : public RecursiveASTVisitor<ASTUnstackVisitor> {
 public:
-  ASTUnstackVisitor(Rewriter &R)
-      : TheRewriter(R), tempVarsCounter(0), callsToIgnore(0) {};
+  ASTUnstackVisitor(Rewriter &R, std::string &mainRef,
+                    std::vector<std::string> &functionsRef,
+                    std::vector<std::string> &functionsToIgnoreRef)
+      : TheRewriter(R), mainName(mainRef), functions(functionsRef),
+        functionsToIgnore(functionsToIgnoreRef), tempVarsCounter(0),
+        callsToIgnore(0) {};
   inline bool VisitStmt(Stmt *) { return true; }
   bool TraverseFunctionDecl(FunctionDecl *fDecl) {
     if ((!isInHeaders(TheRewriter.getSourceMgr(), fDecl->getBeginLoc())) &&
-        fDecl->getNameAsString().find("_apacSeq") == std::string::npos) {
+        (isToParseFunction(fDecl->getNameAsString(), functions,
+                           functionsToIgnore, mainName))) {
       tempVarsCounter = 0;
       callsToUnstack.push_back({});
       return RecursiveASTVisitor::TraverseFunctionDecl(fDecl);
@@ -84,6 +89,9 @@ private:
   }
 
   Rewriter &TheRewriter;
+  std::string &mainName;
+  std::vector<std::string> &functions;
+  std::vector<std::string> &functionsToIgnore;
   // one element (vector) for each function, contains all of its calls
   // associated to the location where the text has to be inserted (right
   // before the call or before the declaration etc)

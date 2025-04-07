@@ -3,13 +3,18 @@
 using namespace clang;
 class ASTPrintVisitor : public RecursiveASTVisitor<ASTPrintVisitor> {
 public:
-  ASTPrintVisitor(Rewriter &R, SymTab &SymTableIn)
-      : TheRewriter(R), SymT(SymTableIn) {}
+  ASTPrintVisitor(Rewriter &R, std::string &mainName,
+                  std::vector<std::string> &functionsRef,
+                  std::vector<std::string> &functionsToIgnoreRef,
+                  SymTab &SymTableIn)
+      : TheRewriter(R), mainName(mainName), functions(functionsRef),
+        functionsToIgnore(functionsToIgnoreRef), SymT(SymTableIn) {}
   // To avoid errors on unused Stmt
   inline bool VisitStmt(Stmt *) { return true; };
   // bool VisitFunctionDecl(FunctionDecl *);
   bool TraverseFunctionDecl(FunctionDecl *fDecl) {
-    if (fDecl->getNameAsString().find("_apacSeq") == std::string::npos) {
+    if (isToParseFunction(fDecl->getNameAsString(), functions,
+                          functionsToIgnore, mainName)) {
       return RecursiveASTVisitor::TraverseFunctionDecl(fDecl);
     }
     return true;
@@ -23,6 +28,9 @@ public:
 
 private:
   Rewriter &TheRewriter;
+  std::string &mainName;
+  std::vector<std::string> &functions;
+  std::vector<std::string> &functionsToIgnore;
   SymTab &SymT;
 };
 
