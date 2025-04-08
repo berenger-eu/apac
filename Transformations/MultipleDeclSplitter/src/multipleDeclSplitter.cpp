@@ -5,8 +5,10 @@ static llvm::cl::OptionCategory ToolingSampleCategory("Tooling Sample");
 using namespace clang;
 using namespace clang::driver;
 using namespace clang::tooling;
+
 std::string mainName;
 std::vector<std::string> functions, functionsToIgnore;
+std::queue<std::string> filesOutputExt;
 // Implementation of the ASTConsumer interface for reading an AST produced
 // by the Clang parser.
 class MyASTConsumer : public ASTConsumer {
@@ -33,7 +35,16 @@ public:
                  << "\n";
 
     // Now emit the rewritten buffer.
-    TheRewriter.getEditBuffer(SM.getMainFileID()).write(llvm::outs());
+
+    if (filesOutputExt.empty())
+      TheRewriter.getEditBuffer(SM.getMainFileID()).write(llvm::outs());
+    else {
+      std::error_code error_code;
+      llvm::raw_fd_ostream outFile(filesOutputExt.front(), error_code,
+                                   llvm::sys::fs::OF_None);
+      filesOutputExt.pop();
+      TheRewriter.getEditBuffer(SM.getMainFileID()).write(outFile);
+    }
   }
 
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
@@ -47,7 +58,18 @@ private:
   Rewriter TheRewriter;
 };
 
-bool MultipleDeclSplitterHandler::run(int argc, const char **argv) {
+bool MultipleDeclSplitterHandler::run(
+    llvm::Expected<clang::tooling::CommonOptionsParser> &options,
+    std::vector<std::string> &filesInput,
+    const std::vector<std::string> &filesOutput) {
+  for (auto file : filesOutput) {
+    filesOutputExt.push(file);
+  }
+  clang::tooling::ClangTool tool(options->getCompilations(), filesInput);
+  return tool.run(newFrontendActionFactory<MyFrontendAction>().get());
+}
+
+int main(int argc, const char **argv) {
   if (argc < 2) {
     std::cerr << "Call with following format : ./prog <file.cpp> "
                  "[<file.cpp> ...]\n";
@@ -66,7 +88,9 @@ bool MultipleDeclSplitterHandler::run(int argc, const char **argv) {
                                   llvm::cl::OneOrMore);
 
   auto files = option->getSourcePathList();
-  clang::tooling::ClangTool tool(option->getCompilations(), files);
+  for (auto file : files) {
+    llvm::errs() << file << "\n";
+  }
   // ClangTool::run accepts a FrontendActionFactory, which is then used to
   // create new objects implementing the FrontendAction interface. Here we use
   // the helper newFrontendActionFactory to create a default factory that will
@@ -75,9 +99,5 @@ bool MultipleDeclSplitterHandler::run(int argc, const char **argv) {
   callParse(APACMainFilter.getValue(), APACFunctionFilter.getValue(),
             APACIgnoreFilter.getValue(), mainName, functionsToIgnore,
             functions);
-  return tool.run(newFrontendActionFactory<MyFrontendAction>().get());
-}
-
-int main(int argc, const char **argv) {
-  return MultipleDeclSplitterHandler::run(argc, argv);
+  return MultipleDeclSplitterHandler::run(option, files);
 }

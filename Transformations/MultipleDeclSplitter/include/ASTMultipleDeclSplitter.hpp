@@ -23,7 +23,8 @@ public:
 
   inline bool VisitStmt(Stmt *) { return true; }
   inline bool TraverseFunctionDecl(FunctionDecl *fDecl) {
-    if (isToParseFunction(fDecl->getNameAsString(), functions,
+    if (!isInHeaders(TheRewriter.getSourceMgr(), fDecl->getEndLoc()) &&
+        isToParseFunction(fDecl->getNameAsString(), functions,
                           functionsToIgnore, main)) {
       return RecursiveASTVisitor::TraverseFunctionDecl(fDecl);
     }
@@ -42,12 +43,9 @@ public:
       for (Decl *decl : declGroup) {
         if (isa<VarDecl>(decl)) {
           VarDecl *varDecl = cast<VarDecl>(decl);
-          llvm::errs() << "VarDecl: " << varDecl->getNameAsString() << "\n";
-          llvm::errs() << getCompleteVarDeclStr(varDecl) << "\n";
           SSresult << getCompleteVarDeclStr(varDecl);
         }
       }
-      llvm::errs() << SSresult.str() << "\n";
       TheRewriter.ReplaceText(declStmt->getSourceRange(), SSresult.str());
     }
     return true;
