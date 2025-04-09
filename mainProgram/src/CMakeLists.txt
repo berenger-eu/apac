@@ -38,7 +38,8 @@ llvm_map_components_to_libnames(llvm_libs x86asmparser bitreader support mc opti
 message(STATUS "LLVM_LIBS: ${llvm_libs}")
 
 target_link_libraries(apac
-    clangAST 
+APACMultipleDeclSplitterLib  
+  clangAST 
     clangASTMatchers
     clangBasic
     clangFrontend
