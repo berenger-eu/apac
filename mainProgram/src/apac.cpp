@@ -35,6 +35,8 @@ int main(int argc, const char **argv) {
             APACIgnoreFilter.getValue(), mainName, functionsToIgnore,
             functions);
   */
-  MultipleDeclSplitterHandler::run(option, files);
+  MultipleDeclSplitterHandler::run(option, files, APACMainFilter.getValue(),
+                                   APACFunctionFilter.getValue(),
+                                   APACIgnoreFilter.getValue());
   return 0;
 }
