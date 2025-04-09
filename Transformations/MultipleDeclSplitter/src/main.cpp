@@ -31,5 +31,7 @@ int main(int argc, const char **argv) {
   // return a new MyFrontendAction object every time.
   // To further customize this, we could create our own factory class.
 
-  return MultipleDeclSplitterHandler::run(option, files);
+  return MultipleDeclSplitterHandler::run(
+      option, files, APACMainFilter.getValue(), APACFunctionFilter.getValue(),
+      APACIgnoreFilter.getValue());
 }
