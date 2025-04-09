@@ -3,8 +3,8 @@
 #include <sstream>
 #include <string>
 #include <vector>
-inline void callParse(std::string &main, std::string &functions,
-                      std::string &ignore, std::string &mainName,
+inline void callParse(const std::string &main, const std::string &functions,
+                      const std::string &ignore, std::string &mainName,
                       std::vector<std::string> &functionsToIgnore,
                       std::vector<std::string> &functionsToParse) {
   mainName = main.empty() ? "main" : main;
