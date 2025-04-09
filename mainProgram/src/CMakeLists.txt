@@ -39,7 +39,7 @@ message(STATUS "LLVM_LIBS: ${llvm_libs}")
 
 target_link_libraries(apac
 APACUnstackLib
-APACDeclSplitLib
+APACDeclarationSplitterLib
 APACTaskGraphLib
 APACGotoTransfoLib
 APACConstifyLib
