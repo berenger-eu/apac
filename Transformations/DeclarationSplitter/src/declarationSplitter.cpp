@@ -8,6 +8,8 @@ using namespace clang::tooling;
 std::string mainName;
 std::vector<std::string> functions;
 std::vector<std::string> functionsToIgnore;
+std::queue<std::string> filesOutputExt;
+
 std::string stringReferenceHandlerClass() {
   return "#include <functional>\n\
 #include <optional>\n\
@@ -61,33 +63,17 @@ private:
   Rewriter TheRewriter;
 };
 
-bool DeclarationSplitterHandler::run(int argc, const char **argv) {
-  if (argc < 2) {
-    std::cerr << "Call with following format : ./gotoRet <file.cpp> "
-                 "[<file.cpp> ...]\n";
-    exit(1);
+bool DeclarationSplitterHandler::run(
+    llvm::Expected<clang::tooling::CommonOptionsParser> &options,
+    std::vector<std::string> &filesInput, const std::string &mainFilterValue,
+    const std::string &functionsFilterValue,
+    const std::string &functionsIgnoreValue,
+    const std::vector<std::string> &filesOutput) {
+  callParse(mainFilterValue, functionsFilterValue, functionsIgnoreValue,
+            mainName, functionsToIgnore, functions);
+  for (auto file : filesOutput) {
+    filesOutputExt.push(file);
   }
-  llvm::cl::opt<std::string> APACMainFilter("main");
-  llvm::cl::opt<std::string> APACIgnoreFilter("ignore");
-  llvm::cl::opt<std::string> APACFunctionFilter("functions");
-  llvm::Expected<clang::tooling::CommonOptionsParser> option =
-      CommonOptionsParser::create(argc, argv, ToolingSampleCategory,
-                                  llvm::cl::OneOrMore);
-
-  auto files = option->getSourcePathList();
-
-  clang::tooling::ClangTool tool(option->getCompilations(), files);
-  // ClangTool::run accepts a FrontendActionFactory, which is then used to
-  // create new objects implementing the FrontendAction interface. Here we use
-  // the helper newFrontendActionFactory to create a default factory that will
-  // return a new MyFrontendAction object every time.
-  // To further customize this, we could create our own factory class.
-  callParse(APACMainFilter.getValue(), APACFunctionFilter.getValue(),
-            APACIgnoreFilter.getValue(), mainName, functionsToIgnore,
-            functions);
+  clang::tooling::ClangTool tool(options->getCompilations(), filesInput);
   return tool.run(newFrontendActionFactory<MyFrontendAction>().get());
-}
-
-int main(int argc, const char **argv) {
-  return DeclarationSplitterHandler::run(argc, argv);
 }
