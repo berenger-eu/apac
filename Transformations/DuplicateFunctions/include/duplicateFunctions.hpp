@@ -17,3 +17,15 @@
 #include "clang/Tooling/Tooling.h"
 
 #include "llvm/Support/raw_ostream.h"
+
+class DuplicateFunctionsHandler {
+public:
+  static bool
+  run(llvm::Expected<clang::tooling::CommonOptionsParser> &options,
+      std::vector<std::string> &filesInput,
+      const std::string &mainValue = std::string(),
+      const std::string &functionsValue = std::string(),
+      const std::string &ignoreValue = std::string(),
+
+      const std::vector<std::string> &filesOutput = std::vector<std::string>());
+};
