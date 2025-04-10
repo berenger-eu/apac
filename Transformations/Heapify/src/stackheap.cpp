@@ -9,6 +9,7 @@ using namespace clang::tooling;
 std::string mainName;
 std::vector<std::string> functions;
 std::vector<std::string> functionsToIgnore;
+std::queue<std::string> filesOutputExt;
 
 struct item_found functionHeap;
 struct item_found variableHeap;
@@ -65,63 +66,17 @@ private:
   Rewriter TheRewriter;
 };
 
-bool HeapifyHandler::run(int argc, const char **argv) {
-  if (argc < 2) {
-    std::cerr << "Call with following format : ./stackheap <file.cpp>\n"
-              << "\t./stackheap <file.cpp> [-functions -ignore -main -variable "
-                 "-variable-function]\n";
-    exit(1);
+bool HeapifyHandler::run(
+    llvm::Expected<clang::tooling::CommonOptionsParser> &options,
+    std::vector<std::string> &filesInput, const std::string &mainFilterValue,
+    const std::string &functionsFilterValue,
+    const std::string &functionsIgnoreValue,
+    const std::vector<std::string> &filesOutput) {
+  callParse(mainFilterValue, functionsFilterValue, functionsIgnoreValue,
+            mainName, functionsToIgnore, functions);
+  for (auto file : filesOutput) {
+    filesOutputExt.push(file);
   }
-
-  int argcFiles = (argc - 2 == 2 ? argc - 2 : argc);
-  llvm::cl::opt<std::string> APACMainFilter("main");
-  llvm::cl::opt<std::string> APACIgnoreFilter("ignore");
-  llvm::cl::opt<std::string> APACFunctionFilter("functions");
-  llvm::cl::opt<std::string> APACVariableHeapFilter("variable");
-  llvm::cl::opt<std::string> APACVariableFunctionHeapFilter("variableFunction");
-
-  llvm::Expected<clang::tooling::CommonOptionsParser> option =
-      CommonOptionsParser::create(argcFiles, argv, ToolingSampleCategory,
-                                  llvm::cl::OneOrMore);
-
-  auto files = option->getSourcePathList();
-
-  clang::tooling::ClangTool tool(option->getCompilations(), files);
-  // ClangTool::run accepts a FrontendActionFactory, which is then used to
-  // create new objects implementing the FrontendAction interface. Here we use
-  // the helper newFrontendActionFactory to create a default factory that will
-  // return a new MyFrontendAction object every time.
-  // To further customize this, we could create our own factory class.
-  bool transfoSingleVariable =
-      (APACVariableHeapFilter.getValue() != "" &&
-       APACVariableFunctionHeapFilter.getValue() != "");
-  if (transfoSingleVariable) {
-    functionHeap.name = APACVariableFunctionHeapFilter.getValue();
-    variableHeap.name = APACVariableFunctionHeapFilter.getValue();
-    functionHeap.found = false;
-    variableHeap.found = false;
-  } else {
-    callParse(APACMainFilter.getValue(), APACFunctionFilter.getValue(),
-              APACIgnoreFilter.getValue(), mainName, functionsToIgnore,
-              functions);
-  }
-  int retVal = tool.run(newFrontendActionFactory<MyFrontendAction>().get());
-  // Only when looking for a specific function and variable
-  if (transfoSingleVariable) {
-    std::stringstream SSprint;
-    if (!functionHeap.found) {
-      SSprint << "\nFunction not found\n ";
-    } else if (!variableHeap.found) {
-      SSprint << "\nVariable not found\n";
-    }
-    if (!SSprint.str().empty()) {
-      std::cerr << SSprint.str();
-      exit(1);
-    }
-  }
-  return retVal;
-}
-
-int main(int argc, const char **argv) {
-  return HeapifyHandler::run(argc, argv);
+  clang::tooling::ClangTool tool(options->getCompilations(), filesInput);
+  return tool.run(newFrontendActionFactory<MyFrontendAction>().get());
 }
