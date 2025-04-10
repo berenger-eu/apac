@@ -5,20 +5,25 @@
 
 #include "clang/AST/ASTContext.h"
 
+#include "common.hpp"
+#include "transfoCommon.hpp"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Rewrite/Core/Rewriter.h"
-
-#include "common.hpp"
 
 using namespace clang;
 class ASTConditionUnstackVisitor
     : public RecursiveASTVisitor<ASTConditionUnstackVisitor> {
 public:
-  ASTConditionUnstackVisitor(Rewriter &R) : TheRewriter(R) {};
+  ASTConditionUnstackVisitor(Rewriter &R, std::string &mainRef,
+                             std::vector<std::string> &functionsRef,
+                             std::vector<std::string> &functionsToIgnoreRef)
+      : TheRewriter(R), mainName(mainRef), functions(functionsRef),
+        functionsToIgnore(functionsToIgnoreRef) {};
   inline bool VisitStmt(Stmt *) { return true; }
   bool TraverseFunctionDecl(FunctionDecl *fDecl) {
-    if (fDecl->getNameAsString().find("_apacSeq") == std::string::npos) {
+    if (isToParseFunction(fDecl->getNameAsString(), functions,
+                          functionsToIgnore, mainName)) {
       return RecursiveASTVisitor::TraverseFunctionDecl(fDecl);
     }
     return true;
@@ -35,4 +40,7 @@ public:
 
 private:
   Rewriter &TheRewriter;
+  std::string &mainName;
+  std::vector<std::string> &functions;
+  std::vector<std::string> &functionsToIgnore;
 };

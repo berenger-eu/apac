@@ -3,6 +3,7 @@
 #include <sstream>
 #include <string>
 
+#include "transfoCommon.hpp"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Basic/SourceManager.h"
@@ -13,8 +14,11 @@
 using namespace clang;
 class ASTChangeNameVisitor : public RecursiveASTVisitor<ASTChangeNameVisitor> {
 public:
-  ASTChangeNameVisitor(Rewriter &R)
-      : currentFunctionDecl(nullptr), TheRewriter(R) {};
+  ASTChangeNameVisitor(Rewriter &R, std::string &mainRef,
+                       std::vector<std::string> &functionsRef,
+                       std::vector<std::string> &functionsToIgnoreRef)
+      : currentFunctionDecl(nullptr), TheRewriter(R), mainName(mainRef),
+        functions(functionsRef), functionsToIgnore(functionsToIgnoreRef) {};
   inline bool VisitStmt(Stmt *) { return true; }
   inline bool TraverseCXXMethodDecl(CXXMethodDecl *m) {
     return TraverseFunctionDecl(m);
@@ -28,7 +32,9 @@ public:
   inline bool TraverseFunctionDecl(FunctionDecl *f) {
     if (!isInHeaders(TheRewriter.getSourceMgr(), f->getBeginLoc())) {
       llvm::errs() << "FunctionDecl\n";
-      if (f->getNameAsString() != "main") {
+      if (isToParseFunction(f->getNameAsString(), functions, functionsToIgnore,
+                            mainName) &&
+          f->getNameAsString() != mainName) {
         currentFunctionDecl = f;
         llvm::errs() << "FunctionDecl\n";
         std::stringstream SSprint;
@@ -69,4 +75,7 @@ public:
 private:
   FunctionDecl *currentFunctionDecl;
   Rewriter &TheRewriter;
+  std::string &mainName;
+  std::vector<std::string> &functions;
+  std::vector<std::string> &functionsToIgnore;
 };

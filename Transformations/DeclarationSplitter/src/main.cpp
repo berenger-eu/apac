@@ -1,9 +1,9 @@
-#include "apac.hpp"
+#include "declarationSplitter.hpp"
 using namespace clang;
 using namespace clang::driver;
 using namespace clang::tooling;
-int main(int argc, const char **argv) {
 
+int main(int argc, const char **argv) {
   if (argc < 2) {
     std::cerr << "Call with following format : ./prog <file.cpp> "
                  "[<file.cpp> ...]\n";
@@ -30,13 +30,8 @@ int main(int argc, const char **argv) {
   // the helper newFrontendActionFactory to create a default factory that will
   // return a new MyFrontendAction object every time.
   // To further customize this, we could create our own factory class.
-  /*
-  callParse(APACMainFilter.getValue(), APACFunctionFilter.getValue(),
-            APACIgnoreFilter.getValue(), mainName, functionsToIgnore,
-            functions);
-  */
-  MultipleDeclSplitterHandler::run(option, files, APACMainFilter.getValue(),
-                                   APACFunctionFilter.getValue(),
-                                   APACIgnoreFilter.getValue());
-  return 0;
+
+  return DeclarationSplitterHandler::run(
+      option, files, APACMainFilter.getValue(), APACFunctionFilter.getValue(),
+      APACIgnoreFilter.getValue());
 }

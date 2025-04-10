@@ -19,5 +19,12 @@
 
 class MultipleDeclSplitterHandler {
 public:
-  static bool run(int argc, const char **argv);
+  static bool
+  run(llvm::Expected<clang::tooling::CommonOptionsParser> &options,
+      std::vector<std::string> &filesInput,
+      const std::string &mainValue = std::string(),
+      const std::string &functionsValue = std::string(),
+      const std::string &ignoreValue = std::string(),
+
+      const std::vector<std::string> &filesOutput = std::vector<std::string>());
 };

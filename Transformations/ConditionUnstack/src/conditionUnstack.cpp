@@ -5,12 +5,17 @@ static llvm::cl::OptionCategory ToolingSampleCategory("Tooling Sample");
 using namespace clang;
 using namespace clang::driver;
 using namespace clang::tooling;
+std::string mainName;
+std::vector<std::string> functions, functionsToIgnore;
+std::queue<std::string> filesOutputExt;
 
 // Implementation of the ASTConsumer interface for reading an AST produced
 // by the Clang parser.
 class MyASTConsumer : public ASTConsumer {
 public:
-  MyASTConsumer(Rewriter &R) : VisitorConditionUnstack(R), TheRewriter(R) {}
+  MyASTConsumer(Rewriter &R)
+      : VisitorConditionUnstack(R, mainName, functions, functionsToIgnore),
+        TheRewriter(R) {}
 
   // Parse all the AST
   virtual void HandleTranslationUnit(ASTContext &Ctx) {
@@ -46,27 +51,17 @@ private:
   Rewriter TheRewriter;
 };
 
-bool ConditionUnstackHandler::run(int argc, const char **argv) {
-  if (argc < 2) {
-    std::cerr << "Call with following format : ./conditionUnstack <file.cpp> "
-                 "[<file.cpp> ...]\n";
-    exit(1);
+bool ConditionUnstackHandler::run(
+    llvm::Expected<clang::tooling::CommonOptionsParser> &options,
+    std::vector<std::string> &filesInput, const std::string &mainFilterValue,
+    const std::string &functionsFilterValue,
+    const std::string &functionsIgnoreValue,
+    const std::vector<std::string> &filesOutput) {
+  callParse(mainFilterValue, functionsFilterValue, functionsIgnoreValue,
+            mainName, functionsToIgnore, functions);
+  for (auto file : filesOutput) {
+    filesOutputExt.push(file);
   }
-  llvm::Expected<clang::tooling::CommonOptionsParser> option =
-      CommonOptionsParser::create(argc, argv, ToolingSampleCategory,
-                                  llvm::cl::OneOrMore);
-
-  auto files = option->getSourcePathList();
-
-  clang::tooling::ClangTool tool(option->getCompilations(), files);
-  // ClangTool::run accepts a FrontendActionFactory, which is then used to
-  // create new objects implementing the FrontendAction interface. Here we use
-  // the helper newFrontendActionFactory to create a default factory that will
-  // return a new MyFrontendAction object every time.
-  // To further customize this, we could create our own factory class.
+  clang::tooling::ClangTool tool(options->getCompilations(), filesInput);
   return tool.run(newFrontendActionFactory<MyFrontendAction>().get());
-}
-
-int main(int argc, const char **argv) {
-  return ConditionUnstackHandler::run(argc, argv);
 }

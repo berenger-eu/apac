@@ -3,17 +3,18 @@
 #include <sstream>
 #include <string>
 
+#include "common.hpp"
+#include "transfoCommon.hpp"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 
-#include "common.hpp"
-
 using namespace clang;
 class ASTMainParaVisitor : public RecursiveASTVisitor<ASTMainParaVisitor> {
 public:
-  ASTMainParaVisitor(Rewriter &R) : TheRewriter(R) {
+  ASTMainParaVisitor(Rewriter &R, std::string &mainName)
+      : TheRewriter(R), mainName(mainName) {
     mainFuncReturnStmt = nullptr;
     resultWrapperDecl = nullptr;
   };
@@ -52,7 +53,7 @@ public:
       return true;
     }
     bool result = true;
-    if ((f->getNameAsString().find("main") != std::string::npos)) {
+    if ((f->getNameAsString() == mainName)) {
       result = RecursiveASTVisitor::TraverseFunctionDecl(f);
     }
 
@@ -76,4 +77,5 @@ private:
   ReturnStmt *mainFuncReturnStmt;
   DeclStmt *resultWrapperDecl;
   Rewriter &TheRewriter;
+  std::string &mainName;
 };

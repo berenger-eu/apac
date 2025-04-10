@@ -19,8 +19,9 @@ set (TASKGRAPH_INC ${TRANSFO_PATH}/TaskGraph/include)
 set (GOTO_INC ${TRANSFO_PATH}/GotoTransfo/include)
 set (CONSTIFY_INC ${TRANSFO_PATH}/Constify/include)
 set (STACKHEAP_INC ${TRANSFO_PATH}/Heapify/include)
+set (MULTIDECL_INC ${TRANSFO_PATH}/MultipleDeclSplitter/include)
 
-set( TRANSFOS_INC ${UNSTACK_INC} ${DECLSPLIT_INC} ${TASKGRAPH_INC} ${GOTO_INC} ${CONSTIFY_INC} ${STACKHEAP_INC})
+set( TRANSFOS_INC ${MULTIDECL_INC} ${UNSTACK_INC} ${DECLSPLIT_INC} ${TASKGRAPH_INC} ${GOTO_INC} ${CONSTIFY_INC} ${STACKHEAP_INC})
 
 set(INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../include ${COMMON_LIB} ${TRANSFOS_INC})
 message(STATUS "Include directories: ${INC_DIR}")
@@ -37,7 +38,14 @@ llvm_map_components_to_libnames(llvm_libs x86asmparser bitreader support mc opti
 message(STATUS "LLVM_LIBS: ${llvm_libs}")
 
 target_link_libraries(apac
-    clangAST 
+APACUnstackLib
+APACDeclarationSplitterLib
+APACTaskGraphLib
+APACGotoTransfoLib
+APACConstifyLib
+APACStackHeapLib
+APACMultipleDeclSplitterLib
+  clangAST 
     clangASTMatchers
     clangBasic
     clangFrontend

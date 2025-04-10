@@ -6,6 +6,7 @@
 #include "Instruction.hpp"
 #include "InstructionsOrderManager.hpp"
 #include "common.hpp"
+#include "transfoCommon.hpp"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Basic/SourceManager.h"
@@ -14,8 +15,12 @@
 using namespace clang;
 class ASTTaskGraphVisitor : public RecursiveASTVisitor<ASTTaskGraphVisitor> {
 public:
-  ASTTaskGraphVisitor(Rewriter &R, StmtOrder &orderManager)
-      : TheRewriter(R), orderManager(orderManager),
+  ASTTaskGraphVisitor(Rewriter &R, StmtOrder &orderManager,
+                      std::string &mainRef,
+                      std::vector<std::string> &functionsRef,
+                      std::vector<std::string> &functionsToIgnoreRef)
+      : TheRewriter(R), mainName(mainRef), functions(functionsRef),
+        functionsToIgnore(functionsToIgnoreRef), orderManager(orderManager),
         currentOrderManager(&orderManager), aliasTable(R),
         ignoreStmtPragma(false) {};
   inline bool VisitStmt(Stmt *s) { return true; }
@@ -155,6 +160,9 @@ private:
                               std::vector<int> &indexes);
 
   Rewriter &TheRewriter;
+  std::string &mainName;
+  std::vector<std::string> &functions;
+  std::vector<std::string> &functionsToIgnore;
   StmtOrder &orderManager;
   StmtOrder *currentOrderManager;
   AliasTable aliasTable;
