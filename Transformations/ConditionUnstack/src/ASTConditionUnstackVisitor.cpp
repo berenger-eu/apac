@@ -21,7 +21,6 @@ bool ASTConditionUnstackVisitor::VisitWhileStmt(WhileStmt *whileSt) {
   return true;
 }
 bool ASTConditionUnstackVisitor::VisitIfStmt(IfStmt *ifSt) {
-  std::stringstream SSprint;
   if (ifSt->hasVarStorage() || ifSt->hasInitStorage()) {
 
     std::stringstream SSprint;
@@ -62,7 +61,6 @@ bool ASTConditionUnstackVisitor::VisitIfStmt(IfStmt *ifSt) {
 }
 
 bool ASTConditionUnstackVisitor::VisitForStmt(ForStmt *forSt) {
-  std::stringstream SSprint;
   if (forSt->getInit() && isa<DeclStmt>(forSt->getInit())) {
     std::stringstream SSprint;
     SSprint << "{\n";

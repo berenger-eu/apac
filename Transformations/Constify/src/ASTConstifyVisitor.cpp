@@ -62,12 +62,12 @@ bool ASTConstifyVisitor::VisitReturnStmt(ReturnStmt *retStmt) {
   }
   Expr *retValue = retStmt->getRetValue();
   // Returning a pointer might lead to modifications, so we have to unconst
-  if (retValue != NULL && isPointerQualType(retValue->getType())) {
+  if (retValue != nullptr && isPointerQualType(retValue->getType())) {
     const_arg *retValDeclArg = SymT.getInnerConstArg(retValue);
     unconstifyByPropagation(retValDeclArg);
   }
   // Returning a reference might lead to modifications, so we have to unconst
-  else if (retValue != NULL && isa<DeclRefExpr>(retValue)) {
+  else if (retValue != nullptr && isa<DeclRefExpr>(retValue)) {
     // We cast it to its decl because the QualType of retValue for a reference
     // will be int
     ValueDecl *retDecl = cast<DeclRefExpr>(retValue)->getDecl();
@@ -113,9 +113,9 @@ bool ASTConstifyVisitor::VisitCallExpr(CallExpr *ce) {
     }
     return true;
   }
-  FunctionDecl *fdec;
-  assert(ce->getDirectCallee() != NULL);
-  if ((fdec = ce->getDirectCallee()) != NULL &&
+  FunctionDecl *fdec = ce->getDirectCallee();
+  assert(ce->getDirectCallee() != nullptr);
+  if (fdec != nullptr &&
       TheRewriter.getSourceMgr().isInSystemHeader(fdec->getBeginLoc())) {
     for (auto it = fdec->param_begin(); it != fdec->param_end(); ++it) {
       ParmVarDecl *parVar = *it;
@@ -140,7 +140,7 @@ bool ASTConstifyVisitor::VisitVarDecl(VarDecl *v) {
   const_arg *curDeclArg = SymT.getInnerConstArg(v);
   const Type *intype = v->getType().getTypePtrOrNull();
   // We unconstify the variable if it's initialized by the return of a function
-  if (valueInit(v) && intype != NULL) {
+  if (valueInit(v) && intype != nullptr) {
     if ((intype->isPointerType() || intype->isReferenceType())) {
       if (isExprACall(v->getInit())) {
         unconstifyByPropagation(curDeclArg);
@@ -156,7 +156,7 @@ void unconstifyByPropagation(const_arg *varArg) {
   while (!stackUnconst.empty()) {
     const_arg *curArg = stackUnconst.top();
     stackUnconst.pop();
-    if (curArg != NULL) {
+    if (curArg != nullptr) {
       curArg->is_const = false;
       for (std::vector<const_arg *>::iterator it = curArg->dependencies.begin();
            it != curArg->dependencies.end(); ++it) {

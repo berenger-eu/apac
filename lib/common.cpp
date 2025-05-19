@@ -72,11 +72,10 @@ std::string getStmtAsString(const Stmt *statement, const LangOptions &langOpt,
     return ss.str();
   } else {
     std::string stmtString;
-    std::stringstream SSprint;
     PrintingPolicy print_policy(langOpt);
     print_policy.SuppressUnwrittenScope = true;
     llvm::raw_string_ostream stringStreamStmt(stmtString);
-    statement->printPretty(stringStreamStmt, NULL, print_policy);
+    statement->printPretty(stringStreamStmt, nullptr, print_policy);
     if (!noSemi && !isa<DeclStmt>(statement))
       stmtString += ";";
     else if (noSemi && isa<DeclStmt>(statement))
@@ -89,11 +88,10 @@ std::string getStmtAsStringFull(const Stmt *statement,
   if (!statement)
     return std::string();
   std::string stmtString;
-  std::stringstream SSprint;
   PrintingPolicy print_policy(langOpt);
   print_policy.SuppressUnwrittenScope = true;
   llvm::raw_string_ostream stringStreamStmt(stmtString);
-  statement->printPretty(stringStreamStmt, NULL, print_policy);
+  statement->printPretty(stringStreamStmt, nullptr, print_policy);
   if (!isa<DeclStmt>(statement))
     stmtString += ";";
   return stmtString;
@@ -101,13 +99,12 @@ std::string getStmtAsStringFull(const Stmt *statement,
 std::string getExprAsString(const Expr *expression, const LangOptions &langOpt,
                             bool noSemi) {
   std::string exprString;
-  if (expression != NULL) {
+  if (expression != nullptr) {
 
-    std::stringstream SSprint;
     PrintingPolicy print_policy(langOpt);
     print_policy.SuppressUnwrittenScope = true;
     llvm::raw_string_ostream stringStreamExpr(exprString);
-    expression->printPretty(stringStreamExpr, NULL, print_policy);
+    expression->printPretty(stringStreamExpr, nullptr, print_policy);
   }
   return exprString;
 }
@@ -115,13 +112,12 @@ std::string getExprAsString(const Expr *expression, const LangOptions &langOpt,
 std::string getExprAsString(const Expr *expression,
                             const LangOptions &langOpt) {
   std::string exprString;
-  if (expression != NULL) {
+  if (expression != nullptr) {
 
-    std::stringstream SSprint;
     PrintingPolicy print_policy(langOpt);
     print_policy.SuppressUnwrittenScope = true;
     llvm::raw_string_ostream stringStreamExpr(exprString);
-    expression->printPretty(stringStreamExpr, NULL, print_policy);
+    expression->printPretty(stringStreamExpr, nullptr, print_policy);
   }
   return exprString;
 }
@@ -131,7 +127,8 @@ bool isPointerQualType(QualType qType) {
   const Type *typeTemp;
   bool returnValue = false;
   // Check for simple pointers type
-  if ((typeTemp = qType.getTypePtrOrNull())) {
+  typeTemp = qType.getTypePtrOrNull();
+  if (typeTemp) {
     returnValue = typeTemp->isPointerType();
   }
   // TODO:Check for more complex pointer types (shared_ptr,unique_ptr,...)
@@ -194,9 +191,7 @@ void getLowestType(std::vector<const Expr *> &exprs,
 void getLeafs(Stmt *st, std::vector<Stmt *> &leafs) {
   std::queue<Stmt *> vectNodes;
   vectNodes.push(st);
-  int temp = 0;
   while (!vectNodes.empty()) {
-    temp++;
     Stmt *s = vectNodes.front();
     auto lastSize = vectNodes.size();
     if (isa<CallExpr>(s)) {
@@ -235,7 +230,7 @@ std::vector<const DeclRefExpr *> getAllDeclRefExprInsideExpr(const Expr *e) {
   return vectDeclRefExpr;
 }
 const DeclRefExpr *getSingleDeclRefExprInsideExpr(const Expr *e) {
-  const DeclRefExpr *returnValue = NULL;
+  const DeclRefExpr *returnValue = nullptr;
   std::vector<const DeclRefExpr *> vectDeclRefExpr =
       getAllDeclRefExprInsideExpr(e);
   if (vectDeclRefExpr.size() == 1) {
@@ -245,7 +240,7 @@ const DeclRefExpr *getSingleDeclRefExprInsideExpr(const Expr *e) {
 }
 
 const DeclRefExpr *getArrayBaseDeclRefExpr(const ArraySubscriptExpr *ase) {
-  const DeclRefExpr *returnValue = NULL;
+  const DeclRefExpr *returnValue = nullptr;
   const Expr *base = ase;
   while (isa<ArraySubscriptExpr>(base)) {
     base = cast<ArraySubscriptExpr>(base)->getBase();
@@ -274,7 +269,7 @@ const ArraySubscriptExpr *getSingleArraySubscriptExprInsideExpr(const Expr *e) {
           stackExpr.push(cast<Expr>(*it));
     }
   }
-  const ArraySubscriptExpr *returnValue = NULL;
+  const ArraySubscriptExpr *returnValue = nullptr;
   if (dequeArraySubscriptExpr.size() == 1) {
     returnValue = dequeArraySubscriptExpr.front();
   }
@@ -292,13 +287,14 @@ bool isFullConstType(const QualType &qType) {
   // We check all types until we reach the last one, we stop if we find a
   // non-const type
   do {
+    typeTemp = qTypeTemp.getTypePtrOrNull();
     if (qTypeTemp.isConstQualified()) {
       qTypeTemp = qTypeTemp->getPointeeType();
     } else {
       workDone = true;
       returnValue = false;
     }
-  } while ((typeTemp = qTypeTemp.getTypePtrOrNull()) && !workDone);
+  } while (typeTemp && !workDone);
   return returnValue;
 }
 int getPtrDepth(QualType qt, const ASTContext &aContext) {

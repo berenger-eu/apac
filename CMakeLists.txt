@@ -16,7 +16,25 @@ message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 # E.g. if using the C++ header files
 # you will need to enable C++11 support
 # for your compiler.
-SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 ")
+
+option(ENABLE_CLANG_TIDY "Enable Clang-Tidy static analysis" OFF)
+
+if(ENABLE_CLANG_TIDY)
+    find_program(CLANG_TIDY_EXE NAMES clang-tidy-18 clang-tidy)
+
+    if(CLANG_TIDY_EXE)
+        set(CMAKE_CXX_CLANG_TIDY
+            "${CLANG_TIDY_EXE};-checks=bugprone-*,-bugprone-unchecked-optional-access,-bugprone-narrowing-conversions,-bugprone-easily-swappable-parameters"
+        )
+        message(STATUS "Clang-Tidy enabled: ${CLANG_TIDY_EXE}")
+    else()
+        message(WARNING "Clang-Tidy requested but not found!")
+    endif()
+else()
+    message(STATUS "Clang-Tidy disabled")
+endif()
+
 add_compile_options(-std=c++17 -Wall)
 set (CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})

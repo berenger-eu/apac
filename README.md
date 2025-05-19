@@ -6,7 +6,7 @@ Inside the container, to build the program:
     cd <pathToMount>
     mkdir build
     cd build
-    cmake ..
+    cmake [-DENABLE_CLANG_TIDY=ON] ..
     make
 
 

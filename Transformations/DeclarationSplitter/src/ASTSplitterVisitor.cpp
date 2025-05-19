@@ -64,7 +64,6 @@ bool ASTSplitterVisitor::VisitDeclStmt(DeclStmt *declSt) {
 void ASTSplitterVisitor::stringVarDecl(VarDecl *v,
                                        std::stringstream &SSprintDecl,
                                        std::stringstream &SSprintInit) {
-  std::stringstream SSprint;
   if (!isValidSeparation(v)) {
     SSprintDecl << getCompleteVarDeclStr(v);
   } else if (isReferenceQualType(v->getType())) {

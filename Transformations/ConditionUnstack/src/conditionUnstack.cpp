@@ -14,8 +14,7 @@ std::queue<std::string> filesOutputExt;
 class MyASTConsumer : public ASTConsumer {
 public:
   MyASTConsumer(Rewriter &R)
-      : VisitorConditionUnstack(R, mainName, functions, functionsToIgnore),
-        TheRewriter(R) {}
+      : VisitorConditionUnstack(R, mainName, functions, functionsToIgnore) {}
 
   // Parse all the AST
   virtual void HandleTranslationUnit(ASTContext &Ctx) {
@@ -24,7 +23,6 @@ public:
 
 private:
   ASTConditionUnstackVisitor VisitorConditionUnstack;
-  Rewriter &TheRewriter;
 };
 
 class MyFrontendAction : public ASTFrontendAction {

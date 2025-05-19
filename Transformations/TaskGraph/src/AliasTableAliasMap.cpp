@@ -35,7 +35,7 @@ AliasTableMapStruct::at(const NamedDecl *key,
   const aliasesTableValues *result = nullptr;
   // If no entry for variable, return nullptr
   if (map.count(key) == 0)
-    ;
+    return result;
   // If no indexes, return the value
   if (indexes.empty()) {
     result = &map.at(key);
@@ -43,7 +43,7 @@ AliasTableMapStruct::at(const NamedDecl *key,
   // If the value is an aliasArg (and not an array, so no indexes), return
   // nullptr
   else if (isVariantAliasArgStruct(map.at(key)))
-    ;
+    return result;
   // The value is an array, so we look through it using indexes
   else if (isVariantSubArray(map.at(key)))
     result = getVariantSubArray(map.at(key))->at(indexes);
