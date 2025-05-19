@@ -61,12 +61,12 @@ bool ASTInitVisitor::VisitVarDecl(VarDecl *v) {
   curDeclArg->declaration = v;
   // Further the initialization, for pointers and references (for now)
   const Type *intype = v->getType().getTypePtrOrNull();
-  if (intype != NULL) {
+  if (intype != nullptr) {
     if ((intype->isPointerType() || intype->isReferenceType())) {
       curDeclArg->is_ptr_or_ref = true;
       if (valueInit(v)) {
         const_arg *initDeclArg = SymT.getInnerConstArg(v->getInit());
-        if (initDeclArg != NULL) {
+        if (initDeclArg != nullptr) {
           // If the pointer is unconst, then the values referenced by it have to
           // be unconst too
           SymT.addDependencyHashTable(curDeclArg, initDeclArg);
@@ -85,13 +85,13 @@ bool ASTInitVisitor::VisitCallExpr(CallExpr *ce) {
     return true;
   }
 
-  FunctionDecl *fdec;
+  FunctionDecl *fdec = ce->getDirectCallee();
   // Call to a function but can't retrieve the function
-  assert(ce->getDirectCallee() != NULL);
+  assert(ce->getDirectCallee() != nullptr);
 
   // For all functions outside of system headers, adds a dependency between the
   // argument and the parameter when needed
-  if ((fdec = ce->getDirectCallee()) != NULL &&
+  if (fdec != nullptr &&
       !TheRewriter.getSourceMgr().isInSystemHeader(fdec->getBeginLoc())) {
     if (isa<CXXMemberCallExpr>(ce)) {
       CXXMemberCallExpr *memberCall = (cast<CXXMemberCallExpr>(ce));
@@ -104,12 +104,12 @@ bool ASTInitVisitor::VisitCallExpr(CallExpr *ce) {
     for (auto it = fdec->param_begin(); it != fdec->param_end(); ++it) {
       ParmVarDecl *parVar = *it;
       const_arg *curPar = SymT.getHashTableValue(parVar);
-      assert(curPar != NULL);
+      assert(curPar != nullptr);
       // Adds the dependency if the parameter is a Pointer or a reference
       if (curPar->is_ptr_or_ref) {
         int index = std::distance(fdec->param_begin(), it);
         const_arg *curArg = SymT.getInnerConstArg(ce->getArg(index));
-        if (curArg != NULL) {
+        if (curArg != nullptr) {
           SymT.addDependencyHashTable(curPar, curArg);
         }
       }

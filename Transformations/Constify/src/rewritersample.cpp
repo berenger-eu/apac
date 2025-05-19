@@ -25,8 +25,7 @@ public:
   MyASTConsumer(Rewriter &R, SymTab &symTableIn)
       : VisitorInit(R, mainName, functions, functionsToIgnore, symTableIn),
         VisitorConst(R, mainName, functions, functionsToIgnore, symTableIn),
-        VisitorPrint(R, mainName, functions, functionsToIgnore, symTableIn),
-        SymT(symTableIn) {}
+        VisitorPrint(R, mainName, functions, functionsToIgnore, symTableIn) {}
 
   // Override the method that gets called for each parsed top-level
   // declaration.
@@ -46,7 +45,6 @@ private:
   ASTInitVisitor VisitorInit;
   ASTConstifyVisitor VisitorConst;
   ASTPrintVisitor VisitorPrint;
-  SymTab &SymT;
 };
 
 class MyFrontendAction : public ASTFrontendAction {
@@ -314,7 +312,7 @@ SrcMgr::C_User)); TheCompInst.getDiagnosticClient().BeginSourceFile(
         // file contents.
         const RewriteBuffer *RewriteBuf =
                 TheRewriter.getRewriteBufferFor(SourceMgr.getMainFileID());
-        if (RewriteBuf != NULL)
+        if (RewriteBuf != nullptr)
                 llvm::outs() << std::string(RewriteBuf->begin(),
 RewriteBuf->end()); else llvm::outs() << "Pas de changements\n"; return 0;
 }

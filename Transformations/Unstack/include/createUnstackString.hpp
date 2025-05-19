@@ -57,7 +57,7 @@ private:
   // The queue contains the ids to use in order, so the first element in the
   // previous example was 1
   std::string createCallArgString(std::shared_ptr<Node> node, Expr *argExpr,
-                                  int &childCounter);
+                                  long unsigned int &childCounter);
   std::string createTempVarStringHelper(std::shared_ptr<Node> rootNode,
                                         bool isRoot);
   // Creates the instruction for one of the temporary variable

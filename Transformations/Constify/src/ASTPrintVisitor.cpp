@@ -74,7 +74,7 @@ void ASTPrintVisitor::PrepareRewriteVarDecl(VarDecl *v,
 void ASTPrintVisitor::rewriteSingleDecl(VarDecl *vd) {
   // We rewrite the declaration if the variable is const and there is an
   // initilisation ( "const int a;" is not valid)
-  if (SymT.getHashTableValue(vd)->is_const && vd->getInit() != NULL) {
+  if (SymT.getHashTableValue(vd)->is_const && vd->getInit() != nullptr) {
     addConstToVar(vd);
     // Add a space char, otherwise int*a (valid) can become int*consta instead
     // of int*const a
@@ -104,15 +104,14 @@ void addConstToVar(ValueDecl *valD) {
 
 QualType addConstToQualType(QualType qt, ASTContext &aContext) {
   const Type *innerType = qt.getTypePtrOrNull();
-  if (innerType == NULL)
+  if (innerType == nullptr)
     ;
-  else if (innerType->isBuiltinType()) {
-    qt = addConstToBuiltInType(qt, aContext);
-  } else if (innerType->isReferenceType()) {
+
+  else if (innerType->isReferenceType()) {
     qt = addConstToReferenceType(qt, aContext);
   } else if (innerType->isPointerType()) {
     qt = addConstToPointerType(qt, aContext);
-  } else if (innerType->isConstantArrayType()) {
+  } else if (innerType->isBuiltinType() || innerType->isConstantArrayType()) {
     qt = addConstToBuiltInType(qt, aContext);
   } else {
     qt.addConst();
@@ -136,7 +135,7 @@ QualType addConstToPointerType(QualType qt, ASTContext &aContext) {
   int degree = 0;
   const Type *tempType = qt.getTypePtrOrNull();
   // We look for the pointed type and the degree of the pointer
-  while (tempType != NULL && tempType->isPointerType()) {
+  while (tempType != nullptr && tempType->isPointerType()) {
     degree++;
     qt = tempType->getPointeeType();
     tempType = qt.getTypePtrOrNull();

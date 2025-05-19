@@ -15,8 +15,7 @@ class MyASTConsumer : public ASTConsumer {
 public:
   MyASTConsumer(Rewriter &R)
       : VisitorDuplicateFunc(R, mainName, functions, functionsToIgnore),
-        VisitorChangeName(R, mainName, functions, functionsToIgnore),
-        TheRewriter(R) {}
+        VisitorChangeName(R, mainName, functions, functionsToIgnore) {}
   virtual void HandleTranslationUnit(ASTContext &Ctx) {
     VisitorDuplicateFunc.TraverseAST(Ctx);
     VisitorDuplicateFunc.addDuplicateFunctions();
@@ -26,7 +25,6 @@ public:
 private:
   ASTDuplicateVisitor VisitorDuplicateFunc;
   ASTChangeNameVisitor VisitorChangeName;
-  Rewriter &TheRewriter;
 };
 
 class MyFrontendAction : public ASTFrontendAction {

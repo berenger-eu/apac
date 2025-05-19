@@ -475,14 +475,15 @@ AliasTable::getArrayElementDependencies(std::shared_ptr<aliasArg> elem) const {
 
     std::shared_ptr<aliasArgStruct> aliasArgStructToAdd;
     std::vector<std::shared_ptr<aliasArg>> allAlias;
-    if (isVariantSubArray(*curElem) &&
-        (aliasArgStructToAdd = getVariantSubArray(*curElem)->aliasStruct) !=
-            nullptr)
-      allAlias = aliasArgStructToAdd->getAllAlias();
-    else if (isVariantAliasArgStruct(*curElem) &&
-             (aliasArgStructToAdd = getVariantAliasArgStruct(*curElem)) !=
-                 nullptr)
-      allAlias = aliasArgStructToAdd->getAllAlias();
+    if (isVariantSubArray(*curElem)) {
+      aliasArgStructToAdd = getVariantSubArray(*curElem)->aliasStruct;
+      if (aliasArgStructToAdd != nullptr)
+        allAlias = aliasArgStructToAdd->getAllAlias();
+    } else if (isVariantAliasArgStruct(*curElem)) {
+      aliasArgStructToAdd = getVariantAliasArgStruct(*curElem);
+      if (aliasArgStructToAdd != nullptr)
+        allAlias = aliasArgStructToAdd->getAllAlias();
+    }
     for (auto &alias : allAlias)
       dependencies.insert(alias);
     std::stack<const aliasesTableValues *> toVisit;
@@ -499,14 +500,16 @@ AliasTable::getArrayElementDependencies(std::shared_ptr<aliasArg> elem) const {
       for (auto child : curChildren) {
         std::shared_ptr<aliasArgStruct> aliasArgStructToAdd = nullptr;
         std::vector<std::shared_ptr<aliasArg>> allAlias;
-        if (isVariantSubArray(*child) &&
-            ((aliasArgStructToAdd = getVariantSubArray(*child)->aliasStruct)) !=
-                nullptr)
-          allAlias = aliasArgStructToAdd->getAllAlias();
-        else if (isVariantAliasArgStruct(*child) &&
-                 ((aliasArgStructToAdd = getVariantAliasArgStruct(*child))) !=
-                     nullptr)
-          allAlias = aliasArgStructToAdd->getAllAlias();
+        if (isVariantSubArray(*child)) {
+
+          aliasArgStructToAdd = getVariantSubArray(*child)->aliasStruct;
+          if (aliasArgStructToAdd != nullptr)
+            allAlias = aliasArgStructToAdd->getAllAlias();
+        } else if (isVariantAliasArgStruct(*child)) {
+          aliasArgStructToAdd = getVariantAliasArgStruct(*child);
+          if (aliasArgStructToAdd != nullptr)
+            allAlias = aliasArgStructToAdd->getAllAlias();
+        }
         for (auto &aliasArgToAdd : allAlias)
           dependencies.insert(aliasArgToAdd);
         nextToVisit.push_back(child);

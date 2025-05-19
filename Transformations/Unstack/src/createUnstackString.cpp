@@ -69,9 +69,10 @@ UnstackTransformer::createTempVarStringHelper(std::shared_ptr<Node> node,
   return SSresult.str();
 }
 
-std::string UnstackTransformer::createCallArgString(std::shared_ptr<Node> node,
-                                                    Expr *argExpr,
-                                                    int &childCounter) {
+std::string
+UnstackTransformer::createCallArgString(std::shared_ptr<Node> node,
+                                        Expr *argExpr,
+                                        long unsigned int &childCounter) {
   std::stringstream res;
   if (argExpr == nullptr) {
     return "";
@@ -133,7 +134,7 @@ UnstackTransformer::createTempVarString(std::shared_ptr<Node> node) {
            << " = " << calExp->getDirectCallee()->getNameAsString() << "(";
   bool firstArg = true;
   // Prints all of its arguments
-  int childCounter = 0;
+  long unsigned int childCounter = 0;
   for (auto b = calExp->arg_begin(), e = calExp->arg_end(); b != e; b++) {
     if (!firstArg) {
       SSresult << "," << createCallArgString(node, *b, childCounter);

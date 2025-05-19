@@ -3,7 +3,7 @@
 using namespace clang;
 class SymTab {
 public:
-  SymTab(Rewriter &R) : TheRewriter(R) { lastMethDecl = NULL; };
+  SymTab(Rewriter &R) : TheRewriter(R) { lastMethDecl = nullptr; };
   CXXMethodDecl *lastMethDecl;
   const_arg *getInnerConstArg(ValueDecl *);
   const_arg *getInnerConstArg(Expr *);

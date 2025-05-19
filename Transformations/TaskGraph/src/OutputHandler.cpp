@@ -54,13 +54,11 @@ void OutputHandler::subGenerateDotGraph(const Graph &inGraph,
     file << "\"];\n";
     for (long unsigned int i = 0; i < node->graph.size(); i++) {
       auto subGraph = node->graph[i];
-      long unsigned int curInstrIndex = 0, countGraph = -1;
+      long unsigned int countGraph = -1;
       for (auto instr : node->instructionPtr) {
         if (countGraph != i) {
           if (instr->complexInstruction)
             countGraph++;
-          if (countGraph != i)
-            curInstrIndex++;
         }
       }
       file << "    " << node->id << " -> invisibleNodeScope_"
@@ -114,7 +112,6 @@ std::string OutputHandler::modifiedStringForInstruction(
   std::stringstream ssPrint;
   // If the instruction contains a group of instructions (for,if,...)
   StmtOrder *subOrder = instructionsOrderManager.getSubStmtOrder(instr).get();
-  SourceManager &SM = TheRewriter.getSourceMgr();
   std::string strTemp = std::string(
       TheRewriter.getRewrittenText(instr->getSourceRange()).size(), ' ');
 
@@ -187,11 +184,8 @@ void OutputHandler::isPragmaValid(const StmtOrder &instructionsOrderManager,
       addPragma.setTaskWaitFalse();
     }
     // Instruction is a delete, so no task can be created
-    else if (isa<CXXDeleteExpr>(instr))
+    else if (isa<CXXDeleteExpr>(instr) || isa<GotoStmt>(instr))
       addPragma.setTaskFalse();
-    else if (isa<GotoStmt>(instr)) {
-      addPragma.setTaskFalse();
-    }
     // Instruction is a complex instruction, so no task should be created
     else if (instrPair->second != nullptr) {
       if (isa<IfStmt>(instr)) {
@@ -215,7 +209,7 @@ void OutputHandler::isPragmaValid(const StmtOrder &instructionsOrderManager,
       auto instr = instrPair.first;
       std::stack<const Stmt *> stackStmt;
       stackStmt.push(instr);
-      auto curInstr = instr;
+      const Stmt *curInstr = nullptr;
 
       while (!stackStmt.empty() && !hasFunctionCall) {
         curInstr = stackStmt.top();

@@ -20,7 +20,7 @@ return (*ptr);}\n\n";
 // by the Clang parser.
 class MyASTConsumer : public ASTConsumer {
 public:
-  MyASTConsumer(Rewriter &R) : VisitorMainPara(R, mainName), TheRewriter(R) {}
+  MyASTConsumer(Rewriter &R) : VisitorMainPara(R, mainName) {}
 
   // Parse all the file
   virtual void HandleTranslationUnit(ASTContext &Ctx) {
@@ -30,7 +30,6 @@ public:
 
 private:
   ASTMainParaVisitor VisitorMainPara;
-  Rewriter &TheRewriter;
 };
 
 class MyFrontendAction : public ASTFrontendAction {

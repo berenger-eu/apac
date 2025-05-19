@@ -1,17 +1,18 @@
 #include "core.hpp"
+#include "clang/AST/Expr.h"
 using namespace clang;
 
 Expr *getInnerPtr(Expr *expression) {
-  Expr *returnValueExpr = NULL;
+  Expr *returnValueExpr = nullptr;
   int i = 0; // To avoid loops and still constify the file
-  while (expression != NULL && returnValueExpr == NULL && i < 10) {
+  while (expression != nullptr && returnValueExpr == nullptr && i < 10) {
     i++;
     if (isa<DeclRefExpr>(expression)) {
       returnValueExpr = getInnerExpr(expression);
-      expression = NULL;
+      expression = nullptr;
     } else if (isa<MemberExpr>(expression)) {
       returnValueExpr = cast<MemberExpr>(expression);
-      expression = NULL;
+      expression = nullptr;
     } else if (isa<BinaryOperator>(expression)) {
       BinaryOperator *bopExpr = cast<BinaryOperator>(expression);
       if (isPointerQualType(bopExpr->getLHS()->getType())) {
@@ -23,16 +24,12 @@ Expr *getInnerPtr(Expr *expression) {
       expression = cast<UnaryOperator>(expression)->getSubExpr();
     }
     // Calls to functions break the function, and can't be linked to a variable
-    else if (isa<CallExpr>(expression)) {
-      expression = NULL;
-    } else if (isa<ArraySubscriptExpr>(expression)) {
+
+    else if (isa<ArraySubscriptExpr>(expression)) {
       expression = cast<ArraySubscriptExpr>(expression)->getBase();
-    } else if (isa<StringLiteral>(expression)) {
-      expression = NULL;
-    } else if (isa<GNUNullExpr>(expression)) {
-      expression = NULL;
-    } else if (isa<CXXNewExpr>(expression)) {
-      expression = NULL;
+    } else if (isa<StringLiteral>(expression) || isa<CallExpr>(expression) ||
+               isa<GNUNullExpr>(expression) || isa<CXXNewExpr>(expression)) {
+      expression = nullptr;
     } else {
       expression = expression->IgnoreParenCasts();
     }
@@ -47,11 +44,11 @@ Expr *getInnerPtr(Expr *expression) {
 
 // Retrieves, if it exists, the variable inside of an expression
 Expr *getInnerExpr(Expr *expression) {
-  Expr *innerExpr = NULL;
+  Expr *innerExpr = nullptr;
 
-  if (expression != NULL) {
+  if (expression != nullptr) {
     int i = 0; // To avoid loops and still constify the file
-    while (expression != NULL && innerExpr == NULL && i < 10) {
+    while (expression != nullptr && innerExpr == nullptr && i < 10) {
       i++;
       expression = expression->IgnoreCasts();
       if (isa<DeclRefExpr>(expression)) {
@@ -62,12 +59,10 @@ Expr *getInnerExpr(Expr *expression) {
         expression = cast<UnaryOperator>(expression)->getSubExpr();
       }
       // We can't get the variable from a call to a function
-      else if (isa<CallExpr>(expression)) {
-        expression = NULL;
-      } else if (isa<ArraySubscriptExpr>(expression)) {
+      else if (isa<ArraySubscriptExpr>(expression)) {
         expression = cast<ArraySubscriptExpr>(expression)->getBase();
-      } else if (isa<CXXNewExpr>(expression)) {
-        expression = NULL;
+      } else if (isa<CXXNewExpr>(expression) || isa<CallExpr>(expression)) {
+        expression = nullptr;
       }
     }
     if (i >= 10) {
@@ -80,16 +75,16 @@ Expr *getInnerExpr(Expr *expression) {
 }
 
 // Checks if the init part of a Variable Declaration contains a value
-// Returns false if init is NULL or declaration is : type* a=new ...
+// Returns false if init is nullptr or declaration is : type* a=new ...
 // Returns true otherwise
 bool valueInit(VarDecl *varDec) {
-  return (varDec->getInit() != NULL && !isa<CXXNewExpr>(varDec->getInit()));
+  return (varDec->getInit() != nullptr && !isa<CXXNewExpr>(varDec->getInit()));
 }
 
 // true if the expression is the return of a function, false otherwise
 bool isExprACall(Expr *expression) {
   bool result = false;
-  if (expression != NULL) {
+  if (expression != nullptr) {
     expression = expression->IgnoreCasts();
     if (isa<CallExpr>(expression)) {
       result = true;
