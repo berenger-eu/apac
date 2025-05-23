@@ -1,13 +1,11 @@
 #include "ASTGotoVisitor.hpp"
 using namespace clang;
 bool ASTGotoVisitor::VisitFunctionDecl(FunctionDecl *fDecl) {
-  if (isInHeaders(TheRewriter.getSourceMgr(), fDecl->getBeginLoc()) ||
-      !fDecl->isThisDeclarationADefinition()) {
+  if(!fDecl->isThisDeclarationADefinition())
     return true;
-  }
   // Declares the result in the transformed source file, only if it's not void
   std::stringstream SSprint;
-  if (!fDecl->getReturnType().getTypePtr()->isVoidType()) {
+  if ( !fDecl->getReturnType().getTypePtr()->isVoidType()) {
     // Declares the result
     SSprint << "\nwrapper_t<"
             << fDecl->getReturnType().getAsString(TheRewriter.getLangOpts())

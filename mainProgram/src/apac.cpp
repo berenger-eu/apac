@@ -35,8 +35,85 @@ int main(int argc, const char **argv) {
             APACIgnoreFilter.getValue(), mainName, functionsToIgnore,
             functions);
   */
-  MultipleDeclSplitterHandler::run(option, files, APACMainFilter.getValue(),
-                                   APACFunctionFilter.getValue(),
-                                   APACIgnoreFilter.getValue());
+  std::vector<std::string> filesOutput;
+  for (auto file : files) {
+    std::string outputFile = file;
+    size_t lastSlash = outputFile.find_last_of('/');
+    if (lastSlash != std::string::npos) {
+      outputFile.insert(lastSlash + 1, "APAC");
+    } else {
+      outputFile = "APAC" + outputFile;
+    }
+
+    // Empty the output file beforehand
+    std::ofstream dst(outputFile, std::ios::binary | std::ios::trunc);
+    if (!dst) {
+      llvm::errs() << "Error creating file: " << outputFile << "\n";
+      continue;
+    }
+
+    std::ifstream src(file, std::ios::binary);
+    if (!src) {
+      llvm::errs() << "Error reading file: " << file << "\n";
+      continue;
+    }
+
+    dst << src.rdbuf();
+    src.close();
+    dst.close();
+    filesOutput.push_back(outputFile);
+  }
+  llvm::errs() << "DuplicateFunctionsHandler\n";
+  DuplicateFunctionsHandler::run(option, filesOutput, APACMainFilter.getValue(),
+                                 APACFunctionFilter.getValue(),
+                                 APACIgnoreFilter.getValue(), filesOutput);
+  llvm::errs() << "ConditionUnstackHandler\n";
+  ConditionUnstackHandler::run(option, filesOutput, APACMainFilter.getValue(),
+                               APACFunctionFilter.getValue(),
+                               APACIgnoreFilter.getValue(), filesOutput);
+
+  llvm::errs() << "MultipleDeclSplitterHandler\n";
+  MultipleDeclSplitterHandler::run(
+      option, filesOutput, APACMainFilter.getValue(),
+      APACFunctionFilter.getValue(), APACIgnoreFilter.getValue(), filesOutput);
+  llvm::errs() << "UnstackHandler\n";
+  UnstackHandler::run(option, files, APACMainFilter.getValue(),
+                      APACFunctionFilter.getValue(),
+                      APACIgnoreFilter.getValue(), filesOutput);
+  llvm::errs() << "DeclarationSplitterHandler\n";
+  DeclarationSplitterHandler::run(
+      option, filesOutput, APACMainFilter.getValue(),
+      APACFunctionFilter.getValue(), APACIgnoreFilter.getValue(), filesOutput);
+  llvm::errs() << "GotoRetHandler\n";
+  GotoRetHandler::run(option, filesOutput, APACMainFilter.getValue(),
+                      APACFunctionFilter.getValue(),
+                      APACIgnoreFilter.getValue(), filesOutput);
+  llvm::errs() << "TaskGraphHandler\n";
+  TaskGraphHandler::run(option, filesOutput, APACMainFilter.getValue(),
+                        APACFunctionFilter.getValue(),
+                        APACIgnoreFilter.getValue(), filesOutput);
+
+  llvm::errs() << "MainParallelHandler\n";
+  MainParallelHandler::run(option, filesOutput, APACMainFilter.getValue(),
+                           APACFunctionFilter.getValue(),
+                           APACIgnoreFilter.getValue(), filesOutput);
+
+  /*
+  StackHeapHandler::run(option, files, APACMainFilter.getValue(),
+  APACFunctionFilter.getValue(),
+  APACIgnoreFilter.getValue());
+  */
+
+  /*
+
+#run_const $curUsedFile
+#run_transformation $unstackTransfo $unstackName $curUsedFile $curUsedFile
+run_transformation $declSplitTransfo $declSplitName $curUsedFile
+run_transformation $gotoTransfo $gotoName $curUsedFile
+#run_transformation $stackHeapTransfo $stackHeapName $curUsedFile
+run_transformation $taskGraphTransfo $taskGraphName
+$curUsedFile run_transformation $mainParallel
+$mainParallelName $curUsedFile
+*/
   return 0;
 }

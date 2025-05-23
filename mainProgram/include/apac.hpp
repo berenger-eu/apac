@@ -1,9 +1,11 @@
+#include "conditionUnstack.hpp"
 #include "declarationSplitter.hpp"
+#include "duplicateFunctions.hpp"
 #include "gotoRet.hpp"
+#include "mainParallel.hpp"
 #include "multipleDeclSplitter.hpp"
 #include "rewritersample.hpp"
 #include "stackheap.hpp"
 #include "taskGraph.hpp"
 #include "unstack.hpp"
-
 #include "clang/Tooling/CommonOptionsParser.h"

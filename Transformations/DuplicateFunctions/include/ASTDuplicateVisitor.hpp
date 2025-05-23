@@ -12,26 +12,18 @@
 #include "common.hpp"
 
 using namespace clang;
-class ASTDuplicateVisitor : public RecursiveASTVisitor<ASTDuplicateVisitor> {
+class ASTDuplicateVisitor
+    : public APACRecursiveASTVisitor<ASTDuplicateVisitor> {
 public:
   ASTDuplicateVisitor(Rewriter &R, std::string &mainRef,
                       std::vector<std::string> &functionsRef,
                       std::vector<std::string> &functionsToIgnoreRef)
-      : TheRewriter(R), mainName(mainRef), functions(functionsRef),
-        functionsToIgnore(functionsToIgnoreRef) {};
-  inline bool VisitStmt(Stmt *) { return true; }
-  inline bool TraverseCXXMethodDecl(CXXMethodDecl *m) {
-    return TraverseFunctionDecl(m);
-  }
-  bool TraverseFunctionDecl(FunctionDecl *f) {
-    if (isInHeaders(TheRewriter.getSourceMgr(), f->getBeginLoc())) {
-      return true;
-    }
-    if (isToParseFunction(f->getNameAsString(), functions, functionsToIgnore,
-                          mainName) &&
-        f->getNameAsString() != mainName) {
+      : APACRecursiveASTVisitor(R, mainRef, functionsRef,
+                                functionsToIgnoreRef) {}
+
+  inline bool VisitFunctionDecl(FunctionDecl *f) {
+    if (f->getNameAsString() != mainName)
       functionsDecl.push_back(f);
-    }
     return true;
   }
   void addDuplicateFunctions() {
@@ -51,13 +43,8 @@ public:
                                      f->getASTContext().getLangOpts());
       TheRewriter.InsertTextAfterToken(f->getEndLoc(), SSprint.str());
     }
-    llvm::errs() << "Added " << functionsDecl.size() << " functions\n";
   }
 
 private:
   std::vector<FunctionDecl *> functionsDecl;
-  Rewriter &TheRewriter;
-  std::string &mainName;
-  std::vector<std::string> &functions;
-  std::vector<std::string> &functionsToIgnore;
 };

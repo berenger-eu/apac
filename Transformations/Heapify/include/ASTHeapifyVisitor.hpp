@@ -1,23 +1,15 @@
 #pragma once
 #include "utilitaryFunctions.hpp"
 using namespace clang;
-class ASTHeapifyVisitor : public RecursiveASTVisitor<ASTHeapifyVisitor> {
+class ASTHeapifyVisitor : public APACRecursiveASTVisitor<ASTHeapifyVisitor> {
 public:
   ASTHeapifyVisitor(Rewriter &R, struct item_found &funHeap,
                     struct item_found &varHeap, std::string &mainRef,
                     std::vector<std::string> &functionsRef,
                     std::vector<std::string> &functionsToIgnoreRef)
-      : TheRewriter(R), mainName(mainRef), functions(functionsRef),
-        functionsToIgnore(functionsToIgnoreRef), functionHeap(funHeap),
-        variableHeap(varHeap) {};
-  inline bool VisitStmt(Stmt *) { return true; }
+      : APACRecursiveASTVisitor(R, mainRef, functionsRef, functionsToIgnoreRef),
+        functionHeap(funHeap), variableHeap(varHeap){};
   bool TraverseFunctionDecl(FunctionDecl *);
-  inline bool TraverseFunctionTemplateDecl(FunctionTemplateDecl *fDecl) {
-    if (fDecl->getNameAsString().find("invalid_ref") == std::string::npos) {
-      return RecursiveASTVisitor::TraverseFunctionTemplateDecl(fDecl);
-    }
-    return true;
-  }
   bool TraverseCompoundStmt(CompoundStmt *coSt);
   inline bool VisitGotoStmt(GotoStmt *gSt) {
     gotoReturnHandle(gSt);
@@ -46,10 +38,6 @@ public:
   }
 
 private:
-  Rewriter &TheRewriter;
-  std::string &mainName;
-  std::vector<std::string> &functions;
-  std::vector<std::string> &functionsToIgnore;
   std::unordered_map<CompoundStmt *, std::shared_ptr<ScopeInfo>> scopes;
   std::stack<std::shared_ptr<ScopeInfo>> scopeStack;
   std::vector<std::shared_ptr<ScopeInfo>> topScopes;

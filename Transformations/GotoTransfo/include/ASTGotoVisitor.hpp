@@ -12,28 +12,14 @@
 #include "common.hpp"
 
 using namespace clang;
-class ASTGotoVisitor : public RecursiveASTVisitor<ASTGotoVisitor> {
+class ASTGotoVisitor : public APACRecursiveASTVisitor<ASTGotoVisitor> {
 public:
   ASTGotoVisitor(Rewriter &R, std::string &mainRef,
                  std::vector<std::string> &functionsRef,
                  std::vector<std::string> &functionsToIgnoreRef)
-      : TheRewriter(R), mainName(mainRef), functions(functionsRef),
-        functionsToIgnore(functionsToIgnoreRef), functionsCounter(0) {};
-  inline bool VisitStmt(Stmt *) { return true; }
-  bool TraverseFunctionDecl(FunctionDecl *fDecl) {
-    if (isToParseFunction(fDecl->getNameAsString(), functions,
-                          functionsToIgnore, mainName)) {
-      return RecursiveASTVisitor::TraverseFunctionDecl(fDecl);
-    }
-    return true;
-  }
+      : APACRecursiveASTVisitor(R, mainRef, functionsRef, functionsToIgnoreRef),
+        functionsCounter(0) {}
   bool VisitFunctionDecl(FunctionDecl *);
-  inline bool TraverseFunctionTemplateDecl(FunctionTemplateDecl *fDecl) {
-    if (fDecl->getNameAsString().find("invalid_ref") == std::string::npos) {
-      return RecursiveASTVisitor::TraverseFunctionTemplateDecl(fDecl);
-    }
-    return true;
-  }
 
 private:
   // Like Visit functions, but called by VisitCompoundStmt and not by default
@@ -57,10 +43,6 @@ private:
   // Will continue to Visit the compoundStmt
   void handleSubStmt(Stmt *);
   // Used to give a unique number for the exit section of each function
-  Rewriter &TheRewriter;
-  std::string &mainName;
-  std::vector<std::string> &functions;
-  std::vector<std::string> &functionsToIgnore;
   unsigned int functionsCounter;
 };
 

@@ -12,47 +12,34 @@
 #include "common.hpp"
 
 using namespace clang;
-class ASTChangeNameVisitor : public RecursiveASTVisitor<ASTChangeNameVisitor> {
+class ASTChangeNameVisitor
+    : public APACRecursiveASTVisitor<ASTChangeNameVisitor> {
 public:
   ASTChangeNameVisitor(Rewriter &R, std::string &mainRef,
                        std::vector<std::string> &functionsRef,
                        std::vector<std::string> &functionsToIgnoreRef)
-      : currentFunctionDecl(nullptr), TheRewriter(R), mainName(mainRef),
-        functions(functionsRef), functionsToIgnore(functionsToIgnoreRef) {};
-  inline bool VisitStmt(Stmt *) { return true; }
-  inline bool TraverseCXXMethodDecl(CXXMethodDecl *m) {
-    return TraverseFunctionDecl(m);
-  }
-  inline bool TraverseFunctionTemplateDecl(FunctionTemplateDecl *fDecl) {
-    if (fDecl->getNameAsString().find("invalid_ref") == std::string::npos) {
-      return RecursiveASTVisitor::TraverseFunctionTemplateDecl(fDecl);
-    }
-    return true;
-  }
-  inline bool TraverseFunctionDecl(FunctionDecl *f) {
-    if (!isInHeaders(TheRewriter.getSourceMgr(), f->getBeginLoc())) {
-      llvm::errs() << "FunctionDecl\n";
-      if (isToParseFunction(f->getNameAsString(), functions, functionsToIgnore,
-                            mainName) &&
-          f->getNameAsString() != mainName) {
-        currentFunctionDecl = f;
-        llvm::errs() << "FunctionDecl\n";
-        std::stringstream SSprint;
-        SSprint << f->getReturnType().getAsString() << " "
-                << f->getNameInfo().getAsString() << "_apacSeq" << "(";
-        for (auto &param : f->parameters()) {
-          SSprint << param->getType().getAsString() << " "
-                  << param->getNameAsString();
-          if (param != f->parameters().back()) {
-            SSprint << ", ";
-          }
+      : APACRecursiveASTVisitor(R, mainRef, functionsRef, functionsToIgnoreRef),
+        currentFunctionDecl(nullptr) {}
+
+  inline bool VisitFunctionDecl(FunctionDecl *f) {
+    if (f->getNameAsString() != mainName) {
+
+      currentFunctionDecl = f;
+      std::stringstream SSprint;
+      SSprint << f->getReturnType().getAsString() << " "
+              << f->getNameInfo().getAsString() << "_apacSeq"
+              << "(";
+      for (auto &param : f->parameters()) {
+        SSprint << param->getType().getAsString() << " "
+                << param->getNameAsString();
+        if (param != f->parameters().back()) {
+          SSprint << ", ";
         }
-        SSprint << ")";
-        TheRewriter.ReplaceText(
-            SourceRange(f->getTypeSpecStartLoc(), f->getTypeSpecEndLoc()),
-            SSprint.str());
-        return RecursiveASTVisitor::TraverseFunctionDecl(f);
       }
+      SSprint << ")";
+      TheRewriter.ReplaceText(
+          SourceRange(f->getTypeSpecStartLoc(), f->getTypeSpecEndLoc()),
+          SSprint.str());
     }
     return true;
   }
@@ -62,8 +49,6 @@ public:
       std::string calleeName = cExpr->getDirectCallee()->getNameAsString();
       std::string currentFunctionName = currentFunctionDecl->getNameAsString();
       if (currentFunctionName == calleeName) {
-        llvm::errs() << "CallExpr\n";
-        cExpr->dump();
         TheRewriter.ReplaceText(cExpr->getBeginLoc(), calleeName.size(),
                                 calleeName + "_apacSeq");
       }
@@ -74,8 +59,4 @@ public:
 
 private:
   FunctionDecl *currentFunctionDecl;
-  Rewriter &TheRewriter;
-  std::string &mainName;
-  std::vector<std::string> &functions;
-  std::vector<std::string> &functionsToIgnore;
 };

@@ -5,6 +5,7 @@ static llvm::cl::OptionCategory ToolingSampleCategory("Tooling Sample");
 using namespace clang;
 using namespace clang::driver;
 using namespace clang::tooling;
+namespace declarationSplitter {
 std::string mainName;
 std::vector<std::string> functions;
 std::vector<std::string> functionsToIgnore;
@@ -44,17 +45,17 @@ public:
   MyFrontendAction() {}
   void EndSourceFileAction() override {
     SourceManager &SM = TheRewriter.getSourceMgr();
-    llvm::errs() << "** EndSourceFileAction for: "
-                 << SM.getFileEntryRefForID(SM.getMainFileID())->getName()
-                 << "\n";
 
     // Now emit the rewritten buffer.
-    TheRewriter.getEditBuffer(SM.getMainFileID()).write(llvm::outs());
+    if (filesOutputExt.empty())
+      TheRewriter.getEditBuffer(SM.getMainFileID()).write(llvm::outs());
+    else {
+      TheRewriter.overwriteChangedFiles();
+    }
   }
 
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
                                                  StringRef file) override {
-    llvm::errs() << "** Creating AST consumer for: " << file << "\n";
     TheRewriter.setSourceMgr(CI.getSourceManager(), CI.getLangOpts());
     return std::make_unique<MyASTConsumer>(TheRewriter);
   }
@@ -62,7 +63,8 @@ public:
 private:
   Rewriter TheRewriter;
 };
-
+} // namespace declarationSplitter
+using namespace declarationSplitter;
 bool DeclarationSplitterHandler::run(
     llvm::Expected<clang::tooling::CommonOptionsParser> &options,
     std::vector<std::string> &filesInput, const std::string &mainFilterValue,

@@ -5,17 +5,11 @@ static llvm::cl::OptionCategory ToolingSampleCategory("Tooling Sample");
 using namespace clang;
 using namespace clang::driver;
 using namespace clang::tooling;
+namespace mainParallel {
 std::string mainName;
 std::vector<std::string> functions, functionsToIgnore;
 std::queue<std::string> filesOutputExt;
-std::string stringReferenceHandlerClass() {
-  return "#include <functional>\n\
-#include <optional>\n\
-template <class T>\n\
-T& invalid_ref(){\n\
-T* ptr = nullptr;\n\
-return (*ptr);}\n\n";
-}
+
 // Implementation of the ASTConsumer interface for reading an AST produced
 // by the Clang parser.
 class MyASTConsumer : public ASTConsumer {
@@ -40,7 +34,10 @@ public:
     llvm::errs() << "** EndSourceFileAction for: "
                  << SM.getFileEntryRefForID(SM.getMainFileID())->getName()
                  << "\n";
-    TheRewriter.getEditBuffer(SM.getMainFileID()).write(llvm::outs());
+    if (filesOutputExt.empty())
+      TheRewriter.getEditBuffer(SM.getMainFileID()).write(llvm::outs());
+    else
+      TheRewriter.overwriteChangedFiles();
   }
 
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
@@ -53,6 +50,8 @@ public:
 private:
   Rewriter TheRewriter;
 };
+} // namespace mainParallel
+using namespace mainParallel;
 
 bool MainParallelHandler::run(
     llvm::Expected<clang::tooling::CommonOptionsParser> &options,

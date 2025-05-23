@@ -19,14 +19,12 @@ void UnstackTransformer::buildSubTree(std::shared_ptr<Node> rootNode,
   for (auto arg : calExp->arguments()) {
     findTopCallsInExpr(arg, subTopCalls);
   }
-  llvm::errs() << " tez\n";
   for (auto call : subTopCalls) {
     llvm::errs() << getExprAsString(call, TheRewriter.getLangOpts()) << "\n";
     rootNode->children.insert(
         {call, std::make_shared<Node>(call, tempVarsCounter)});
     buildSubTree(rootNode->children[call], tempVarsCounter);
   }
-  llvm::errs() << " toz\n";
 }
 
 void UnstackTransformer::modifyCalls() {
