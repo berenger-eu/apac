@@ -13,42 +13,32 @@
 #include "clang/Rewrite/Core/Rewriter.h"
 
 using namespace clang;
-class ASTTaskGraphVisitor : public RecursiveASTVisitor<ASTTaskGraphVisitor> {
+class ASTTaskGraphVisitor
+    : public APACRecursiveASTVisitor<ASTTaskGraphVisitor> {
 public:
   ASTTaskGraphVisitor(Rewriter &R, StmtOrder &orderManager,
                       std::string &mainRef,
                       std::vector<std::string> &functionsRef,
                       std::vector<std::string> &functionsToIgnoreRef)
-      : TheRewriter(R), mainName(mainRef), functions(functionsRef),
-        functionsToIgnore(functionsToIgnoreRef), orderManager(orderManager),
-        currentOrderManager(&orderManager), aliasTable(R),
-        ignoreStmtPragma(false) {};
-  inline bool VisitStmt(Stmt *s) { return true; }
+      : APACRecursiveASTVisitor(R, mainRef, functionsRef, functionsToIgnoreRef),
+        orderManager(orderManager), currentOrderManager(&orderManager),
+        aliasTable(R), ignoreStmtPragma(false){};
   // Traverse methods lets us stop visiting nodes that we don't need
   inline bool TraverseDeclStmt(DeclStmt *d) {
-    if (isInHeaders(TheRewriter.getSourceMgr(), d->getBeginLoc()))
+    if (!elementsConditions(d))
       return true;
     if (!ignoreStmtPragma)
       currentOrderManager->addInstructionToManager(d);
     return true;
   }
-  inline bool TraverseFunctionTemplateDecl(FunctionTemplateDecl *fDecl) {
-    if (fDecl->getNameAsString().find("invalid_ref") == std::string::npos) {
-      return RecursiveASTVisitor::TraverseFunctionTemplateDecl(fDecl);
-    }
-    return true;
-  }
-
   inline bool TraverseGotoStmt(GotoStmt *g) {
-    if (isInHeaders(TheRewriter.getSourceMgr(), g->getBeginLoc()))
+    if (!elementsConditions(g))
       return true;
     if (!ignoreStmtPragma)
       currentOrderManager->addInstructionToManager(g);
     return true;
   }
-  inline bool TraverseCXXMethodDecl(CXXMethodDecl *m) {
-    return TraverseFunctionDecl(m);
-  }
+
   bool TraverseFunctionDecl(FunctionDecl *f);
   // Calls respective handle method
 
@@ -159,10 +149,6 @@ private:
   const Expr *initVarFromExpr(const Expr *expr, const VarDecl *&mainVariable,
                               std::vector<int> &indexes);
 
-  Rewriter &TheRewriter;
-  std::string &mainName;
-  std::vector<std::string> &functions;
-  std::vector<std::string> &functionsToIgnore;
   StmtOrder &orderManager;
   StmtOrder *currentOrderManager;
   AliasTable aliasTable;

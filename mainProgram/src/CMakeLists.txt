@@ -13,6 +13,9 @@ set (COMMON_LIB ${CMAKE_CURRENT_SOURCE_DIR}/../../lib)
 
 set (TRANSFO_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../../Transformations)
 #Could be done better
+set( CONDITIONUNSTACK_INC ${TRANSFO_PATH}/ConditionUnstack/include)
+set (DUPLICATE_INC ${TRANSFO_PATH}/DuplicateFunctions/include)
+set( MAINPARA_INC ${TRANSFO_PATH}/MainParallel/include)
 set (UNSTACK_INC ${TRANSFO_PATH}/Unstack/include)
 set (DECLSPLIT_INC ${TRANSFO_PATH}/DeclarationSplitter/include)
 set (TASKGRAPH_INC ${TRANSFO_PATH}/TaskGraph/include)
@@ -21,7 +24,7 @@ set (CONSTIFY_INC ${TRANSFO_PATH}/Constify/include)
 set (STACKHEAP_INC ${TRANSFO_PATH}/Heapify/include)
 set (MULTIDECL_INC ${TRANSFO_PATH}/MultipleDeclSplitter/include)
 
-set( TRANSFOS_INC ${MULTIDECL_INC} ${UNSTACK_INC} ${DECLSPLIT_INC} ${TASKGRAPH_INC} ${GOTO_INC} ${CONSTIFY_INC} ${STACKHEAP_INC})
+set( TRANSFOS_INC ${CONDITIONUNSTACK_INC} ${MAINPARA_INC} ${DUPLICATE_INC} ${MULTIDECL_INC} ${UNSTACK_INC} ${DECLSPLIT_INC} ${TASKGRAPH_INC} ${GOTO_INC} ${CONSTIFY_INC} ${STACKHEAP_INC})
 
 set(INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../include ${COMMON_LIB} ${TRANSFOS_INC})
 message(STATUS "Include directories: ${INC_DIR}")
@@ -38,6 +41,9 @@ llvm_map_components_to_libnames(llvm_libs x86asmparser bitreader support mc opti
 message(STATUS "LLVM_LIBS: ${llvm_libs}")
 
 target_link_libraries(apac
+APACDuplicateFunctionsLib
+APACConditionUnstackLib
+APACMainParallelLib
 APACUnstackLib
 APACDeclarationSplitterLib
 APACTaskGraphLib

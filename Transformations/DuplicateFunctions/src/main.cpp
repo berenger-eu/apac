@@ -22,9 +22,7 @@ int main(int argc, const char **argv) {
                                   llvm::cl::OneOrMore);
 
   auto files = option->getSourcePathList();
-  for (auto file : files) {
-    llvm::errs() << file << "\n";
-  }
+
   // ClangTool::run accepts a FrontendActionFactory, which is then used to
   // create new objects implementing the FrontendAction interface. Here we use
   // the helper newFrontendActionFactory to create a default factory that will

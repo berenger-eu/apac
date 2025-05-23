@@ -11,23 +11,14 @@
 #include "clang/Rewrite/Core/Rewriter.h"
 
 using namespace clang;
-class ASTMainParaVisitor : public RecursiveASTVisitor<ASTMainParaVisitor> {
+class ASTMainParaVisitor : public APACRecursiveASTVisitor<ASTMainParaVisitor> {
 public:
   ASTMainParaVisitor(Rewriter &R, std::string &mainName)
-      : TheRewriter(R), mainName(mainName) {
+      : APACRecursiveASTVisitor(R, mainName, std::vector<std::string>(),
+                                std::vector<std::string>()) {
     mainFuncReturnStmt = nullptr;
     resultWrapperDecl = nullptr;
   };
-  inline bool VisitStmt(Stmt *st) { return true; }
-  inline bool TraverseCXXMethodDecl(CXXMethodDecl *m) {
-    return TraverseFunctionDecl(m);
-  }
-  inline bool TraverseFunctionTemplateDecl(FunctionTemplateDecl *fDecl) {
-    if (fDecl->getNameAsString().find("invalid_ref") == std::string::npos) {
-      return RecursiveASTVisitor::TraverseFunctionTemplateDecl(fDecl);
-    }
-    return true;
-  }
   inline bool VisitDeclStmt(DeclStmt *d) {
     if (isInHeaders(TheRewriter.getSourceMgr(), d->getBeginLoc())) {
       return true;
@@ -48,15 +39,10 @@ public:
     return true;
   }
   inline bool TraverseFunctionDecl(FunctionDecl *f) {
-
-    if (isInHeaders(TheRewriter.getSourceMgr(), f->getBeginLoc())) {
-      return true;
-    }
     bool result = true;
-    if ((f->getNameAsString() == mainName)) {
+    if (functionsConditions(f) && (f->getNameAsString() == mainName)) {
       result = RecursiveASTVisitor::TraverseFunctionDecl(f);
     }
-
     return result;
   }
   inline void addParaZone() {
@@ -76,6 +62,4 @@ public:
 private:
   ReturnStmt *mainFuncReturnStmt;
   DeclStmt *resultWrapperDecl;
-  Rewriter &TheRewriter;
-  std::string &mainName;
 };

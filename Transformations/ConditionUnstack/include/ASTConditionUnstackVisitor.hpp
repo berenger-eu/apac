@@ -13,34 +13,14 @@
 
 using namespace clang;
 class ASTConditionUnstackVisitor
-    : public RecursiveASTVisitor<ASTConditionUnstackVisitor> {
+    : public APACRecursiveASTVisitor<ASTConditionUnstackVisitor> {
 public:
   ASTConditionUnstackVisitor(Rewriter &R, std::string &mainRef,
                              std::vector<std::string> &functionsRef,
                              std::vector<std::string> &functionsToIgnoreRef)
-      : TheRewriter(R), mainName(mainRef), functions(functionsRef),
-        functionsToIgnore(functionsToIgnoreRef) {};
-  inline bool VisitStmt(Stmt *) { return true; }
-  bool TraverseFunctionDecl(FunctionDecl *fDecl) {
-    if (isToParseFunction(fDecl->getNameAsString(), functions,
-                          functionsToIgnore, mainName)) {
-      return RecursiveASTVisitor::TraverseFunctionDecl(fDecl);
-    }
-    return true;
-  }
-  inline bool TraverseFunctionTemplateDecl(FunctionTemplateDecl *fDecl) {
-    if (fDecl->getNameAsString().find("invalid_ref") == std::string::npos) {
-      return RecursiveASTVisitor::TraverseFunctionTemplateDecl(fDecl);
-    }
-    return true;
-  }
+      : APACRecursiveASTVisitor(R, mainRef, functionsRef,
+                                functionsToIgnoreRef) {}
   bool VisitWhileStmt(WhileStmt *whileSt);
   bool VisitIfStmt(IfStmt *ifSt);
   bool VisitForStmt(ForStmt *forSt);
-
-private:
-  Rewriter &TheRewriter;
-  std::string &mainName;
-  std::vector<std::string> &functions;
-  std::vector<std::string> &functionsToIgnore;
 };

@@ -11,43 +11,24 @@
 #include "clang/Rewrite/Core/Rewriter.h"
 
 using namespace clang;
-class ASTDepthAddVisitor : public RecursiveASTVisitor<ASTDepthAddVisitor> {
+class ASTDepthAddVisitor : public APACRecursiveASTVisitor<ASTDepthAddVisitor> {
 public:
   ASTDepthAddVisitor(Rewriter &R, std::string &mainRef,
                      std::vector<std::string> &functionsRef,
                      std::vector<std::string> &functionsToIgnoreRef)
-      : TheRewriter(R), mainName(mainRef), functions(functionsRef),
-        functionsToIgnore(functionsToIgnoreRef) {};
-  inline bool VisitStmt(Stmt *st) { return true; }
-  inline bool TraverseCXXMethodDecl(CXXMethodDecl *m) {
-    return TraverseFunctionDecl(m);
-  }
-  inline bool TraverseFunctionTemplateDecl(FunctionTemplateDecl *fDecl) {
-    if (fDecl->getNameAsString().find("invalid_ref") == std::string::npos) {
-      return RecursiveASTVisitor::TraverseFunctionTemplateDecl(fDecl);
-    }
-    return true;
-  }
+      : APACRecursiveASTVisitor(R, mainRef, functionsRef,
+                                functionsToIgnoreRef) {}
+
   bool VisitReturnStmt(ReturnStmt *r) {
-    if (isInHeaders(TheRewriter.getSourceMgr(), r->getBeginLoc())) {
+    if (!elementsConditions(r)) {
       return true;
     }
     returnStmts.push_back(r);
     return true;
   }
-  bool TraverseFunctionDecl(FunctionDecl *f) {
-
-    if (isInHeaders(TheRewriter.getSourceMgr(), f->getBeginLoc())) {
-      return true;
-    }
-    bool result = true;
-    if (isToParseFunction(f->getNameAsString(), functions, functionsToIgnore,
-                          mainName)) {
-      functionsToModify.push_back(f);
-      result = RecursiveASTVisitor::TraverseFunctionDecl(f);
-    }
-
-    return result;
+  inline bool VisitFunctionDecl(FunctionDecl *f) {
+    functionsToModify.push_back(f);
+    return true;
   }
   inline std::vector<FunctionDecl *> getFunctionsToModify() {
     return functionsToModify;
@@ -57,8 +38,4 @@ public:
 private:
   std::vector<FunctionDecl *> functionsToModify;
   std::vector<ReturnStmt *> returnStmts;
-  Rewriter &TheRewriter;
-  std::string &mainName;
-  std::vector<std::string> &functions;
-  std::vector<std::string> &functionsToIgnore;
 };

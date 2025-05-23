@@ -5,6 +5,7 @@ static llvm::cl::OptionCategory ToolingSampleCategory("Tooling Sample");
 using namespace clang;
 using namespace clang::driver;
 using namespace clang::tooling;
+namespace duplicateFunctions {
 std::string mainName;
 std::vector<std::string> functions, functionsToIgnore;
 std::queue<std::string> filesOutputExt;
@@ -32,17 +33,23 @@ public:
   MyFrontendAction() {}
   void EndSourceFileAction() override {
     SourceManager &SM = TheRewriter.getSourceMgr();
-    llvm::errs() << "** EndSourceFileAction for: "
-                 << SM.getFileEntryRefForID(SM.getMainFileID())->getName()
-                 << "\n";
 
-    // Now emit the rewritten buffer.
-    TheRewriter.getEditBuffer(SM.getMainFileID()).write(llvm::outs());
+    // Now emit the rewritten buffer.*
+    if (filesOutputExt.empty())
+      TheRewriter.getEditBuffer(SM.getMainFileID()).write(llvm::outs());
+    else {
+      // std::error_code error_code;
+      //  llvm::raw_fd_ostream outFile(filesOutputExt.front(), error_code,
+      //                               llvm::sys::fs::OF_None);
+      bool temp = TheRewriter.overwriteChangedFiles();
+      // TheRewriter.getEditBuffer(SM.getMainFileID()).write(outFile);
+      // outFile.close();
+      // filesOutputExt.pop();
+    }
   }
 
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
                                                  StringRef file) override {
-    llvm::errs() << "** Creating AST consumer for: " << file << "\n";
     TheRewriter.setSourceMgr(CI.getSourceManager(), CI.getLangOpts());
     return std::make_unique<MyASTConsumer>(TheRewriter);
   }
@@ -50,7 +57,8 @@ public:
 private:
   Rewriter TheRewriter;
 };
-
+} // namespace duplicateFunctions
+using namespace duplicateFunctions;
 bool DuplicateFunctionsHandler::run(
     llvm::Expected<clang::tooling::CommonOptionsParser> &options,
     std::vector<std::string> &filesInput, const std::string &mainFilterValue,

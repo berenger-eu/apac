@@ -5,7 +5,7 @@ static llvm::cl::OptionCategory ToolingSampleCategory("Tooling Sample");
 using namespace clang;
 using namespace clang::driver;
 using namespace clang::tooling;
-
+namespace stackheap {
 std::string mainName;
 std::vector<std::string> functions;
 std::vector<std::string> functionsToIgnore;
@@ -52,7 +52,11 @@ public:
                  << "\n";
 
     // Now emit the rewritten buffer.
-    TheRewriter.getEditBuffer(SM.getMainFileID()).write(llvm::outs());
+    if (filesOutputExt.empty())
+      TheRewriter.getEditBuffer(SM.getMainFileID()).write(llvm::outs());
+    else {
+      TheRewriter.overwriteChangedFiles();
+    }
   }
 
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
@@ -65,6 +69,8 @@ public:
 private:
   Rewriter TheRewriter;
 };
+} // namespace stackheap
+using namespace stackheap;
 
 bool HeapifyHandler::run(
     llvm::Expected<clang::tooling::CommonOptionsParser> &options,

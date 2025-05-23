@@ -14,10 +14,12 @@ static llvm::cl::OptionCategory ToolingSampleCategory("Tooling Sample");
 using namespace clang;
 using namespace clang::driver;
 using namespace clang::tooling;
+namespace rewritersample {
 std::string mainName;
 std::vector<std::string> functions, functionsToIgnore;
 std::queue<std::string> filesOutputExt;
-
+} // namespace rewritersample
+using namespace rewritersample;
 // Implementation of the ASTConsumer interface for reading an AST produced
 // by the Clang parser.
 class MyASTConsumer : public ASTConsumer {
