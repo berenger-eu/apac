@@ -14,7 +14,8 @@ std::queue<std::string> filesOutputExt;
 // by the Clang parser.
 class MyASTConsumer : public ASTConsumer {
 public:
-  MyASTConsumer(Rewriter &R) : VisitorMainPara(R, mainName) {}
+  MyASTConsumer(Rewriter &R)
+      : VisitorMainPara(R, mainName, functions, functionsToIgnore) {}
 
   // Parse all the file
   virtual void HandleTranslationUnit(ASTContext &Ctx) {

@@ -13,9 +13,11 @@
 using namespace clang;
 class ASTMainParaVisitor : public APACRecursiveASTVisitor<ASTMainParaVisitor> {
 public:
-  ASTMainParaVisitor(Rewriter &R, std::string &mainName)
-      : APACRecursiveASTVisitor(R, mainName, std::vector<std::string>(),
-                                std::vector<std::string>()) {
+  ASTMainParaVisitor(Rewriter &R, std::string &mainName,
+                     const std::vector<std::string> &functionsRef,
+                     const std::vector<std::string> &functionsToIgnoreRef)
+      : APACRecursiveASTVisitor(R, mainName, functionsRef,
+                                functionsToIgnoreRef) {
     mainFuncReturnStmt = nullptr;
     resultWrapperDecl = nullptr;
   };

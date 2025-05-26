@@ -1,4 +1,5 @@
 #include "mainParallel.hpp"
+#include <string>
 using namespace clang;
 using namespace clang::driver;
 using namespace clang::tooling;
@@ -30,8 +31,11 @@ int main(int argc, const char **argv) {
   // the helper newFrontendActionFactory to create a default factory that will
   // return a new MyFrontendAction object every time.
   // To further customize this, we could create our own factory class.
-
-  return MainParallelHandler::run(option, files, APACMainFilter.getValue(),
+  std::string apacMainName = APACMainFilter.getValue();
+  if (apacMainName.empty()) {
+    apacMainName = "main";
+  }
+  return MainParallelHandler::run(option, files, apacMainName,
                                   APACFunctionFilter.getValue(),
                                   APACIgnoreFilter.getValue());
 }

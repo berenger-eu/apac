@@ -180,7 +180,8 @@ inline std::string getInitString(VarDecl *v) {
 }
 // True when the input location is in a system header or not in the main file
 inline bool isInHeaders(SourceManager &sm, SourceLocation sl) {
-  return sm.isInSystemHeader(sl) || sm.getFilename(sl) == "_apac_header.hpp";
+  return sm.isInSystemHeader(sl) ||
+         sm.getFilename(sl).contains("_apac_header.hpp");
   // return (!(sm.isWrittenInMainFile(sl))) || sm.isInSystemHeader(sl);
 }
 // True when the statement is a loop

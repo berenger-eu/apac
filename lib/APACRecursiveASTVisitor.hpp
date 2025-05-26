@@ -47,9 +47,35 @@ public:
     }
     return true;
   }
+  bool TraverseCXXMethodDecl(CXXMethodDecl *mDecl) {
+    if (functionsConditions(mDecl)) {
+      return RecursiveASTVisitor<Derived>::TraverseCXXMethodDecl(mDecl);
+    }
+    return true;
+  }
   bool TraverseFunctionDecl(FunctionDecl *fDecl) {
     if (functionsConditions(fDecl)) {
       return RecursiveASTVisitor<Derived>::TraverseFunctionDecl(fDecl);
+    }
+    return true;
+  }
+  bool TraverseDecl(Decl *d) {
+    if (elementsConditions(d)) {
+      return RecursiveASTVisitor<Derived>::TraverseDecl(d);
+    }
+    return true;
+  }
+  bool TraverseCXXOperatorCallExpr(CXXOperatorCallExpr *opCall) {
+    if (elementsConditions(opCall)) {
+      auto firstArg = opCall->getArg(0);
+      if (isa<DeclRefExpr>(firstArg->IgnoreParenCasts())) {
+        auto declRef = cast<DeclRefExpr>(firstArg->IgnoreParenCasts());
+        auto decl = declRef->getDecl();
+        if (decl->getName() == "__result") {
+          return true;
+        }
+      }
+      return RecursiveASTVisitor<Derived>::TraverseCXXOperatorCallExpr(opCall);
     }
     return true;
   }
@@ -84,7 +110,7 @@ public:
 
 protected:
   Rewriter &TheRewriter;
-  std::string &mainName;
+  const std::string &mainName;
   const std::vector<std::string> &functions;
   const std::vector<std::string> &functionsToIgnore;
 };

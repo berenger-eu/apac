@@ -26,8 +26,14 @@ public:
     returnStmts.push_back(r);
     return true;
   }
-  inline bool VisitFunctionDecl(FunctionDecl *f) {
-    functionsToModify.push_back(f);
+  inline bool TraverseFunctionDecl(FunctionDecl *f) {
+    if (functionsConditions(f)) {
+      functionsToModify.push_back(f);
+      return RecursiveASTVisitor<ASTDepthAddVisitor>::TraverseFunctionDecl(f);
+    }
+    return true;
+  }
+  inline bool TraverseCXXOperatorCallExpr(CXXOperatorCallExpr *op) {
     return true;
   }
   inline std::vector<FunctionDecl *> getFunctionsToModify() {
