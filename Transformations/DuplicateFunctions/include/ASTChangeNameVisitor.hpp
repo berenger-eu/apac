@@ -40,6 +40,9 @@ public:
       TheRewriter.ReplaceText(
           SourceRange(f->getTypeSpecStartLoc(), f->getTypeSpecEndLoc()),
           SSprint.str());
+    } else {
+      // If it's the main function, we don't change its name
+      currentFunctionDecl = nullptr;
     }
     return true;
   }
