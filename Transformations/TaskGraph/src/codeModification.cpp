@@ -28,36 +28,55 @@ void addFunctionDepth(Rewriter &TheRewriter,
     std::stringstream SSprintBefore, SSprintAfter;
     SSprintBefore << "int __apac_depth_local = __apac_depth;\n";
 
-    if (f->getNameAsString().find("main") == std::string::npos) {
-      SSprintBefore
-          << "int __apac_depth_ok = (__apac_depth_local < __apac_depth_max);\n"
-          << "if(__apac_depth_ok) {\n";
-      SSprintAfter << "}\nelse {\n"
-                   << "return " << f->getNameAsString() + "_apacSeq(";
-      for (auto &param : f->parameters()) {
-        SSprintAfter << param->getNameAsString();
-        if (param != f->parameters().back()) {
-          SSprintAfter << ", ";
-        }
+    SSprintBefore
+        << "int __apac_depth_ok = (__apac_depth_local < __apac_depth_max);\n"
+        << "if(__apac_depth_ok) {\n";
+    SSprintAfter << "}\nelse {\n"
+                 << "return " << f->getNameAsString() + "_apacSeq(";
+    for (auto &param : f->parameters()) {
+      SSprintAfter << param->getNameAsString();
+      if (param != f->parameters().back()) {
+        SSprintAfter << ", ";
       }
-      SSprintAfter << ");\n}\n";
     }
+    SSprintAfter << ");\n}\n";
     TheRewriter.InsertTextAfterToken(f->getBody()->getBeginLoc(),
                                      SSprintBefore.str());
     TheRewriter.InsertTextBefore(f->getBody()->getEndLoc(), SSprintAfter.str());
   }
 }
-void handleTaskGroups(Rewriter &TheRewriter,
-                      std::vector<FunctionDecl *> &functions,
-                      std::vector<ReturnStmt *> &returnStmts) {
+void handleTaskGroups(
+    Rewriter &TheRewriter, std::vector<FunctionDecl *> &functions,
+    std::vector<std::pair<ReturnStmt *, FunctionDecl *>> &returnStmts) {
+
+  std::unordered_map<FunctionDecl *, ReturnStmt *> returnMap;
+  for (auto &r : returnStmts) {
+    returnMap[r.second] = r.first;
+  }
+  for (auto &f : functions) {
+    if (returnMap.count(f))
+      TheRewriter.InsertTextBefore(returnMap.at(f)->getBeginLoc(), "}\n");
+    else
+      TheRewriter.InsertTextBefore(f->getBody()->getEndLoc(), "}\n");
+  }
   for (auto &f : functions) {
     if (f->hasBody()) {
+
       Stmt *firstStmt = *(f->getBody()->child_begin());
-      TheRewriter.InsertText(firstStmt->getEndLoc(),
-                             "#pragma omp taskgroup\n{\n");
+      if (isa<DeclStmt>(firstStmt)) {
+        DeclStmt *d = cast<DeclStmt>(firstStmt);
+        if (d->isSingleDecl() && isa<VarDecl>(d->getSingleDecl())) {
+          VarDecl *var = cast<VarDecl>(d->getSingleDecl());
+          if (var->getNameAsString().find("__result") != std::string::npos) {
+            TheRewriter.InsertTextBefore(firstStmt->getEndLoc(),
+                                         "#pragma omp taskgroup\n{\n");
+          }
+        }
+      } else {
+
+        TheRewriter.InsertTextBefore(firstStmt->getBeginLoc(),
+                                     "#pragma omp taskgroup\n{\n");
+      }
     }
-  }
-  for (auto &r : returnStmts) {
-    TheRewriter.InsertTextBefore(r->getBeginLoc(), ";}\n");
   }
 }

@@ -23,7 +23,7 @@ public:
     if (!elementsConditions(r)) {
       return true;
     }
-    returnStmts.push_back(r);
+    returnStmts.push_back(std::make_pair(r, functionsToModify.back()));
     return true;
   }
   inline bool TraverseFunctionDecl(FunctionDecl *f) {
@@ -39,9 +39,11 @@ public:
   inline std::vector<FunctionDecl *> getFunctionsToModify() {
     return functionsToModify;
   }
-  inline std::vector<ReturnStmt *> getReturnStmts() { return returnStmts; }
+  inline std::vector<std::pair<ReturnStmt *, FunctionDecl *>> getReturnStmts() {
+    return returnStmts;
+  }
 
 private:
   std::vector<FunctionDecl *> functionsToModify;
-  std::vector<ReturnStmt *> returnStmts;
+  std::vector<std::pair<ReturnStmt *, FunctionDecl *>> returnStmts;
 };
