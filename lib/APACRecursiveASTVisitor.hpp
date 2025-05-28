@@ -48,13 +48,13 @@ public:
     return true;
   }
   bool TraverseCXXMethodDecl(CXXMethodDecl *mDecl) {
-    if (functionsConditions(mDecl) && mDecl->isThisDeclarationADefinition()) {
+    if (functionsConditions(mDecl)) {
       return RecursiveASTVisitor<Derived>::TraverseCXXMethodDecl(mDecl);
     }
     return true;
   }
   bool TraverseFunctionDecl(FunctionDecl *fDecl) {
-    if (functionsConditions(fDecl) && fDecl->isThisDeclarationADefinition()) {
+    if (functionsConditions(fDecl)) {
       return RecursiveASTVisitor<Derived>::TraverseFunctionDecl(fDecl);
     }
     return true;
@@ -94,7 +94,8 @@ public:
 
 public:
   inline bool functionsConditions(FunctionDecl *fDecl) {
-    return isToParseFunction(fDecl->getNameAsString(), functions,
+    return fDecl->isThisDeclarationADefinition() &&
+           isToParseFunction(fDecl->getNameAsString(), functions,
                              functionsToIgnore, mainName) &&
            elementsConditions(fDecl);
   }
