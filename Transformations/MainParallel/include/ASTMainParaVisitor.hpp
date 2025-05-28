@@ -44,24 +44,31 @@ public:
     bool result = true;
     if (functionsConditions(f) && (f->getNameAsString() == mainName)) {
       result = RecursiveASTVisitor::TraverseFunctionDecl(f);
+      mainFuncDecl = f;
     }
     return result;
   }
   inline void addParaZone() {
     std::stringstream SSprintBefore, SSprintAfter;
-    if (resultWrapperDecl == nullptr || mainFuncReturnStmt == nullptr) {
-      return;
-    }
+    SourceLocation locBefore, locAfter;
+    if (resultWrapperDecl == nullptr)
+      locBefore = mainFuncDecl->getBody()->getBeginLoc();
+    else
+      locBefore = resultWrapperDecl->getEndLoc();
+    if (mainFuncReturnStmt == nullptr)
+      locAfter = mainFuncDecl->getBody()->getEndLoc();
+    else
+      locAfter = mainFuncReturnStmt->getBeginLoc();
+
     SSprintBefore << "\n#pragma omp parallel num_threads(nb_cores)\n "
                   << "#pragma omp master\n{";
     SSprintAfter << "}\n";
-    TheRewriter.InsertTextAfterToken(resultWrapperDecl->getEndLoc(),
-                                     SSprintBefore.str());
-    TheRewriter.InsertTextBefore(mainFuncReturnStmt->getBeginLoc(),
-                                 SSprintAfter.str());
+    TheRewriter.InsertTextAfterToken(locBefore, SSprintBefore.str());
+    TheRewriter.InsertTextBefore(locAfter, SSprintAfter.str());
   }
 
 private:
   ReturnStmt *mainFuncReturnStmt;
   DeclStmt *resultWrapperDecl;
+  FunctionDecl *mainFuncDecl = nullptr;
 };
