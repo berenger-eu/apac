@@ -1,36 +1,47 @@
 #include "ASTGotoVisitor.hpp"
 using namespace clang;
 bool ASTGotoVisitor::VisitFunctionDecl(FunctionDecl *fDecl) {
-  if(!fDecl->isThisDeclarationADefinition())
+  if (!fDecl->isThisDeclarationADefinition())
     return true;
   // Declares the result in the transformed source file, only if it's not void
   std::stringstream SSprint;
-  if ( !fDecl->getReturnType().getTypePtr()->isVoidType()) {
+  if (!fDecl->getReturnType().getTypePtr()->isVoidType()) {
     // Declares the result
     SSprint << "\nwrapper_t<"
             << fDecl->getReturnType().getAsString(TheRewriter.getLangOpts())
             << "> __result;\n";
   }
   SSprint << "{\n";
-  TheRewriter.InsertTextAfterToken(fDecl->getBody()->getBeginLoc(),
-                                   SSprint.str());
 
   // Adds the exit section
   std::stringstream SSexit;
   // TODO:Handle other cases with no returns
-  SSexit << "\n}\n";
-  if (!fDecl->getReturnType().getTypePtr()->isVoidType()) {
-    SSexit << "__exit" << functionsCounter << ": return *__result;\n";
-  } else {
-    SSexit << "__exit" << functionsCounter << ": return ;\n";
-  }
-  TheRewriter.InsertTextAfter(fDecl->getBody()->getEndLoc(), SSexit.str());
+
   Stmt *fDeclBody = fDecl->getBody();
   assert(fDeclBody && "Function body is null\n");
   if (fDeclBody && isa<CompoundStmt>(fDecl->getBody())) {
     subVisitCompoundStmt(cast<CompoundStmt>(fDeclBody));
   }
-  functionsCounter++;
+  auto returnsCounter = returnsList.size();
+  if (returnsCounter > 1) {
+    TheRewriter.InsertTextAfterToken(fDecl->getBody()->getBeginLoc(),
+                                     SSprint.str());
+    SSexit << "\n}\n";
+    if (!fDecl->getReturnType().getTypePtr()->isVoidType()) {
+      SSexit << "__exit" << functionsCounter << ": return *__result;\n";
+    } else {
+      SSexit << "__exit" << functionsCounter << ":;\n";
+    }
+    TheRewriter.InsertTextAfter(fDecl->getBody()->getEndLoc(), SSexit.str());
+    for (auto &retStmt : returnsList) {
+      TheRewriter.ReplaceText(
+          SourceRange(retStmt->getBeginLoc(), retStmt->getEndLoc()),
+          createGotoString(*retStmt, TheRewriter, functionsCounter));
+    }
+    functionsCounter++;
+  }
+
+  returnsList.clear();
   return true;
 }
 
@@ -59,9 +70,7 @@ void ASTGotoVisitor::handleSubStmt(Stmt *st) {
 
 void ASTGotoVisitor::subVisitReturnStmt(ReturnStmt *retStmt) {
   // Insert a Goto and affect the value of the return to result
-  TheRewriter.ReplaceText(
-      SourceRange(retStmt->getBeginLoc(), retStmt->getEndLoc()),
-      createGotoString((*retStmt), TheRewriter, functionsCounter));
+  returnsList.push_back(retStmt);
 }
 
 std::string createGotoString(const ReturnStmt &retStmt,

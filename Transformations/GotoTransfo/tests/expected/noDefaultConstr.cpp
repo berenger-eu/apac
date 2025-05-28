@@ -2,11 +2,7 @@
 class point {
 
 public:
-  point(int x, int y) : x(x), y(y) {
-    {}
-  __exit0:
-    return;
-  }
+  point(int x, int y) : x(x), y(y) {}
   int x;
   int y;
 };
@@ -14,18 +10,16 @@ public:
 point createPoint() {
   wrapper_t<point> __result;
   {
-    __result = build_wrapper<point>(point(1, 2));
-    goto __exit1;
+
+    if (true) {
+      __result = build_wrapper<point>(point(1, 2));
+      goto __exit0;
+    } else {
+      __result = build_wrapper<point>(point(3, 4));
+      goto __exit0;
+    }
   }
-__exit1:
+__exit0:
   return *__result;
 }
-int main() {
-  wrapper_t<int> __result;
-  {
-    __result = build_wrapper<int>(0);
-    goto __exit2;
-  }
-__exit2:
-  return *__result;
-}
+int main() { return 0; }

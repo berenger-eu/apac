@@ -1,1 +1,6 @@
-bool h() { return true; }
+bool h() {
+  if (true) {
+    return false;
+  }
+  return true;
+}

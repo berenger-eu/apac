@@ -2,6 +2,11 @@
 bool h() {
   wrapper_t<bool> __result;
   {
+
+    if (true) {
+      __result = build_wrapper<bool>(false);
+      goto __exit0;
+    }
     __result = build_wrapper<bool>(true);
     goto __exit0;
   }

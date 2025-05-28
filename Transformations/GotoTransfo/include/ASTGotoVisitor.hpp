@@ -44,6 +44,7 @@ private:
   void handleSubStmt(Stmt *);
   // Used to give a unique number for the exit section of each function
   unsigned int functionsCounter;
+  std::vector<ReturnStmt *> returnsList;
 };
 
 // Returns string : __result=<returnValue>;goto __exitX;\n

@@ -3,7 +3,13 @@ void f() {
   int a = 1;
   return;
 }
-void g() { int b = 1; }
+void g() {
+  int b = 1;
+  if (b)
+    return;
+  else
+    return;
+}
 
 int main() {
   f();

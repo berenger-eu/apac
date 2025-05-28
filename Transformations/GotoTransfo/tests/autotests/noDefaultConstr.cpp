@@ -6,5 +6,12 @@ public:
   int y;
 };
 
-point createPoint() { return point(1, 2); }
+point createPoint() {
+
+  if (true) {
+    return point(1, 2);
+  } else {
+    return point(3, 4);
+  }
+}
 int main() { return 0; }
