@@ -70,7 +70,15 @@ void handleTaskGroups(
           if (var->getNameAsString().find("__result") != std::string::npos) {
             TheRewriter.InsertTextBefore(firstStmt->getEndLoc(),
                                          "#pragma omp taskgroup\n{\n");
+          } else {
+
+            TheRewriter.InsertTextBefore(firstStmt->getBeginLoc(),
+                                         "#pragma omp taskgroup\n{\n");
           }
+        } else {
+
+          TheRewriter.InsertTextBefore(firstStmt->getBeginLoc(),
+                                       "#pragma omp taskgroup\n{\n");
         }
       } else {
 
