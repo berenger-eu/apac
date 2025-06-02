@@ -22,7 +22,6 @@ public:
         currentFunctionDecl(nullptr) {}
 
   inline bool VisitFunctionDecl(FunctionDecl *f) {
-    if (f->getNameAsString() != mainName) {
 
       currentFunctionDecl = f;
       std::stringstream SSprint;
@@ -40,10 +39,7 @@ public:
       TheRewriter.ReplaceText(
           SourceRange(f->getTypeSpecStartLoc(), f->getTypeSpecEndLoc()),
           SSprint.str());
-    } else {
-      // If it's the main function, we don't change its name
-      currentFunctionDecl = nullptr;
-    }
+    
     return true;
   }
   inline bool VisitCallExpr(CallExpr *cExpr) {

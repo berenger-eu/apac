@@ -22,7 +22,7 @@ public:
                                 functionsToIgnoreRef) {}
 
   inline bool VisitFunctionDecl(FunctionDecl *f) {
-    if (f->getNameAsString() != mainName)
+    //if (f->getNameAsString() != mainName)
       functionsDecl.push_back(f);
     return true;
   }
