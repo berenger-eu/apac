@@ -31,8 +31,10 @@ void addFunctionDepth(Rewriter &TheRewriter,
     SSprintBefore
         << "int __apac_depth_ok = (__apac_depth_local < __apac_depth_max);\n"
         << "if(__apac_depth_ok) {\n";
-    SSprintAfter << "}\nelse {\n"
-                 << "return " << f->getNameAsString() + "_apacSeq(";
+    SSprintAfter << "}\nelse {\n";
+    if (!f->getReturnType()->isVoidType())
+      SSprintAfter << "return ";
+    SSprintAfter << f->getNameAsString() + "_apacSeq(";
     for (auto &param : f->parameters()) {
       SSprintAfter << param->getNameAsString();
       if (param != f->parameters().back()) {
