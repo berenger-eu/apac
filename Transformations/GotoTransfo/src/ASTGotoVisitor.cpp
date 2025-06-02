@@ -23,7 +23,16 @@ bool ASTGotoVisitor::VisitFunctionDecl(FunctionDecl *fDecl) {
     subVisitCompoundStmt(cast<CompoundStmt>(fDeclBody));
   }
   auto returnsCounter = returnsList.size();
-  if (returnsCounter > 1) {
+  auto funcChildren = fDeclBody->children();
+  Stmt *lastFuncStmt = nullptr;
+  for (auto &child : funcChildren) {
+    lastFuncStmt = child;
+  }
+  if (returnsCounter > 1 ||
+      (returnsCounter == 1 &&
+       fDecl->getReturnType().getTypePtr()->isVoidType() &&
+       lastFuncStmt != returnsList[0])) {
+
     TheRewriter.InsertTextAfterToken(fDecl->getBody()->getBeginLoc(),
                                      SSprint.str());
     SSexit << "\n}\n";
