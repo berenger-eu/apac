@@ -63,7 +63,7 @@ void handleTaskGroups(
   }
   for (auto &f : functions) {
     if (f->hasBody()) {
-
+      bool placedTaskGroup = false;
       Stmt *firstStmt = *(f->getBody()->child_begin());
       if (isa<DeclStmt>(firstStmt)) {
         DeclStmt *d = cast<DeclStmt>(firstStmt);
@@ -72,21 +72,12 @@ void handleTaskGroups(
           if (var->getNameAsString().find("__result") != std::string::npos) {
             TheRewriter.InsertTextBefore(firstStmt->getEndLoc(),
                                          "#pragma omp taskgroup\n{\n");
-          } else {
-
-            TheRewriter.InsertTextBefore(firstStmt->getBeginLoc(),
-                                         "#pragma omp taskgroup\n{\n");
+            placedTaskGroup = true;
           }
-        } else {
-
-          TheRewriter.InsertTextBefore(firstStmt->getBeginLoc(),
-                                       "#pragma omp taskgroup\n{\n");
         }
-      } else {
-
+      } else if (!placedTaskGroup)
         TheRewriter.InsertTextBefore(firstStmt->getBeginLoc(),
                                      "#pragma omp taskgroup\n{\n");
-      }
     }
   }
 }
