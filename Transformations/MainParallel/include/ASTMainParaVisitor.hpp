@@ -34,7 +34,7 @@ public:
     return true;
   }
   inline bool VisitIfStmt(IfStmt *ifSt) {
-    if (elementsConditions(ifSt)) {
+    if (elementsConditions(ifSt) && firstValidFunctionIf == nullptr) {
       firstValidFunctionIf = ifSt;
     }
     return true;
