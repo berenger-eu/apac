@@ -28,7 +28,6 @@ public:
 
     auto functions = VisitorDepthAdd.getFunctionsToModify();
     auto returnStmts = VisitorDepthAdd.getReturnStmts();
-    modifyCode(TheRewriter, codeBeginLoc, functions, returnStmts);
     VisitorTaskGraph.TraverseAST(Ctx);
     for (auto instr : VisitorTaskGraph.functionsInstructionsVector)
       for (auto instrI : instr)
@@ -50,7 +49,7 @@ public:
     }
     outputHandler.GenerateDotGraph(graphs, "taskGraphOpt.dot");
     outputHandler.modifyFile(orderManager);
-    handleTaskGroups(TheRewriter, functions, returnStmts);
+    modifyCode(TheRewriter, codeBeginLoc, functions, returnStmts);
   }
 
 private:

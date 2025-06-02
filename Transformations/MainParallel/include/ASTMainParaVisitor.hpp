@@ -33,6 +33,12 @@ public:
     }
     return true;
   }
+  inline bool VisitIfStmt(IfStmt *ifSt) {
+    if (elementsConditions(ifSt)) {
+      firstValidFunctionIf = ifSt;
+    }
+    return true;
+  }
   inline bool VisitReturnStmt(ReturnStmt *r) {
     if (isInHeaders(TheRewriter.getSourceMgr(), r->getBeginLoc())) {
       return true;
@@ -51,15 +57,8 @@ public:
   inline void addParaZone() {
     std::stringstream SSprintBefore, SSprintAfter;
     SourceLocation locBefore, locAfter;
-    if (resultWrapperDecl == nullptr)
-      locBefore = mainFuncDecl->getBody()->getBeginLoc();
-    else
-      locBefore = resultWrapperDecl->getEndLoc();
-    if (mainFuncReturnStmt == nullptr)
-      locAfter = mainFuncDecl->getBody()->getEndLoc();
-    else
-      locAfter = mainFuncReturnStmt->getBeginLoc();
-
+    locBefore = firstValidFunctionIf->getThen()->getBeginLoc();
+    locAfter = firstValidFunctionIf->getThen()->getEndLoc();
     SSprintBefore << "\n#pragma omp parallel num_threads(nb_cores)\n "
                   << "#pragma omp master\n{";
     SSprintAfter << "}\n";
@@ -68,6 +67,7 @@ public:
   }
 
 private:
+  IfStmt *firstValidFunctionIf = nullptr;
   ReturnStmt *mainFuncReturnStmt;
   DeclStmt *resultWrapperDecl;
   FunctionDecl *mainFuncDecl = nullptr;

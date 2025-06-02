@@ -11,11 +11,14 @@
 
 void addInitApacPart(Rewriter &TheRewriter, const SourceLocation &,
                      FunctionDecl *);
-
-void addFunctionDepth(Rewriter &TheRewriter,
-                      std::vector<FunctionDecl *> &functions);
-void handleTaskGroups(
-    Rewriter &TheRewriter, std::vector<FunctionDecl *> &functionStmts,
+void addFunctionDepth(Rewriter &TheRewriter, std::stringstream &SSprintBefore,
+                      std::stringstream &SSprintAfter, FunctionDecl *f);
+void handleFunctionTaskGroup(Rewriter &TheRewriter, FunctionDecl *f,
+                             ReturnStmt *returnStmt,
+                             std::stringstream &SSprintBefore,
+                             std::stringstream &SSprintAfter);
+void handleFunctions(
+    Rewriter &TheRewriter, std::vector<FunctionDecl *> &functions,
     std::vector<std::pair<ReturnStmt *, FunctionDecl *>> &returnStmts);
 inline void
 modifyCode(Rewriter &TheRewriter, SourceLocation &beginCodeLoc,
@@ -25,5 +28,5 @@ modifyCode(Rewriter &TheRewriter, SourceLocation &beginCodeLoc,
   if (!functions.empty())
     beginCodeFunction = functions.front();
   addInitApacPart(TheRewriter, beginCodeLoc, beginCodeFunction);
-  addFunctionDepth(TheRewriter, functions);
+  handleFunctions(TheRewriter, functions, returnStmts);
 }

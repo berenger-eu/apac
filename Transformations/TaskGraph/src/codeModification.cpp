@@ -22,62 +22,71 @@ void addInitApacPart(Rewriter &TheRewriter, const SourceLocation &beginCodeLoc,
   }
 }
 
-void addFunctionDepth(Rewriter &TheRewriter,
-                      std::vector<FunctionDecl *> &functions) {
-  for (auto &f : functions) {
-    std::stringstream SSprintBefore, SSprintAfter;
-    SSprintBefore << "int __apac_depth_local = __apac_depth;\n";
-
-    SSprintBefore
-        << "int __apac_depth_ok = (__apac_depth_local < __apac_depth_max);\n"
-        << "if(__apac_depth_ok) {\n";
-    SSprintAfter << "}\nelse {\n";
-    if (!f->getReturnType()->isVoidType())
-      SSprintAfter << "return ";
-    SSprintAfter << f->getNameAsString() + "_apacSeq(";
-    for (auto &param : f->parameters()) {
-      SSprintAfter << param->getNameAsString();
-      if (param != f->parameters().back()) {
-        SSprintAfter << ", ";
-      }
-    }
-    SSprintAfter << ");\n}\n";
-    TheRewriter.InsertTextAfterToken(f->getBody()->getBeginLoc(),
-                                     SSprintBefore.str());
-    TheRewriter.InsertTextBefore(f->getBody()->getEndLoc(), SSprintAfter.str());
-  }
-}
-void handleTaskGroups(
+void handleFunctions(
     Rewriter &TheRewriter, std::vector<FunctionDecl *> &functions,
     std::vector<std::pair<ReturnStmt *, FunctionDecl *>> &returnStmts) {
-
   std::unordered_map<FunctionDecl *, ReturnStmt *> returnMap;
   for (auto &r : returnStmts) {
     returnMap[r.second] = r.first;
   }
   for (auto &f : functions) {
-    if (returnMap.count(f))
-      TheRewriter.InsertTextBefore(returnMap.at(f)->getBeginLoc(), "}\n");
-    else
-      TheRewriter.InsertTextBefore(f->getBody()->getEndLoc(), "}\n");
+
+    std::stringstream SSprintBefore, SSprintAfter;
+    addFunctionDepth(TheRewriter, SSprintBefore, SSprintAfter, f);
+    handleFunctionTaskGroup(TheRewriter, f,
+                            returnMap.count(f) ? returnMap.at(f) : nullptr,
+                            SSprintBefore, SSprintAfter);
+    TheRewriter.InsertTextAfterToken(f->getBody()->getBeginLoc(),
+                                     SSprintBefore.str());
+    TheRewriter.InsertTextAfter(f->getBody()->getEndLoc(), SSprintAfter.str());
   }
-  for (auto &f : functions) {
-    if (f->hasBody()) {
-      bool placedTaskGroup = false;
-      Stmt *firstStmt = *(f->getBody()->child_begin());
-      if (isa<DeclStmt>(firstStmt)) {
-        DeclStmt *d = cast<DeclStmt>(firstStmt);
-        if (d->isSingleDecl() && isa<VarDecl>(d->getSingleDecl())) {
-          VarDecl *var = cast<VarDecl>(d->getSingleDecl());
-          if (var->getNameAsString().find("__result") != std::string::npos) {
-            TheRewriter.InsertTextBefore(firstStmt->getEndLoc(),
-                                         "\n#pragma omp taskgroup\n{\n");
-            placedTaskGroup = true;
-          }
-        }
-      } else if (!placedTaskGroup)
-        TheRewriter.InsertTextBefore(firstStmt->getBeginLoc(),
-                                     "\n#pragma omp taskgroup\n{\n");
+}
+
+void addFunctionDepth(Rewriter &TheRewriter, std::stringstream &SSprintBefore,
+                      std::stringstream &SSprintAfter, FunctionDecl *f) {
+  // Stringstream before :  ... if(__apac_depth_ok) {
+  // Stringstream after :  } else { return f_apacSeq(...); }
+  SSprintBefore << "int __apac_depth_local = __apac_depth;\n";
+
+  SSprintBefore
+      << "int __apac_depth_ok = (__apac_depth_local < __apac_depth_max);\n"
+      << "if(__apac_depth_ok) {\n";
+  SSprintAfter << "}\nelse {\n";
+  if (!f->getReturnType()->isVoidType())
+    SSprintAfter << "return ";
+  SSprintAfter << f->getNameAsString() + "_apacSeq(";
+  for (auto &param : f->parameters()) {
+    SSprintAfter << param->getNameAsString();
+    if (param != f->parameters().back()) {
+      SSprintAfter << ", ";
     }
   }
+  SSprintAfter << ");\n}\n";
+}
+void handleFunctionTaskGroup(Rewriter &TheRewriter, FunctionDecl *f,
+                             ReturnStmt *returnStmt,
+                             std::stringstream &SSprintBefore,
+                             std::stringstream &SSprintAfter) {
+  auto curAfter = SSprintAfter.str();
+  SSprintAfter.str("");
+  SSprintAfter.clear();
+
+  if (f->hasBody()) {
+    SSprintAfter << "}\n";
+    bool placedTaskGroup = false;
+    Stmt *firstStmt = *(f->getBody()->child_begin());
+    if (isa<DeclStmt>(firstStmt)) {
+      DeclStmt *d = cast<DeclStmt>(firstStmt);
+      if (d->isSingleDecl() && isa<VarDecl>(d->getSingleDecl())) {
+        VarDecl *var = cast<VarDecl>(d->getSingleDecl());
+        if (var->getNameAsString().find("__result") != std::string::npos) {
+          TheRewriter.InsertTextBefore(firstStmt->getEndLoc(),
+                                       "\n#pragma omp taskgroup\n{\n");
+          placedTaskGroup = true;
+        }
+      }
+    } else if (!placedTaskGroup)
+      SSprintBefore << "\n#pragma omp taskgroup\n{\n";
+  }
+  SSprintAfter << curAfter;
 }
