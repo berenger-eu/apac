@@ -71,13 +71,13 @@ void handleTaskGroups(
           VarDecl *var = cast<VarDecl>(d->getSingleDecl());
           if (var->getNameAsString().find("__result") != std::string::npos) {
             TheRewriter.InsertTextBefore(firstStmt->getEndLoc(),
-                                         "#pragma omp taskgroup\n{\n");
+                                         "\n#pragma omp taskgroup\n{\n");
             placedTaskGroup = true;
           }
         }
       } else if (!placedTaskGroup)
         TheRewriter.InsertTextBefore(firstStmt->getBeginLoc(),
-                                     "#pragma omp taskgroup\n{\n");
+                                     "\n#pragma omp taskgroup\n{\n");
     }
   }
 }
