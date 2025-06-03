@@ -9,39 +9,41 @@ int *minPtr(int *a, int *b) {
   int __apac_depth_local = __apac_depth;
   int __apac_depth_ok = (__apac_depth_local < __apac_depth_max);
   if (__apac_depth_ok) {
-    ;
-  }
-  return #pragma omp taskgroup { a; }
-  else {
+#pragma omp taskgroup
+    {}
+    return a;
+  } else {
     return minPtr_apacSeq(a, b);
   }
 }
 int main() {
   int __apac_depth_local = __apac_depth;
-  int i, j;
+  int __apac_depth_ok = (__apac_depth_local < __apac_depth_max);
+  if (__apac_depth_ok) {
 #pragma omp taskgroup
-  {
+    {
+      int i, j;
 #pragma omp task default(shared) depend(inout : i)
-    { i = 4; }
+      { i = 4; }
 #pragma omp task default(shared) depend(inout : j)
-    { j = 4; }
-    int *p;
+      { j = 4; }
+      int *p;
 // Issue when using address of a variable
 #pragma omp task default(shared) depend(inout : i, j)                          \
     firstprivate(__apac_depth_local)
-    {
-      __apac_depth = __apac_depth_local + 1;
-      p = minPtr(&i, &j);
-    }
+      {
+        __apac_depth = __apac_depth_local + 1;
+        p = minPtr(&i, &j);
+      }
 #pragma omp task default(shared) depend(inout : j)
-    { j++; }
+      { j++; }
 #pragma omp task default(shared) depend(inout : i)
-    { i++; }
+      { i++; }
 #pragma omp task default(shared) depend(inout : i, j)
-    {
-      *p = 5;
+      { *p = 5; }
     }
-    ;
+    return 0;
+  } else {
+    return main_apacSeq();
   }
-  return 0;
 }

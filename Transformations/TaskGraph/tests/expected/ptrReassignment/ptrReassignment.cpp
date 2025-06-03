@@ -7,38 +7,42 @@ int __apac_depth = 0;
 const static int __apac_depth_max = parallel_depth;
 int main() {
   int __apac_depth_local = __apac_depth;
-  int a;
+  int __apac_depth_ok = (__apac_depth_local < __apac_depth_max);
+  if (__apac_depth_ok) {
 #pragma omp taskgroup
-  {
-    int a1;
-    int *b;
-    int *b1;
-    int **c;
+    {
+      int a;
+      int a1;
+      int *b;
+      int *b1;
+      int **c;
 #pragma omp task default(shared) depend(inout : c)
-    { c = &b; }
+      { c = &b; }
 #pragma omp task default(shared) depend(inout : b)
-    { b = &a; }
+      { b = &a; }
 #pragma omp task default(shared) depend(inout : a)
-    { a = 1; }
+      { a = 1; }
 #pragma omp task default(shared) depend(inout : a) depend(in : b)
-    { *b = 2; }
+      { *b = 2; }
 #pragma omp task default(shared) depend(inout : a) depend(in : c, b)
-    { **c = 3; }
+      { **c = 3; }
 #pragma omp task default(shared) depend(inout : b1)
-    { b1 = &a1; }
+      { b1 = &a1; }
 #pragma omp task default(shared) depend(inout : c)
-    { c = &b1; }
+      { c = &b1; }
 #pragma omp task default(shared) depend(in : c, b1)
-    {
-      **c = 4;
-      a1 = 4;
-    }
+      {
+        **c = 4;
+        a1 = 4;
+      }
 #pragma omp task default(shared) depend(inout : a) depend(in : b)
-    {
-      *b = 5;
-      a = 5;
+      {
+        *b = 5;
+        a = 5;
+      }
     }
-    ;
+    return 1;
+  } else {
+    return main_apacSeq();
   }
-  return 1;
 }

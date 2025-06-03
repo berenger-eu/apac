@@ -72,7 +72,10 @@ void handleFunctionTaskGroup(Rewriter &TheRewriter, FunctionDecl *f,
   SSprintAfter.clear();
 
   if (f->hasBody()) {
-    SSprintAfter << "}\n";
+    if (returnStmt == nullptr)
+      SSprintAfter << "}\n";
+    else
+      TheRewriter.InsertText(returnStmt->getBeginLoc(), "}\n");
     bool placedTaskGroup = false;
     Stmt *firstStmt = *(f->getBody()->child_begin());
     if (isa<DeclStmt>(firstStmt)) {
@@ -83,9 +86,11 @@ void handleFunctionTaskGroup(Rewriter &TheRewriter, FunctionDecl *f,
           TheRewriter.InsertTextBefore(firstStmt->getEndLoc(),
                                        "\n#pragma omp taskgroup\n{\n");
           placedTaskGroup = true;
+          exit(1);
         }
       }
-    } else if (!placedTaskGroup)
+    }
+    if (!placedTaskGroup)
       SSprintBefore << "\n#pragma omp taskgroup\n{\n";
   }
   SSprintAfter << curAfter;
