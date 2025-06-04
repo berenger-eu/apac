@@ -57,13 +57,18 @@ public:
   inline void addParaZone() {
     std::stringstream SSprintBefore, SSprintAfter;
     SourceLocation locBefore, locAfter;
-    locBefore = firstValidFunctionIf->getThen()->getBeginLoc();
-    locAfter = firstValidFunctionIf->getThen()->getEndLoc();
-    SSprintBefore << "\n#pragma omp parallel num_threads(nb_cores)\n "
-                  << "#pragma omp master\n{";
-    SSprintAfter << "}\n";
-    TheRewriter.InsertTextAfterToken(locBefore, SSprintBefore.str());
-    TheRewriter.InsertTextBefore(locAfter, SSprintAfter.str());
+    if (mainFuncDecl != nullptr) {
+      locBefore = firstValidFunctionIf->getThen()->getBeginLoc();
+      locAfter = firstValidFunctionIf->getThen()->getEndLoc();
+      SSprintBefore << "\n#pragma omp parallel num_threads(nb_cores)\n "
+                    << "#pragma omp master\n{";
+      SSprintAfter << "}\n";
+      TheRewriter.InsertTextAfterToken(locBefore, SSprintBefore.str());
+      TheRewriter.InsertTextBefore(locAfter, SSprintAfter.str());
+    } else {
+      llvm::errs() << "No main function found\n";
+      return;
+    }
   }
 
 private:

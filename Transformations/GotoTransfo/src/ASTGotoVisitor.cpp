@@ -37,7 +37,7 @@ bool ASTGotoVisitor::VisitFunctionDecl(FunctionDecl *fDecl) {
                                      SSprint.str());
     SSexit << "\n}\n";
     if (!fDecl->getReturnType().getTypePtr()->isVoidType()) {
-      SSexit << "__exit" << functionsCounter << ": return *__result;\n";
+      SSexit << "__exit" << functionsCounter << ":;\n return *__result;\n";
     } else {
       SSexit << "__exit" << functionsCounter << ":;\n";
     }

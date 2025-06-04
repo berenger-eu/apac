@@ -86,7 +86,6 @@ void handleFunctionTaskGroup(Rewriter &TheRewriter, FunctionDecl *f,
           TheRewriter.InsertTextBefore(firstStmt->getEndLoc(),
                                        "\n#pragma omp taskgroup\n{\n");
           placedTaskGroup = true;
-          exit(1);
         }
       }
     }
