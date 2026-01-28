@@ -19,6 +19,8 @@ build_apac:
     - cd build
     - cmake ..
     - make -j2
+    - cd ..
+    - strip build/apac build/taskGraph build/declarationSplitter build/duplicateFunctions build/conditionUnstack build/multipleDeclSplitter build/constify build/gotoRet build/unstack build/stackheap build/mainParallel build/apacDepth
   artifacts:
     paths:
       - build/apac
