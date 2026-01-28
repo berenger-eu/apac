@@ -1,25 +1,36 @@
-image: registry.gitlab.inria.fr/jgaupp/constify
+image: debian:12.5
 
 stages:
   - build
   - test
 
-build_constify:
+before_script:
+  - apt-get update
+  - apt-get install -y cmake git g++ zlib1g-dev wget software-properties-common gnupg libzstd-dev lsb-release
+  - wget https://apt.llvm.org/llvm.sh
+  - chmod +x llvm.sh
+  - ./llvm.sh 18 all || true
+  - apt-get install -y clang-format-18
+
+build_apac:
   tags:
     - medium
   stage: build
   script:
-    - mkdir build
+    - mkdir -p build
     - cd build
     - cmake ..
     - make -j2
+  artifacts:
+    paths:
+      - build/
+    expire_in: 1 hour
 
-test_constify:
+test_apac:
   tags:
     - medium
   stage: test
+  dependencies:
+    - build_apac
   script:
-    - mkdir build
-    - cd build
-    - cmake ..
-    - make test -j2
+    - ./test.sh
