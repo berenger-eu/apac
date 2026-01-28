@@ -21,7 +21,18 @@ build_apac:
     - make -j2
   artifacts:
     paths:
-      - build/
+      - build/apac
+      - build/taskGraph
+      - build/declarationSplitter
+      - build/duplicateFunctions
+      - build/conditionUnstack
+      - build/multipleDeclSplitter
+      - build/constify
+      - build/gotoRet
+      - build/unstack
+      - build/stackheap
+      - build/mainParallel
+      - build/apacDepth
     expire_in: 1 hour
 
 test_apac:
@@ -29,4 +40,4 @@ test_apac:
   dependencies:
     - build_apac
   script:
-    - ./test.sh
+    - ./scripts/run-tests.sh
