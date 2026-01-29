@@ -18,7 +18,7 @@ build_apac:
     - mkdir -p build
     - cd build
     - cmake ..
-    - make -j2
+    - make -j$(nproc)
     - cd ..
     - strip build/apac build/taskGraph build/declarationSplitter build/duplicateFunctions build/conditionUnstack build/multipleDeclSplitter build/constify build/gotoRet build/unstack build/stackheap build/mainParallel build/apacDepth
   artifacts:
