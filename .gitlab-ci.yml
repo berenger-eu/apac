@@ -1,25 +1,45 @@
-image: registry.gitlab.inria.fr/jgaupp/constify
+image: debian:12.5
 
 stages:
   - build
   - test
 
-build_constify:
-  tags:
-    - medium
+before_script:
+  - apt-get update
+  - apt-get install -y cmake git g++ zlib1g-dev wget software-properties-common gnupg libzstd-dev lsb-release
+  - wget https://apt.llvm.org/llvm.sh
+  - chmod +x llvm.sh
+  - ./llvm.sh 18 all || true
+  - apt-get install -y clang-format-18
+
+build_apac:
   stage: build
   script:
-    - mkdir build
+    - mkdir -p build
     - cd build
     - cmake ..
-    - make -j2
+    - make -j$(nproc)
+    - cd ..
+    - strip build/apac build/taskGraph build/declarationSplitter build/duplicateFunctions build/conditionUnstack build/multipleDeclSplitter build/constify build/gotoRet build/unstack build/stackheap build/mainParallel build/apacDepth
+  artifacts:
+    paths:
+      - build/apac
+      - build/taskGraph
+      - build/declarationSplitter
+      - build/duplicateFunctions
+      - build/conditionUnstack
+      - build/multipleDeclSplitter
+      - build/constify
+      - build/gotoRet
+      - build/unstack
+      - build/stackheap
+      - build/mainParallel
+      - build/apacDepth
+    expire_in: 1 hour
 
-test_constify:
-  tags:
-    - medium
+test_apac:
   stage: test
+  dependencies:
+    - build_apac
   script:
-    - mkdir build
-    - cd build
-    - cmake ..
-    - make test -j2
+    - ./scripts/run-tests.sh

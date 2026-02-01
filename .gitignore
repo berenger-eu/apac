@@ -1,5 +1,60 @@
+# Build directories
 build/
 bin/
-Transformations/*/tests/results
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
+
+# Compiled objects
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+
+# Generated executables
+/apac
+/taskGraph
+/declarationSplitter
+/duplicateFunctions
+/conditionUnstack
+/multipleDeclSplitter
+/constify
+/gotoRet
+/unstack
+/stackheap
+/mainParallel
+/apacDepth
+
+# Test results
+Transformations/*/tests/results/
+**/results/
+*.out
+
+# Generated files
 Transformations/*/tests/autotests/*/
-.*/
+*.dot
+rawGraph.dot
+optimizedGraph.dot
+
+# Generated/transformed code
+APAC*.cpp
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Compilation database
+compile_commands.json
+
+# Temporary files
+*.tmp
+*.bak
+*.log
