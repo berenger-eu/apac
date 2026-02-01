@@ -1,0 +1,13 @@
+set(TRANSFO_PATH ../../../transforms)
+
+add_subdirectory(Constify)
+add_subdirectory(Heapify)
+add_subdirectory(GotoTransfo)
+add_subdirectory(Unstack)
+add_subdirectory(DeclarationSplitter)
+add_subdirectory(TaskGraph)
+add_subdirectory(DuplicateFunctions)
+add_subdirectory(ApacDepth)
+add_subdirectory(MainParallel)
+add_subdirectory(ConditionUnstack)
+add_subdirectory(MultipleDeclSplitter)
