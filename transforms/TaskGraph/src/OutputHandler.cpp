@@ -34,9 +34,10 @@ void OutputHandler::subGenerateDotGraph(const Graph &inGraph,
        << " [style=invis];\n";
   for (const auto &node : inGraph.nodes) {
     file << "    " << node->id << " [label=\"" << node->instruction;
-    for (auto instr : node->instructionPtr)
+    for (auto instr : node->instructionPtr) {
+      std::vector<std::string> aliasLines;
       for (auto alias : instr->curAliases) {
-        file << "\n";
+        std::string line;
         const int depth =
             getPtrDepthAccess(alias.first->declaration.getType(),
                               alias.second->declaration.getType(),
@@ -45,12 +46,15 @@ void OutputHandler::subGenerateDotGraph(const Graph &inGraph,
              // TODO : getPtrDepthAccess, result of ptr stored when creating
              // alias?
              nbStar < depth;
-
              nbStar++)
-          file << "*";
-        file << alias.first->varAsString() << " : "
-             << alias.second->varAsString();
+          line += "*";
+        line += alias.first->varAsString() + " : " + alias.second->varAsString();
+        aliasLines.push_back(line);
       }
+      std::sort(aliasLines.begin(), aliasLines.end());
+      for (const auto &line : aliasLines)
+        file << "\n" << line;
+    }
     file << "\"];\n";
     for (long unsigned int i = 0; i < node->graph.size(); i++) {
       auto subGraph = node->graph[i];
