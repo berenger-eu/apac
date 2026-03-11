@@ -22,6 +22,31 @@ bool ASTPrintVisitor::VisitCXXMethodDecl(CXXMethodDecl *metDecl) {
     // Prints const at the end of a method declaration (not definition)
     else {
       TheRewriter.InsertTextAfter(metDecl->getBody()->getBeginLoc(), " const ");
+      // Also update any forward declarations of this method
+      for (FunctionDecl *prevDecl = metDecl->getPreviousDecl();
+           prevDecl != nullptr;
+           prevDecl = prevDecl->getPreviousDecl()) {
+        if (!prevDecl->isThisDeclarationADefinition() &&
+            !TheRewriter.getSourceMgr().isInSystemHeader(
+                prevDecl->getBeginLoc())) {
+          TheRewriter.InsertTextAfterToken(prevDecl->getEndLoc(), " const ");
+          // Use the definition's params to check const status
+          for (unsigned i = 0;
+               i < metDecl->getNumParams() && i < prevDecl->getNumParams();
+               ++i) {
+            ParmVarDecl *defParam = metDecl->getParamDecl(i);
+            ParmVarDecl *prevParam = prevDecl->getParamDecl(i);
+            if (SymT.getHashTableValue(defParam)->is_const) {
+              addConstToVar(prevParam);
+              std::string result = prevParam->getType().getAsString() + " ";
+              TheRewriter.ReplaceText(
+                  SourceRange(prevParam->getBeginLoc(),
+                              prevParam->getTypeSpecEndLoc()),
+                  result);
+            }
+          }
+        }
+      }
     }
     // Prints const in the definition of a method
   }

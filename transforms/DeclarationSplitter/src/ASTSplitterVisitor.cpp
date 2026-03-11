@@ -124,6 +124,8 @@ void ASTSplitterVisitor::stringVarDecl(VarDecl *v,
 
   } else {
     SSprintDecl << getVarDeclDeclStr(v);
-    SSprintInit << getVarDeclDefStr(v);
+    if (v->getInit()) {
+      SSprintInit << getVarDeclDefStr(v);
+    }
   }
 }

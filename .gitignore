@@ -58,3 +58,9 @@ compile_commands.json
 *.tmp
 *.bak
 *.log
+
+# Test result temp files
+transforms/*/tests/autotests/*/
+
+# temp local
+D_*.md

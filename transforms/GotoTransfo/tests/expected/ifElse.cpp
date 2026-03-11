@@ -14,6 +14,6 @@ int main() {
       goto __exit0;
     }
   }
-__exit0:
+__exit0:;
   return *__result;
 }

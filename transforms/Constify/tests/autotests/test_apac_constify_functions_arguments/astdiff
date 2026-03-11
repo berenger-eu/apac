@@ -1,4 +1,0 @@
-700c700
-<     int q(const int a) const;
----
->     int q(int a);
