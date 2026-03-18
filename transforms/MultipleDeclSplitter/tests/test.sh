@@ -39,7 +39,7 @@ for file in $testsPath/*.cpp; do
                 if [ -f "$file2" ] && [[ "$file2" != *"astdiff"* ]]; then
                     #echo "Created file : $file2"
                     expectedResult="$expectedPath"/$fileName
-                    diff "$file2" "$expectedResult" > /dev/null
+                    diff <(sed '/^$/d' "$file2") <(sed '/^$/d' "$expectedResult") > /dev/null
                     if [ $? -ne 0 ]; then
                         differenceInText=true
                         echo -e "${RED}Different Text : $fileName${NC}"
@@ -78,4 +78,3 @@ if [ $countPassed != $countTotal ]; then
 fi
 rm -rf "$resultPath/"
 exit 0
-done

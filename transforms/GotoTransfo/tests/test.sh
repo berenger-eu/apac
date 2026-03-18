@@ -79,4 +79,3 @@ if [ $countPassed != $countTotal ]; then
 fi
 rm -rf "$resultPath/"
 exit 0
-done

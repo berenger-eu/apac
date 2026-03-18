@@ -18,7 +18,7 @@ Requirements: CMake 3.0+, LLVM 18, Clang 18
 ```bash
 mkdir build && cd build
 cmake ..
-make
+make -j$(nproc)
 ```
 
 Enable Clang-Tidy analysis:
