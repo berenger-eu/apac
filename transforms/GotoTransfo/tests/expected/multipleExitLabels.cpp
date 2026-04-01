@@ -34,6 +34,3 @@ __exit1:;
 }
 
 int main() { return sign(-3) + (int)absVal(-2.5); }
-
-
-
