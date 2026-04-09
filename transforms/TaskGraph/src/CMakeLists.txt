@@ -16,7 +16,7 @@ set (COMMON_LIB ${CMAKE_CURRENT_SOURCE_DIR}/../../../core)
 set(INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../include ${COMMON_LIB})
 
 # Sources for your library (replace with actual source files)
-set(SOURCES AliasTableIndexMap.cpp AliasTableAliasMap.cpp AliasArg.cpp AliasTable.cpp Node.cpp Graph.cpp ASTTaskGraphVisitor.cpp InstructionsOrderManager.cpp codeModification.cpp OutputHandler.cpp taskGraph.cpp)
+set(SOURCES AliasTableIndexMap.cpp AliasTableAliasMap.cpp AliasArg.cpp AliasTable.cpp Node.cpp Graph.cpp ASTTaskGraphVisitor.cpp InstructionsOrderManager.cpp codeModification.cpp OutputHandler.cpp ParamWriteAnalyzer.cpp taskGraph.cpp)
 
 # Lib Creation
 add_library(${CURRENT_LIBRARY_NAME} ${SOURCES})  
