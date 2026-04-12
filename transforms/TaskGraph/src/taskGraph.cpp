@@ -1,4 +1,5 @@
 #include "taskGraph.hpp"
+#include "ParamWriteAnalyzer.hpp"
 
 static llvm::cl::OptionCategory ToolingSampleCategory("Tooling Sample");
 
@@ -28,6 +29,12 @@ public:
 
     auto functions = VisitorDepthAdd.getFunctionsToModify();
     auto returnStmts = VisitorDepthAdd.getReturnStmts();
+
+    // Determine which ptr/ref params are read-only
+    ParamWriteAnalyzer paramAnalyzer;
+    paramAnalyzer.analyzeTranslationUnit(Ctx);
+    VisitorTaskGraph.setParamWriteAnalyzer(&paramAnalyzer);
+
     VisitorTaskGraph.TraverseAST(Ctx);
     for (auto instr : VisitorTaskGraph.functionsInstructionsVector)
       for (auto instrI : instr)
