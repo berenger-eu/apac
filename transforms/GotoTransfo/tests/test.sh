@@ -26,7 +26,8 @@ for file in $testsPath/*.cpp; do
         differenceInAST=false
         fileName=$(basename "$file" /)
         folderName=$(basename "$fileName" .cpp)
-        mkdir $resultPath/$folderName
+        rm -rf "$resultPath/$folderName"
+        mkdir -p "$resultPath/$folderName"
         folderResultPath="$resultPath/$folderName"
         $gotoRet $file > "$folderResultPath/$fileName" 2> /dev/null
                          
@@ -79,4 +80,3 @@ if [ $countPassed != $countTotal ]; then
 fi
 rm -rf "$resultPath/"
 exit 0
-done

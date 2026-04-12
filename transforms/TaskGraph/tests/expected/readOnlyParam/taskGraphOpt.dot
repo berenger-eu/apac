@@ -1,0 +1,33 @@
+digraph G {
+subgraph cluster_f0 {
+    invisibleNodeScope_4 [style=invis];
+    0 [label="if(end - start <= 1)"];
+    0 -> invisibleNodeScope_5[label=""];
+subgraph cluster_0_0 {
+label = "subGraph0_0";
+    invisibleNodeScope_5 [style=invis];
+    4 [label="if"];
+    4 -> invisibleNodeScope_6[label=""];
+subgraph cluster_4_0 {
+label = "subGraph4_0";
+    invisibleNodeScope_6 [style=invis];
+}
+}
+    1 [label="mid = start + (end - start) / 2;"];
+    2 [label="left = sum_reduce(data, start, mid);"];
+    3 [label="right = sum_reduce(data, mid, end);"];
+}
+subgraph cluster_f1 {
+    invisibleNodeScope_7 [style=invis];
+    5 [label="data = new int [100];"];
+    6 [label="r1 = sum_reduce(data, 0, 50);"];
+    7 [label="r2 = sum_reduce(data, 50, 100);"];
+    8 [label="total = r1 + r2;"];
+}
+    1 -> 2[label="  midR"];
+    1 -> 3[label="  midR"];
+    5 -> 6[label="  dataR"];
+    5 -> 7[label="  dataR"];
+    6 -> 8[label="  r1R"];
+    7 -> 8[label="  r2R"];
+}

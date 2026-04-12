@@ -1,4 +1,5 @@
 #include "ASTGotoVisitor.hpp"
+#include "clang/Lex/Lexer.h"
 using namespace clang;
 bool ASTGotoVisitor::VisitFunctionDecl(FunctionDecl *fDecl) {
   if (!fDecl->isThisDeclarationADefinition())
@@ -31,7 +32,7 @@ bool ASTGotoVisitor::VisitFunctionDecl(FunctionDecl *fDecl) {
   if (returnsCounter > 1 ||
       (returnsCounter == 1 &&
        fDecl->getReturnType().getTypePtr()->isVoidType() &&
-       lastFuncStmt != returnsList[0])) {
+        lastFuncStmt != returnsList[0].first)) {
 
     TheRewriter.InsertTextAfterToken(fDecl->getBody()->getBeginLoc(),
                                      SSprint.str());
@@ -42,10 +43,32 @@ bool ASTGotoVisitor::VisitFunctionDecl(FunctionDecl *fDecl) {
       SSexit << "__exit" << functionsCounter << ":;\n";
     }
     TheRewriter.InsertTextAfter(fDecl->getBody()->getEndLoc(), SSexit.str());
-    for (auto &retStmt : returnsList) {
+    for (auto &retStmtInfo : returnsList) {
+      if (retStmtInfo.second) {
+        auto semiEndLoc = Lexer::findLocationAfterToken(
+            retStmtInfo.first->getEndLoc(), tok::semi,
+            TheRewriter.getSourceMgr(), TheRewriter.getLangOpts(), true);
+        if (semiEndLoc.isValid()) {
+          TheRewriter.ReplaceText(
+              CharSourceRange::getCharRange(retStmtInfo.first->getBeginLoc(),
+                                            semiEndLoc),
+              createGotoString(*retStmtInfo.first, TheRewriter,
+                               functionsCounter, true));
+        } else {
+          TheRewriter.ReplaceText(
+              SourceRange(retStmtInfo.first->getBeginLoc(),
+                          retStmtInfo.first->getEndLoc()),
+              createGotoString(*retStmtInfo.first, TheRewriter,
+                               functionsCounter, true));
+        }
+        continue;
+      }
+
       TheRewriter.ReplaceText(
-          SourceRange(retStmt->getBeginLoc(), retStmt->getEndLoc()),
-          createGotoString(*retStmt, TheRewriter, functionsCounter));
+          SourceRange(retStmtInfo.first->getBeginLoc(),
+                      retStmtInfo.first->getEndLoc()),
+          createGotoString(*retStmtInfo.first, TheRewriter, functionsCounter,
+                           false));
     }
     functionsCounter++;
   }
@@ -77,15 +100,21 @@ void ASTGotoVisitor::handleSubStmt(Stmt *st) {
   }
 }
 
-void ASTGotoVisitor::subVisitReturnStmt(ReturnStmt *retStmt) {
+void ASTGotoVisitor::subVisitReturnStmt(ReturnStmt *retStmt,
+                                        bool forceBraces) {
   // Insert a Goto and affect the value of the return to result
-  returnsList.push_back(retStmt);
+  forceBraces = forceBraces && (retStmt->getRetValue() != nullptr);
+  returnsList.push_back(std::make_pair(retStmt, forceBraces));
 }
 
 std::string createGotoString(const ReturnStmt &retStmt,
                              const Rewriter &TheRewriter,
-                             const unsigned int &exitCounter) {
+                             const unsigned int &exitCounter,
+                             bool wrapInBraces) {
   std::stringstream SSprint;
+  if (wrapInBraces) {
+    SSprint << "{\n";
+  }
   // Replaces return with __result=build_wrapper<type>(); if there is a
   // return value
   if (retStmt.getRetValue()) {
@@ -98,5 +127,8 @@ std::string createGotoString(const ReturnStmt &retStmt,
   }
   // goto __exitX;\n
   SSprint << "goto __exit" << exitCounter;
+  if (wrapInBraces) {
+    SSprint << ";\n}";
+  }
   return SSprint.str();
 }

@@ -445,13 +445,18 @@ void ASTTaskGraphVisitor::handleCallExpr(const CallExpr &c,
                 isPointerQualType(p.getType()))) {
       // If the parameter can be modified (parameter is either a reference
       // or a pointer AND it's not completely const)
-      //   then there might be a write, so we assume there is one
+      //   Check interprocedural analysis: is the param actually read-only?
+      bool isActuallyWritten = true;
+      if (paramAnalyzer_ &&
+          paramAnalyzer_->isParamReadOnly(&f, i)) {
+        isActuallyWritten = false;
+      }
       const Expr *choosenExpr = b;
       if (getSingleArraySubscriptExprInsideExpr(b) != nullptr)
         choosenExpr = getSingleArraySubscriptExprInsideExpr(b);
       else if (getSingleDeclRefExprInsideExpr(b) != nullptr)
         choosenExpr = getSingleDeclRefExprInsideExpr(b);
-      handleStmt(*choosenExpr, curInstr, true);
+      handleStmt(*choosenExpr, curInstr, isActuallyWritten);
     }
     // Otherwise, we look through the expression since it is the same as
     // looking through any expression

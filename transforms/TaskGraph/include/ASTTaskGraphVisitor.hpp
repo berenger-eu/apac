@@ -5,6 +5,7 @@
 #include "AliasTable.hpp"
 #include "Instruction.hpp"
 #include "InstructionsOrderManager.hpp"
+#include "ParamWriteAnalyzer.hpp"
 #include "common.hpp"
 #include "transfoCommon.hpp"
 #include "clang/AST/ASTContext.h"
@@ -22,7 +23,10 @@ public:
                       std::vector<std::string> &functionsToIgnoreRef)
       : APACRecursiveASTVisitor(R, mainRef, functionsRef, functionsToIgnoreRef),
         orderManager(orderManager), currentOrderManager(&orderManager),
-        aliasTable(R), ignoreStmtPragma(false){};
+        aliasTable(R), ignoreStmtPragma(false), paramAnalyzer_(nullptr){};
+  void setParamWriteAnalyzer(const ParamWriteAnalyzer *analyzer) {
+    paramAnalyzer_ = analyzer;
+  }
   // Traverse methods lets us stop visiting nodes that we don't need
   inline bool TraverseDeclStmt(DeclStmt *d) {
     if (!elementsConditions(d))
@@ -153,6 +157,7 @@ private:
   StmtOrder *currentOrderManager;
   AliasTable aliasTable;
   bool ignoreStmtPragma;
+  const ParamWriteAnalyzer *paramAnalyzer_;
 };
 inline bool isEmptyInstruction(const Instruction &instr) {
   return instr.dependencies.size() == 0;
