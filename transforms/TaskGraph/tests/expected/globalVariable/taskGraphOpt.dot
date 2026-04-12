@@ -1,0 +1,12 @@
+digraph G {
+subgraph cluster_f0 {
+    invisibleNodeScope_2 [style=invis];
+    0 [label="counter += delta;"];
+}
+subgraph cluster_f1 {
+    invisibleNodeScope_3 [style=invis];
+    1 [label="a = increment(1);"];
+    2 [label="b = increment(2);"];
+}
+    1 -> 2[label="  counterRW"];
+}

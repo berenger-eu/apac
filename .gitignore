@@ -37,8 +37,7 @@ Transformations/*/tests/results/
 # Generated files
 Transformations/*/tests/autotests/*/
 *.dot
-rawGraph.dot
-optimizedGraph.dot
+!transforms/TaskGraph/tests/expected/**/*.dot
 
 # Generated/transformed code
 APAC*.cpp
@@ -63,4 +62,6 @@ compile_commands.json
 transforms/*/tests/autotests/*/
 
 # temp local
-D_*.md
+D_*.*
+/report_final
+/benchmarks
