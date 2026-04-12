@@ -64,4 +64,3 @@ transforms/*/tests/autotests/*/
 # temp local
 D_*.*
 /report_final
-/benchmarks
