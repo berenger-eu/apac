@@ -1,0 +1,20 @@
+digraph G {
+subgraph cluster_f0 {
+    invisibleNodeScope_4 [style=invis];
+}
+subgraph cluster_f1 {
+    invisibleNodeScope_5 [style=invis];
+}
+subgraph cluster_f2 {
+    invisibleNodeScope_6 [style=invis];
+}
+subgraph cluster_f3 {
+    invisibleNodeScope_7 [style=invis];
+    0 [label="a = f(1);"];
+    1 [label="b = g(2);"];
+    2 [label="c = h(a, b);
+d = c + a;"];
+}
+    0 -> 2[label="  aR"];
+    1 -> 2[label="  bR"];
+}
