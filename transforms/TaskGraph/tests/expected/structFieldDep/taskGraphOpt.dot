@@ -1,0 +1,14 @@
+digraph G {
+subgraph cluster_f0 {
+    invisibleNodeScope_3 [style=invis];
+}
+subgraph cluster_f1 {
+    invisibleNodeScope_4 [style=invis];
+}
+subgraph cluster_f2 {
+    invisibleNodeScope_5 [style=invis];
+    0 [label="s.x = computeX(3);
+s.y = computeY(7);
+result = s.x + s.y;"];
+}
+}
