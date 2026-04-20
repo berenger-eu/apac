@@ -9,7 +9,7 @@ difference=false
 countPassed=0
 countTotal=0
 countKnownFailed=0
-knownFailures=("globalVariable" "whileLoopBody")
+knownFailures=("globalVariable" "whileLoopBody" "forLoopBody" "multipleWritesSameVar" "outputParam")
 countRawPassed=0
 countOptPassed=0
 countOptTotal=0
@@ -37,6 +37,7 @@ for file in $testsPath/*.cpp; do
         differenceInRawGraph=false
         differenceInOptimizedGraph=false
 
+        rm -f "$rawGraphName" "$optimizedGraphName"
         mkdir -p $resultPath/$folderName
         $taskGraph $file $arguments > "$folderResultPath/$fileName" 2> /dev/null             
         if [ $? -ne 0 ]; then

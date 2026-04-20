@@ -1,0 +1,13 @@
+digraph G {
+subgraph cluster_f0 {
+    invisibleNodeScope_2 [style=invis];
+}
+subgraph cluster_f1 {
+    invisibleNodeScope_3 [style=invis];
+    0 [label="writeResult(&a, 3);"];
+    1 [label="writeResult(&b, 7);"];
+    2 [label="result = a + b;"];
+}
+    0 -> 2[label="  aR"];
+    1 -> 2[label="  bR"];
+}

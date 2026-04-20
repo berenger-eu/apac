@@ -1,0 +1,16 @@
+digraph G {
+subgraph cluster_f0 {
+    invisibleNodeScope_0 [style=invis];
+}
+subgraph cluster_f1 {
+    invisibleNodeScope_1 [style=invis];
+}
+subgraph cluster_f2 {
+    invisibleNodeScope_2 [style=invis];
+    0 [label="a = 3;"];
+    1 [label="b = 4;"];
+    2 [label="result = add(double_val(a), double_val(b));"];
+}
+    0 -> 2[label="  aR"];
+    1 -> 2[label="  bR"];
+}
