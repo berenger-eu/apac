@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-message: "If you use APAC in your research, please cite the software. For the scientific background, see the COMPAS 2020 and COMPAS 2025 papers."
+message: "If you use APAC in your research, please cite the software. For the scientific background, see the references below, including the COMPAS 2020 and COMPAS 2025 papers."
 
 title: "APAC: Automatic Parallelisation of C++ Using OpenMP Task Dependencies"
 version: "1.0.1"
@@ -24,6 +24,38 @@ keywords:
   - "C++"
   - "high-performance computing"
   - "task-based parallelism"
+
+references:
+  - type: conference-paper
+    title: "Automatic task-based parallelization of C++ applications by source-to-source transformations"
+    authors:
+      - family-names: Kusoglu
+        given-names: Garip
+      - family-names: Bramas
+        given-names: Bérenger
+      - family-names: Genaud
+        given-names: Stéphane
+    year: 2020
+    conference:
+      name: "Compas 2020 - Conférence francophone en informatique"
+      city: Lyon
+      country: FR
+    url: "https://inria.hal.science/hal-02867413"
+    notes: "HAL preprint: hal-02867413"
+  - type: conference-paper
+    title: "Contraintes d'OpenMP pour la parallélisation automatique à base de tâches"
+    authors:
+      - family-names: Gaupp
+        given-names: Julien
+      - family-names: Bramas
+        given-names: Bérenger
+    year: 2025
+    conference:
+      name: "Conférence francophone d'informatique en Parallélisme, Architecture et Système (COMPAS 2025)"
+      city: Bordeaux
+      country: FR
+    url: "https://inria.hal.science/hal-05293644"
+    notes: "HAL preprint: hal-05293644"
 
 preferred-citation:
   type: conference-paper
