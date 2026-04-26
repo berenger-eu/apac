@@ -1,0 +1,41 @@
+{
+  "title": "APAC: Automatic Parallelisation of C++ Using OpenMP Task Dependencies",
+  "version": "1.0.1",
+  "license": "mit",
+  "access_right": "open",
+  "upload_type": "software",
+  "description": "APAC is a source-to-source compiler that automatically transforms sequential C++ programs into parallel code using OpenMP task dependencies. It analyses data dependencies between statements and rewrites the source with #pragma omp task depend(...) directives.",
+  "creators": [
+    {
+      "name": "Gaupp, Julien",
+      "affiliation": "Université de Strasbourg, Laboratoire ICube, équipe ICPS; Inria, équipe CAMUS"
+    },
+    {
+      "name": "Bramas, Bérenger",
+      "affiliation": "Université de Strasbourg, Laboratoire ICube, équipe ICPS; Inria, équipe CAMUS"
+    }
+  ],
+  "keywords": [
+    "parallel computing",
+    "automatic parallelisation",
+    "OpenMP",
+    "source-to-source compilation",
+    "LLVM",
+    "Clang",
+    "C++",
+    "high-performance computing",
+    "task-based parallelism"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://inria.hal.science/hal-02867413",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-conferencepaper"
+    },
+    {
+      "identifier": "https://inria.hal.science/hal-05293644",
+      "relation": "isDocumentedBy",
+      "resource_type": "publication-conferencepaper"
+    }
+  ]
+}
