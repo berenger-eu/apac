@@ -1,0 +1,42 @@
+cff-version: 1.2.0
+message: "If you use APAC in your research, please cite the software. For the scientific background, see the COMPAS 2020 and COMPAS 2025 papers."
+
+title: "APAC: Automatic Parallelisation of C++ Using OpenMP Task Dependencies"
+version: "1.0.1"
+date-released: "2026-02-01"
+license: MIT
+repository-code: "https://git.unistra.fr/bbramas/apac"
+
+authors:
+  - family-names: Gaupp
+    given-names: Julien
+    affiliation: "Université de Strasbourg, Laboratoire ICube, équipe ICPS; Inria, équipe CAMUS"
+  - family-names: Bramas
+    given-names: Bérenger
+    affiliation: "Université de Strasbourg, Laboratoire ICube, équipe ICPS; Inria, équipe CAMUS"
+
+keywords:
+  - "parallel computing"
+  - "automatic parallelisation"
+  - "OpenMP"
+  - "source-to-source compilation"
+  - "LLVM/Clang"
+  - "C++"
+  - "high-performance computing"
+  - "task-based parallelism"
+
+preferred-citation:
+  type: conference-paper
+  title: "Contraintes d'OpenMP pour la parallélisation automatique à base de tâches"
+  authors:
+    - family-names: Gaupp
+      given-names: Julien
+    - family-names: Bramas
+      given-names: Bérenger
+  year: 2025
+  conference:
+    name: "Conférence francophone d'informatique en Parallélisme, Architecture et Système (COMPAS 2025)"
+    city: Bordeaux
+    country: FR
+  url: "https://inria.hal.science/hal-05293644"
+  notes: "HAL preprint: hal-05293644"
