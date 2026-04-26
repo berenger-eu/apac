@@ -41,7 +41,7 @@ public:
       // std::error_code error_code;
       //  llvm::raw_fd_ostream outFile(filesOutputExt.front(), error_code,
       //                               llvm::sys::fs::OF_None);
-      bool temp = TheRewriter.overwriteChangedFiles();
+      (void)TheRewriter.overwriteChangedFiles();
       // TheRewriter.getEditBuffer(SM.getMainFileID()).write(outFile);
       // outFile.close();
       // filesOutputExt.pop();
