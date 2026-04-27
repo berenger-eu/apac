@@ -54,18 +54,18 @@ Known failures are listed in each `test.sh` with `knownFailures=(...)` but not c
 - Run `clang-format-18` on modified files before submitting.
 - Prefer `RecursiveASTVisitor` patterns consistent with the existing transformation passes.
 
-## Branch and Merge Request Conventions
+## Branch and Pull Request Conventions
 
 - `main` - stable, tagged releases only.
 - `dev` - integration branch; all feature branches merge here first.
 - `feature/<name>` - new features or improvements.
 - `fix/<scope>/<name>` - bug fixes.
 
-For changes on the GitLab instance (`git.unistra.fr`):
-1. Fork or create a branch from `dev`.
+For contributions on GitHub:
+1. Fork the repository or create a branch from `dev`.
 2. Write or update tests for your change.
 3. Ensure the full test suite still passes (`bash scripts/run-tests.sh`).
-4. Open a merge request targeting `dev` with a descriptive title.
+4. Open a pull request targeting `dev` with a descriptive title.
 
 ## Adding a New Transformation
 
@@ -93,7 +93,7 @@ For changes on the GitLab instance (`git.unistra.fr`):
 
 ## Reporting Bugs
 
-Please open an issue on the project tracker (GitLab) with:
+Please open an issue on the [GitHub issue tracker](https://github.com/berenger-eu/apac/issues) using the Bug report template, and include:
 - APAC version or commit hash
 - Minimal reproducing input `.cpp` file
 - Expected vs. actual output
