@@ -26,13 +26,13 @@ jobs:
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
           sudo ./llvm.sh 18 all || true
-          sudo apt-get install -y clang-format-18
+          sudo apt-get install -y clang-18 libclang-18-dev llvm-18-dev clang-format-18
 
       - name: Configure and build
         run: |
           mkdir -p build
           cd build
-          cmake ..
+          cmake -DLLVM_DIR=/usr/lib/llvm-18/cmake ..
           make -j$(nproc)
           cd ..
           strip build/apac build/taskGraph build/declarationSplitter build/duplicateFunctions \
@@ -74,7 +74,7 @@ jobs:
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
           sudo ./llvm.sh 18 all || true
-          sudo apt-get install -y clang-format-18
+          sudo apt-get install -y clang-18 libclang-18-dev llvm-18-dev clang-format-18
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
