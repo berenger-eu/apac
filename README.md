@@ -58,7 +58,7 @@ APAC automates this annotation process for pointer-based and recursive C++ progr
 
 ## Installation
 
-### Option 1 — Docker
+### Option 1 - Docker
 
 Docker is the recommended installation method.
 
@@ -76,7 +76,7 @@ cmake ..
 make -j$(nproc)
 ```
 
-### Option 2 — Local build
+### Option 2 - Local build
 
 #### Requirements
 
