@@ -19,7 +19,7 @@ point createPoint() {
       goto __exit0;
     }
   }
-__exit0:
+__exit0:;
   return *__result;
 }
 int main() { return 0; }

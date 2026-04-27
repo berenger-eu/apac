@@ -1,1 +1,0 @@
-void fun(const int);

@@ -13,10 +13,10 @@ subgraph cluster_f1 {
 *p : i
 *p : j"];
 }
-    0 -> 2[label="  iRW"];
-    1 -> 2[label="  jRW"];
-    2 -> 3[label="  jRW"];
-    2 -> 4[label="  iRW"];
+    0 -> 2[label="  iR"];
+    1 -> 2[label="  jR"];
+    2 -> 3[label="  jW"];
+    2 -> 4[label="  iW"];
     3 -> 5[label="  jRW"];
     4 -> 5[label="  iRW"];
 }

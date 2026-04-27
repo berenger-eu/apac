@@ -1,0 +1,26 @@
+digraph G {
+subgraph cluster_f0 {
+    invisibleNodeScope_5 [style=invis];
+}
+subgraph cluster_f1 {
+    invisibleNodeScope_6 [style=invis];
+}
+subgraph cluster_f2 {
+    invisibleNodeScope_7 [style=invis];
+}
+subgraph cluster_f3 {
+    invisibleNodeScope_8 [style=invis];
+}
+subgraph cluster_f4 {
+    invisibleNodeScope_9 [style=invis];
+    0 [label="a = square(3);"];
+    1 [label="b = cube(4);"];
+    2 [label="c = double_val(5);"];
+    3 [label="d = negate_val(6);"];
+    4 [label="total = a + b + c + d;"];
+}
+    0 -> 4[label="  aR"];
+    1 -> 4[label="  bR"];
+    2 -> 4[label="  cR"];
+    3 -> 4[label="  dR"];
+}
