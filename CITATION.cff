@@ -5,7 +5,7 @@ title: "APAC: Automatic Parallelisation of C++ Using OpenMP Task Dependencies"
 version: "1.0.1"
 date-released: "2026-02-01"
 license: MIT
-repository-code: "https://git.unistra.fr/bbramas/apac"
+repository-code: "https://github.com/berenger-eu/apac"
 
 authors:
   - family-names: Gaupp
