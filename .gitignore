@@ -60,7 +60,3 @@ compile_commands.json
 
 # Test result temp files
 transforms/*/tests/autotests/*/
-
-# temp local
-D_*.*
-/report_final
