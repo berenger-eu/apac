@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1] - 2026-05-04
+
+### Fixed
+
+- Added missing contributor.
+
+---
+
 ## [1.1.0] - 2026-04-27
 
 ### Added
