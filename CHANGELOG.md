@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.3] - 2026-05-04
+
+### Fixed
+
+- Test scripts look for binaries in PATH first, allowing tests to run inside Docker containers.
+
+---
+
 ## [1.1.2] - 2026-05-04
 
 ### Added
