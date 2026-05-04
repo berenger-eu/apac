@@ -10,7 +10,7 @@ countPassed=0
 countTotal=0
 
 curPath="$(realpath $(dirname "$0"))"
-unstack="$curPath/../../../build/unstack"
+unstack=$(command -v unstack 2>/dev/null || echo "$curPath/../../../build/unstack")
 expectedPath="$curPath/expected"
 resultPath="$curPath/results"
 testsPath="$curPath/autotests"

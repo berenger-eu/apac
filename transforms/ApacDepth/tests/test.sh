@@ -10,7 +10,7 @@ countPassed=0
 countTotal=0
 
 curPath="$(realpath $(dirname "$0"))"
-apacDepth="$curPath/../../../build/apacDepth"
+apacDepth=$(command -v apacDepth 2>/dev/null || echo "$curPath/../../../build/apacDepth")
 expectedPath="$curPath/expected"
 resultPath="$curPath/results"
 testsPath="$curPath/autotests"

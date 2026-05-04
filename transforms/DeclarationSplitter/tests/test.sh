@@ -12,7 +12,7 @@ countKnownFailed=0
 knownFailures=("constexprDecl" "autoDecl")
 
 curPath="$(realpath $(dirname "$0"))"
-declarationSplitter="$curPath/../../../build/declarationSplitter"
+declarationSplitter=$(command -v declarationSplitter 2>/dev/null || echo "$curPath/../../../build/declarationSplitter")
 expectedPath="$curPath/expected"
 resultPath="$curPath/results"
 testsPath="$curPath/autotests"

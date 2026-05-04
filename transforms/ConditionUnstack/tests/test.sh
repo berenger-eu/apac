@@ -12,7 +12,7 @@ countKnownFailed=0
 knownFailures=("nestedCondDecl")
 
 curPath="$(realpath $(dirname "$0"))"
-conditionUnstack="$curPath/../../../build/conditionUnstack"
+conditionUnstack=$(command -v conditionUnstack 2>/dev/null || echo "$curPath/../../../build/conditionUnstack")
 expectedPath="$curPath/expected"
 resultPath="$curPath/results"
 testsPath="$curPath/autotests"

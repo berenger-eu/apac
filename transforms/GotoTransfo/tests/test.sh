@@ -12,7 +12,7 @@ countKnownFailed=0
 knownFailures=("lambdaReturn" "returnInDoWhile")
 
 curPath="$(realpath $(dirname "$0"))"
-gotoRet="$curPath/../../../build/gotoRet"
+gotoRet=$(command -v gotoRet 2>/dev/null || echo "$curPath/../../../build/gotoRet")
 expectedPath="$curPath/expected"
 resultPath="$curPath/results"
 testsPath="$curPath/autotests"
