@@ -11,10 +11,18 @@
 
 ### Using Docker (recommended)
 
+Pull the pre-built image:
+
+```bash
+docker pull ghcr.io/berenger-eu/apac:latest
+docker run --rm -v $(pwd):/workspace -it ghcr.io/berenger-eu/apac:latest /bin/bash
+```
+
+Or build the image locally from the sources:
+
 ```bash
 docker build -t apac .
-docker run -v $(pwd):/workspace -it apac /bin/bash
-cd /workspace && mkdir -p build && cd build && cmake .. && make -j$(nproc)
+docker run --rm -v $(pwd):/workspace -it apac /bin/bash
 ```
 
 ### Local build
@@ -35,8 +43,8 @@ cmake -DENABLE_CLANG_TIDY=ON ..
 Each transformation has its own test suite:
 
 ```bash
-# Run all test suites
-cd /workspace && cd build && make test
+# Run all test suites (inside the Docker container or after a local build)
+bash scripts/run-tests.sh
 
 # Run a single transformation test suite
 cd transforms/TaskGraph/tests && bash test.sh

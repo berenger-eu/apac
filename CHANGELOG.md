@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.1.2] - 2026-05-04
+
+### Added
+
+- Docker image now builds APAC.
+- Published image on GitHub Container Registry.
+- GitHub Actions workflow to automatically publish Docker image on release.
+
+---
+
 ## [1.1.1] - 2026-05-04
 
 ### Fixed

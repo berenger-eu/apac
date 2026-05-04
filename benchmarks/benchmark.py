@@ -2,7 +2,9 @@
 """
 Benchmark APAC: mesure le speedup entre execution sequentielle et parallele.
 Usage: python3 benchmark.py [--iterations N]
-Doit etre lance depuis /workspace dans le conteneur Docker.
+
+Peut etre lance directement depuis la racine du projet apres un build local
+ou depuis /workspace dans le conteneur Docker.
 """
 
 import subprocess
