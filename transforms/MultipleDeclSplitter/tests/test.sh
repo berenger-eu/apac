@@ -10,7 +10,7 @@ countPassed=0
 countTotal=0
 
 curPath="$(realpath $(dirname "$0"))"
-multipleDeclSplitter="$curPath/../../../build/multipleDeclSplitter"
+multipleDeclSplitter=$(command -v multipleDeclSplitter 2>/dev/null || echo "$curPath/../../../build/multipleDeclSplitter")
 expectedPath="$curPath/expected"
 resultPath="$curPath/results"
 testsPath="$curPath/autotests"

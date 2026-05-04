@@ -10,7 +10,7 @@ countPassed=0
 countTotal=0
 
 curPath="$(realpath $(dirname "$0"))"
-mainParallel="$curPath/../../../build/mainParallel"
+mainParallel=$(command -v mainParallel 2>/dev/null || echo "$curPath/../../../build/mainParallel")
 expectedPath="$curPath/expected"
 resultPath="$curPath/results"
 testsPath="$curPath/autotests"

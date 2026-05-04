@@ -10,7 +10,7 @@ countPassed=0
 countTotal=0
 
 curPath="$(realpath $(dirname "$0"))"
-duplicateFunctions="$curPath/../../../build/duplicateFunctions"
+duplicateFunctions=$(command -v duplicateFunctions 2>/dev/null || echo "$curPath/../../../build/duplicateFunctions")
 expectedPath="$curPath/expected"
 resultPath="$curPath/results"
 testsPath="$curPath/autotests"
