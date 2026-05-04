@@ -10,7 +10,7 @@ countPassed=0
 countTotal=0
 
 curPath="$(realpath $(dirname "$0"))"
-stackHeap="$curPath/../../../build/stackheap"
+stackHeap=$(command -v stackheap 2>/dev/null || echo "$curPath/../../../build/stackheap")
 expectedPath="$curPath/expected"
 resultPath="$curPath/results"
 testsPath="$curPath/autotests"

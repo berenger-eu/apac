@@ -10,7 +10,7 @@ countPassed=0
 countTotal=0
 
 curPath="$(realpath $(dirname "$0"))"
-constify="$curPath/../../../build/constify"
+constify=$(command -v constify 2>/dev/null || echo "$curPath/../../../build/constify")
 expectedPath="$curPath/expected"
 testsPath="$curPath/autotests"
 resultPath=$testsPath

@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use APAC in your research, please cite the software. For the scientific background, see the references below, including the COMPAS 2020 and COMPAS 2025 papers."
 
 title: "APAC: Automatic Parallelisation of C++ Using OpenMP Task Dependencies"
-version: "1.1.2"
+version: "1.1.3"
 date-released: "2026-05-04"
 license: MIT
 repository-code: "https://github.com/berenger-eu/apac"
