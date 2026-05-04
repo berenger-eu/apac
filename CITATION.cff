@@ -2,8 +2,8 @@ cff-version: 1.2.0
 message: "If you use APAC in your research, please cite the software. For the scientific background, see the references below, including the COMPAS 2020 and COMPAS 2025 papers."
 
 title: "APAC: Automatic Parallelisation of C++ Using OpenMP Task Dependencies"
-version: "1.1.0"
-date-released: "2026-04-27"
+version: "1.1.1"
+date-released: "2026-05-04"
 license: MIT
 repository-code: "https://github.com/berenger-eu/apac"
 
@@ -14,6 +14,9 @@ authors:
   - family-names: Bramas
     given-names: Bérenger
     affiliation: "Université de Strasbourg, Laboratoire ICube, équipe ICPS; Inria, équipe CAMUS"
+  - family-names: Gerard
+    given-names: Kylian
+    affiliation: "Université de Strasbourg"
 
 keywords:
   - "parallel computing"

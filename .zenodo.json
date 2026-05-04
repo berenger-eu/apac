@@ -1,6 +1,6 @@
 {
   "title": "APAC: Automatic Parallelisation of C++ Using OpenMP Task Dependencies",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "license": "mit",
   "access_right": "open",
   "upload_type": "software",
@@ -13,6 +13,10 @@
     {
       "name": "Bramas, Bérenger",
       "affiliation": "Université de Strasbourg, Laboratoire ICube, équipe ICPS; Inria, équipe CAMUS"
+    },
+    {
+      "name": "Gerard, Kylian",
+      "affiliation": "Université de Strasbourg"
     }
   ],
   "keywords": [
