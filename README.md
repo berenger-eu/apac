@@ -327,4 +327,4 @@ For support, see [`SUPPORT.md`](SUPPORT.md) or open an issue.
 ## License
 
 APAC is distributed under the [MIT License](LICENSE).
-Copyright © 2023–2026 Julien Gaupp, Bérenger Bramas, Université de Strasbourg / Inria.
+Copyright © 2023–2026 Julien Gaupp, Bérenger Bramas, Kylian Gerard, Université de Strasbourg / Inria.

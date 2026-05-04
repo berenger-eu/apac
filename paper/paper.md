@@ -14,6 +14,8 @@ authors:
     corresponding: true
   - name: Bérenger Bramas
     affiliation: "1, 2"
+  - name: Kylian Gerard
+    affiliation: "1"
 affiliations:
   - index: 1
     name: Université de Strasbourg, Laboratoire ICube, équipe ICPS, France
