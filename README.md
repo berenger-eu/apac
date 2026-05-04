@@ -9,6 +9,7 @@
   [![C++](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://isocpp.org/)
   [![LLVM](https://img.shields.io/badge/LLVM-18-purple.svg)](https://llvm.org/)
   [![OpenMP](https://img.shields.io/badge/OpenMP-4.5%2B-green.svg)](https://www.openmp.org/)
+  [![Docker](https://img.shields.io/badge/Docker-ghcr.io-blue.svg)](https://ghcr.io/berenger-eu/apac)
 
 </div>
 
@@ -61,22 +62,28 @@ APAC automates this annotation process for pointer-based and recursive C++ progr
 ### Option 1 - Docker
 
 Docker is the recommended installation method.
+*(The pre-built image is automatically built and published on release. It contains APAC already compiled and all dependencies ready to use.)*
+
+Pull the latest image:
+
+```bash
+docker pull ghcr.io/berenger-eu/apac:latest
+```
+
+Open shell in the container:
+
+```bash
+docker run --rm -v $(pwd):/workspace -it ghcr.io/berenger-eu/apac:latest /bin/bash
+```
+
+### Option 2 - Build the Docker image locally
 
 ```bash
 docker build -t apac .
-docker run --rm -v $(pwd):/workspace -w /workspace -it apac /bin/bash
+docker run --rm -v $(pwd):/workspace -it apac /bin/bash
 ```
 
-Inside the container:
-
-```bash
-mkdir -p build
-cd build
-cmake ..
-make -j$(nproc)
-```
-
-### Option 2 - Local build
+### Option 3 - Local build
 
 #### Requirements
 
@@ -142,7 +149,11 @@ int main() {
 Run APAC:
 
 ```bash
+# After a local build
 ./build/apac example.cpp
+
+# Or with Docker
+docker run --rm -v $(pwd):/workspace ghcr.io/berenger-eu/apac:latest apac example.cpp
 ```
 
 APAC generates:
@@ -236,19 +247,20 @@ g++ -O2 -fopenmp -o output APACfoo.cpp
 
 ## Testing
 
-Build the project first:
+**With Docker:**
 
 ```bash
-mkdir -p build
-cd build
-cmake ..
-make -j$(nproc)
+docker run --rm -v $(pwd):/workspace ghcr.io/berenger-eu/apac:latest bash scripts/run-tests.sh
 ```
 
-Run the test suite:
+**After a local build:**
 
 ```bash
-make test
+mkdir -p build && cd build
+cmake -DLLVM_DIR=/usr/lib/llvm-18/cmake ..
+make -j$(nproc)
+cd ..
+bash scripts/run-tests.sh
 ```
 
 Individual transformation test suites can also be run directly, for example:

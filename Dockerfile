@@ -21,7 +21,23 @@ RUN wget https://apt.llvm.org/llvm.sh && \
     rm llvm.sh
 
 RUN apt-get update && apt-get install -y \
-    clang-format \
+    clang-18 \
+    libclang-18-dev \
+    llvm-18-dev \
+    clang-format-18 \
     && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /apac
+COPY . .
+
+RUN mkdir -p build && \
+    cd build && \
+    cmake -DLLVM_DIR=/usr/lib/llvm-18/cmake .. && \
+    make -j$(nproc) && \
+    strip apac taskGraph declarationSplitter duplicateFunctions \
+          conditionUnstack multipleDeclSplitter constify gotoRet \
+          unstack stackheap mainParallel apacDepth
+
+ENV PATH="/apac/build:${PATH}"
 
 WORKDIR /workspace
