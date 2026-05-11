@@ -33,7 +33,7 @@ COPY . .
 RUN mkdir -p build && \
     cd build && \
     cmake -DLLVM_DIR=/usr/lib/llvm-18/cmake .. && \
-    make -j$(nproc) && \
+    make && \
     strip apac taskGraph declarationSplitter duplicateFunctions \
           conditionUnstack multipleDeclSplitter constify gotoRet \
           unstack stackheap mainParallel apacDepth
