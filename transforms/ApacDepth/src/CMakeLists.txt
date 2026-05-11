@@ -60,7 +60,7 @@ target_link_libraries(apacDepth
 
 target_link_libraries(apacDepth ${llvm_libs})
 
-execute_process(COMMAND bash "-c" "llvm-config --cxxflags" OUTPUT_VARIABLE compile_flags OUTPUT_STRIP_TRAILING_WHITESPACE)
+execute_process(COMMAND bash "-c" "llvm-config-18 --cxxflags" OUTPUT_VARIABLE compile_flags OUTPUT_STRIP_TRAILING_WHITESPACE)
 set_property(TARGET apacDepth APPEND PROPERTY COMPILE_FLAGS "${compile_flags} -Wno-strict-aliasing")
 
 install(TARGETS apacDepth DESTINATION bin)

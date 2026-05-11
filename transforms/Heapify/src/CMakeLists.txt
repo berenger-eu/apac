@@ -67,7 +67,7 @@ LLVMWindowsDriver
 target_link_libraries(${CURRENT_LIBRARY_NAME} ${llvm_libs})
 
 # Get the C++ compile flags from llvm-config
-execute_process(COMMAND bash "-c" "llvm-config --cxxflags" OUTPUT_VARIABLE compile_flags OUTPUT_STRIP_TRAILING_WHITESPACE)
+execute_process(COMMAND bash "-c" "llvm-config-18 --cxxflags" OUTPUT_VARIABLE compile_flags OUTPUT_STRIP_TRAILING_WHITESPACE)
 set_property(TARGET ${CURRENT_LIBRARY_NAME} APPEND PROPERTY COMPILE_FLAGS "${compile_flags} -Wno-strict-aliasing")
 
 # Install the library
