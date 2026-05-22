@@ -21,7 +21,7 @@ namespace constify {
 
 /// Global verbose flag.
 /// Keep it simple for now. Later, replace by llvm::cl::opt<bool>.
-inline bool Verbose = true;
+inline bool Verbose = false;
 
 
 /// A stable node id inside one translation unit.
@@ -156,6 +156,7 @@ enum class RejectReasonKind {
     UnknownWrite
 };
 
+
 inline const char* toString(NodeKind k) {
     switch (k) {
     case NodeKind::Variable:  return "Variable";
@@ -234,6 +235,7 @@ struct Node {
     NodeId id;
     NodeKind kind = NodeKind::Unknown;
     ConstState state = ConstState::Candidate;
+    bool shouldTrack = false;
 
     const clang::Decl* decl = nullptr;
 
@@ -272,7 +274,18 @@ public:
     explicit ConstGraph(clang::ASTContext& ctx)
         : Ctx(ctx), SM(ctx.getSourceManager()) {}
 
-    NodeId getOrCreateDeclNode(const clang::Decl* D) {
+
+    bool nodeExistsForDecl(const clang::Decl* D) const {
+        if(!D) return false;
+
+        D = D->getCanonicalDecl();
+
+        auto It = DeclToNode.find(D);
+
+        return It != DeclToNode.end();
+    }
+
+    NodeId getOrCreateDeclNode(const clang::Decl* D, const bool shouldTrack, const bool isAlreadyConst) {
         if (!D) {
             return {};
         }
@@ -281,6 +294,8 @@ public:
 
         auto It = DeclToNode.find(D);
         if (It != DeclToNode.end()) {
+            assert(Nodes[It->second.value].decl == D);
+            assert(Nodes[It->second.value].shouldTrack == shouldTrack);
             return It->second;
         }
 
@@ -292,7 +307,9 @@ public:
         N.qualifiedName = getQualifiedName(D);
         N.typeAsString = getTypeString(D);
         N.anchor = getSourceAnchor(D);
-        N.state = initialConstState(D);
+        N.shouldTrack = shouldTrack;
+
+        N.state = (shouldTrack ? initialConstState(D) : ConstState::CannotBeConst);
 
         Nodes.push_back(std::move(N));
         DeclToNode[D] = Nodes.back().id;
@@ -305,6 +322,7 @@ public:
                 << " state=" << toString(Nodes.back().state)
                 << " name=" << Nodes.back().qualifiedName
                 << " type=" << Nodes.back().typeAsString
+                << " shouldTrack=" << Nodes.back().shouldTrack
                 << "\n";
         }
 
@@ -436,7 +454,8 @@ public:
         }
     }
 
-    void dump(llvm::raw_ostream& OS) const {
+    template <class T>
+    void dump(T& OS) const {
         OS << "\n[CONSTIFY NODES]\n";
 
         for (const Node& N : Nodes) {
@@ -671,12 +690,13 @@ public:
     }
 
     bool VisitVarDecl(clang::VarDecl* VD) {
-        if (!shouldTrackDecl(VD)) {
+        if (!shouldTrackVarDecl(VD)) {
             return true;
         }
 
-        NodeId VarNode = Graph.getOrCreateDeclNode(VD);
-
+        const clang::QualType QT = VD->getType();
+        const bool IsConst = QT.isConstQualified();
+        NodeId VarNode = Graph.getOrCreateDeclNode(VD, true, IsConst);
         // int& y = x;
         //
         // If y is mutated, x is mutated.
@@ -686,14 +706,14 @@ public:
         if (VD->getType()->isReferenceType()) {
             if (const clang::Expr* Init = VD->getInit()) {
                 if (const clang::ValueDecl* Target = findReferencedValueDecl(Init)) {
-                    if(shouldTrackDecl(Target)) {                     
-                        NodeId TargetNode = Graph.getOrCreateDeclNode(Target);
-                        Graph.addEdge(VarNode,
-                                    TargetNode,
-                                    EdgeKind::ReferenceAlias,
-                                    Init,
-                                    Init->getExprLoc());
-                    }
+                    const bool targetIsConst = Target->getType().isConstQualified();
+                    assert(!IsConst || targetIsConst);
+                    NodeId TargetNode = Graph.getOrCreateDeclNode(Target, shouldTrackVarDecl(Target), targetIsConst);
+                    Graph.addEdge(VarNode,
+                                TargetNode,
+                                EdgeKind::ReferenceAlias,
+                                Init,
+                                Init->getExprLoc());
                 }
             }
         }
@@ -710,14 +730,14 @@ public:
         if (VD->getType()->isPointerType()) {
             if (const clang::Expr* Init = VD->getInit()) {
                 if (const clang::ValueDecl* Target = findAddressOfValueDecl(Init)) {
-                    if(shouldTrackDecl(Target)) {
-                        NodeId TargetNode = Graph.getOrCreateDeclNode(Target);
-                        Graph.addEdge(VarNode,
-                                    TargetNode,
-                                    EdgeKind::PointerMayAlias,
-                                    Init,
-                                    Init->getExprLoc());
-                    }
+                    const bool targetIsConst = Target->getType().isConstQualified();
+                    assert(!IsConst || targetIsConst);
+                    NodeId TargetNode = Graph.getOrCreateDeclNode(Target, shouldTrackVarDecl(Target), targetIsConst);
+                    Graph.addEdge(VarNode,
+                                TargetNode,
+                                EdgeKind::PointerMayAlias,
+                                Init,
+                                Init->getExprLoc());
                 }
             }
         }
@@ -726,32 +746,33 @@ public:
     }
 
     bool VisitFunctionDecl(clang::FunctionDecl* FD) {
-        if (!shouldTrackDecl(FD)) {
+        if (!shouldTrackAndAnalyzeBody(FD)) {
             return true;
         }
 
-        Graph.getOrCreateDeclNode(FD);
+        Graph.getOrCreateDeclNode(FD, true, false);
 
         for (clang::ParmVarDecl* P : FD->parameters()) {
-            if (shouldTrackDecl(P)) {
-                Graph.getOrCreateDeclNode(P);
-            }
+            assert(shouldTrackVarDecl(P));
+            const bool IsConst = P->getType().isConstQualified();
+            Graph.getOrCreateDeclNode(P, true, IsConst);
         }
 
         return true;
     }
 
     bool VisitCXXMethodDecl(clang::CXXMethodDecl* MD) {
-        if (!shouldTrackDecl(MD)) {
+        if (!shouldTrackAndAnalyzeBody(MD)) {
             return true;
         }
 
-        Graph.getOrCreateDeclNode(MD);
+        const bool methodIsConst = MD->isConst();
+        Graph.getOrCreateDeclNode(MD, true, methodIsConst);
 
         for (clang::ParmVarDecl* P : MD->parameters()) {
-            if (shouldTrackDecl(P)) {
-                Graph.getOrCreateDeclNode(P);
-            }
+            assert(shouldTrackVarDecl(P));
+            const bool IsConst = P->getType().isConstQualified();
+            Graph.getOrCreateDeclNode(P, true, IsConst);
         }
 
         return true;
@@ -775,24 +796,27 @@ public:
         //   - the enclosing non-static non-constructor method
         if (const auto* ME = llvm::dyn_cast<clang::MemberExpr>(Sub)) {
             if (const auto* FD = llvm::dyn_cast<clang::FieldDecl>(ME->getMemberDecl())) {
-                const clang::CXXMethodDecl* MD = currentMethod();
+                if (shouldTrackVarDecl(FD)) {
+                    const bool fieldIsConst = FD->getType().isConstQualified();
+                    assert(!fieldIsConst);
+                    NodeId FieldNode = Graph.getOrCreateDeclNode(FD, true, fieldIsConst);
 
-                const bool InConstructor =
-                    MD && llvm::isa<clang::CXXConstructorDecl>(MD);
+                    Graph.reject(FieldNode,
+                                RejectReasonKind::IncrementOrDecrement,
+                                UO->getOperatorLoc(),
+                                UO);
 
-                if (!InConstructor) {
-                    if (shouldTrackDecl(FD)) {
-                        NodeId FieldNode = Graph.getOrCreateDeclNode(FD);
 
-                        Graph.reject(FieldNode,
-                                    RejectReasonKind::IncrementOrDecrement,
-                                    UO->getOperatorLoc(),
-                                    UO);
-                    }
+                    const clang::CXXMethodDecl* MD = currentMethod();
 
-                    rejectCurrentMethodForMutation(UO->getOperatorLoc(),
+                    const bool InConstructor =
+                        MD && llvm::isa<clang::CXXConstructorDecl>(MD);
+
+                    if (!InConstructor && isThisAccess(ME)) {
+                        rejectCurrentMethodForMutation(UO->getOperatorLoc(),
                                                 UO,
                                                 RejectReasonKind::IncrementOrDecrement);
+                    }
                 }
 
                 return true;
@@ -809,8 +833,10 @@ public:
         // It should NOT reject the current method, because mutating a local variable
         // does not prevent the method from being const.
         if (const clang::ValueDecl* VD = findReferencedValueDecl(Sub)) {
-            if (shouldTrackDecl(VD)) {
-                NodeId N = Graph.getOrCreateDeclNode(VD);
+            if (shouldTrackVarDecl(VD)) {
+                const bool isConst = VD->getType().isConstQualified();
+                assert(!isConst);
+                NodeId N = Graph.getOrCreateDeclNode(VD, true, isConst);
 
                 Graph.reject(N,
                             RejectReasonKind::IncrementOrDecrement,
@@ -831,42 +857,27 @@ public:
 
     if (const auto* ME = llvm::dyn_cast<clang::MemberExpr>(LHS)) {
         if (const auto* FD = llvm::dyn_cast<clang::FieldDecl>(ME->getMemberDecl())) {
-            const clang::CXXMethodDecl* MD = currentMethod();
+            if (shouldTrackVarDecl(FD)) {
+                const bool fieldIsConst = FD->getType().isConstQualified();
+                assert(!fieldIsConst);
+                NodeId FieldNode = Graph.getOrCreateDeclNode(FD, true, fieldIsConst);
 
-            const bool InConstructor =
-                MD && llvm::isa<clang::CXXConstructorDecl>(MD);
+                Graph.reject(FieldNode,
+                            RejectReasonKind::AssignedTo,
+                            BO->getOperatorLoc(),
+                            BO);
 
-            if (Verbose) {
-                llvm::errs()
-                    << "[constify] field assignment field="
-                    << FD->getQualifiedNameAsString()
-                    << " currentMethod=";
+                const clang::CXXMethodDecl* MD = currentMethod();
 
-                if (MD) {
-                    llvm::errs() << MD->getQualifiedNameAsString();
-                } else {
-                    llvm::errs() << "<null>";
+                const bool InConstructor =
+                    MD && llvm::isa<clang::CXXConstructorDecl>(MD);
+
+                if (!InConstructor && isThisAccess(ME)) {
+                    rejectCurrentMethodForMutation(BO->getOperatorLoc(),
+                                                BO,
+                                                RejectReasonKind::AssignedTo);
                 }
 
-                llvm::errs()
-                    << " inConstructor="
-                    << (InConstructor ? "yes" : "no")
-                    << "\n";
-            }
-
-            if (!InConstructor) {
-                if (shouldTrackDecl(FD)) {
-                    NodeId FieldNode = Graph.getOrCreateDeclNode(FD);
-
-                    Graph.reject(FieldNode,
-                                 RejectReasonKind::AssignedTo,
-                                 BO->getOperatorLoc(),
-                                 BO);
-                }
-
-                rejectCurrentMethodForMutation(BO->getOperatorLoc(),
-                                               BO,
-                                               RejectReasonKind::AssignedTo);
             }
 
             return true;
@@ -874,8 +885,10 @@ public:
     }
 
     if (const clang::ValueDecl* VD = findReferencedValueDecl(LHS)) {
-        if (shouldTrackDecl(VD)) {
-            NodeId N = Graph.getOrCreateDeclNode(VD);
+        if (shouldTrackVarDecl(VD)) {
+            const bool isConst = VD->getType().isConstQualified();
+            assert(!isConst);
+            NodeId N = Graph.getOrCreateDeclNode(VD, true, isConst);
 
             Graph.reject(N,
                          RejectReasonKind::AssignedTo,
@@ -896,96 +909,118 @@ public:
         }
 
         const clang::FunctionDecl* Callee = CE->getDirectCallee();
-        if (!Callee || !shouldTrackDecl(Callee)) {
+        if (!Callee) {
             // Function pointer / unresolved call.
             // Be conservative later if needed.
+            // TODO Consider all args as const
             return true;
         }
 
-        NodeId CalleeNode = Graph.getOrCreateDeclNode(Callee);
+        NodeId CalleeNode = Graph.getOrCreateDeclNode(Callee, shouldTrackAndAnalyzeBody(Callee), false);
 
         const unsigned NArgs =
             std::min<unsigned>(CE->getNumArgs(), Callee->getNumParams());
 
         for (unsigned I = 0; I < NArgs; ++I) {
-            const clang::ParmVarDecl* Param = Callee->getParamDecl(I);
             const clang::Expr* Arg = CE->getArg(I);
 
-            if (!Param || !Arg) {
-                continue;
-            }
-            if(!shouldTrackDecl(Param) || !shouldTrackStmt(Arg)) {
+            if (!Arg) {
                 continue;
             }
 
-            NodeId ParamNode = Graph.getOrCreateDeclNode(Param);
+            if (const clang::ValueDecl* VD = findReferencedValueDecl(Arg)) {
+                if (shouldTrackVarDecl(VD)) {
+                    const bool ArgIsConst = VD->getType().isConstQualified();
+                    NodeId N = Graph.getOrCreateDeclNode(VD, true, ArgIsConst);
+                    (void)N;
 
-            clang::QualType ParamType = Param->getType();
+                    if(ArgIsConst){
+                        // If the argument is already const, the parameter cannot prevent constness.
+                        continue;
+                    }
 
-            // void f(int& x);
-            // f(m);
-            //
-            // If parameter x cannot be const, then m cannot be const.
-            //
-            // Add:
-            //     param -> argument
-            if (ParamType->isLValueReferenceType()) {
-                clang::QualType Referred = ParamType.getNonReferenceType();
 
-                if (!Referred.isConstQualified()) {
-                    if (const clang::ValueDecl* ArgDecl = findReferencedValueDecl(Arg)) {
-                        NodeId ArgNode = Graph.getOrCreateDeclNode(ArgDecl);
+                    const clang::ParmVarDecl* Param = Callee->getParamDecl(I);
+                    if (!Param) {
+                        // TODO Handle variadic arguments if needed.
+                        continue;
+                    }
 
-                        Graph.addEdge(ParamNode,
-                                      ArgNode,
-                                      EdgeKind::RefParamAlias,
-                                      CE,
-                                      Arg->getExprLoc());
+                    clang::QualType ParamType = Param->getType();
+                    const bool paramIsConst = ParamType.isConstQualified();
+                    NodeId ParamNode = Graph.getOrCreateDeclNode(Param, shouldTrackVarDecl(Param), paramIsConst);
 
-                        // For a first conservative version, reject the argument
-                        // immediately when passed to a non-const reference of an
-                        // external or not-yet-analyzed function.
-                        //
-                        // If Callee has a body and your graph analysis can prove
-                        // ParamNode remains const, then remove this immediate
-                        // rejection and rely on propagation instead.
-                        if (!Callee->hasBody()) {
-                            Graph.reject(ArgNode,
-                                         RejectReasonKind::PassedToNonConstRef,
-                                         Arg->getExprLoc(),
-                                         CE);
+                
+                    // void f(int& x);
+                    // f(m);
+                    //
+                    // If parameter x cannot be const, then m cannot be const.
+                    //
+                    // Add:
+                    //     param -> argument
+                    if (ParamType->isLValueReferenceType()) {
+                        clang::QualType Referred = ParamType.getNonReferenceType();
+
+                        if (!Referred.isConstQualified()) {
+                            if (const clang::ValueDecl* ArgDecl = findReferencedValueDecl(Arg)) {
+                                assert(shouldTrackVarDecl(ArgDecl));
+                                const bool ArgDeclIsConst = ArgDecl->getType().isConstQualified();
+                                NodeId ArgNode = Graph.getOrCreateDeclNode(ArgDecl, true, ArgDeclIsConst);
+
+                                Graph.addEdge(ParamNode,
+                                            ArgNode,
+                                            EdgeKind::RefParamAlias,
+                                            CE,
+                                            Arg->getExprLoc());
+
+                                // For a first conservative version, reject the argument
+                                // immediately when passed to a non-const reference of an
+                                // external or not-yet-analyzed function.
+                                //
+                                // If Callee has a body and your graph analysis can prove
+                                // ParamNode remains const, then remove this immediate
+                                // rejection and rely on propagation instead.
+                                if (!shouldTrackAndAnalyzeBody(Callee)) {
+                                    Graph.reject(ArgNode,
+                                                RejectReasonKind::PassedToNonConstRef,
+                                                Arg->getExprLoc(),
+                                                CE);
+                                }
+                            }
+                        }
+                    }
+
+                    // void f(int* p);
+                    // f(&m);
+                    //
+                    // Conservative.
+                    if (ParamType->isPointerType()) {
+                        clang::QualType Pointee = ParamType->getPointeeType();
+
+                        if (!Pointee.isConstQualified()) {
+                            if (const clang::ValueDecl* ArgDecl = findAddressOfValueDecl(Arg)) {
+                                assert(shouldTrackVarDecl(ArgDecl));
+                                const bool ArgDeclIsConst = ArgDecl->getType().isConstQualified();
+                                NodeId ArgNode = Graph.getOrCreateDeclNode(ArgDecl, true, ArgDeclIsConst);
+
+                                Graph.addEdge(ParamNode,
+                                            ArgNode,
+                                            EdgeKind::PointerParamAlias,
+                                            CE,
+                                            Arg->getExprLoc());
+
+                                if (!shouldTrackAndAnalyzeBody(Callee)) {
+                                    Graph.reject(ArgNode,
+                                                RejectReasonKind::PassedToMutablePointer,
+                                                Arg->getExprLoc(),
+                                                CE);
+                                }
+                            }
                         }
                     }
                 }
             }
-
-            // void f(int* p);
-            // f(&m);
-            //
-            // Conservative.
-            if (ParamType->isPointerType()) {
-                clang::QualType Pointee = ParamType->getPointeeType();
-
-                if (!Pointee.isConstQualified()) {
-                    if (const clang::ValueDecl* ArgDecl = findAddressOfValueDecl(Arg)) {
-                        NodeId ArgNode = Graph.getOrCreateDeclNode(ArgDecl);
-
-                        Graph.addEdge(ParamNode,
-                                      ArgNode,
-                                      EdgeKind::PointerParamAlias,
-                                      CE,
-                                      Arg->getExprLoc());
-
-                        if (!Callee->hasBody()) {
-                            Graph.reject(ArgNode,
-                                         RejectReasonKind::PassedToMutablePointer,
-                                         Arg->getExprLoc(),
-                                         CE);
-                        }
-                    }
-                }
-            }
-        }
+        }        
 
         (void)CalleeNode;
         return true;
@@ -996,28 +1031,29 @@ public:
             return true;
         }
 
-        if(!shouldTrackStmt(MCE)) {
-            return true;
-        }
-
         const clang::CXXMethodDecl* Method = MCE->getMethodDecl();
         if (!Method) {
+            // TODO if this a pointer or a virtual method
             return true;
         }
 
-        NodeId MethodNode = Graph.getOrCreateDeclNode(Method);
+        const bool methodIsConst = Method->isConst();
+        NodeId MethodNode = Graph.getOrCreateDeclNode(Method, shouldTrackAndAnalyzeBody(Method), methodIsConst);
 
+        // The object called on.
         const clang::Expr* ObjExpr = MCE->getImplicitObjectArgument();
         if (!ObjExpr) {
+            // TODO Handle operator calls if needed.
             return true;
         }
 
         if (const clang::ValueDecl* ObjDecl = findReferencedValueDecl(ObjExpr)) {
-            NodeId ObjNode = Graph.getOrCreateDeclNode(ObjDecl);
+            const bool objIsConst = ObjDecl->getType().isConstQualified();
+            NodeId ObjNode = Graph.getOrCreateDeclNode(ObjDecl, shouldTrackVarDecl(ObjDecl), objIsConst);
 
-            Graph.addEdge(MethodNode,
-                          ObjNode,
-                          EdgeKind::MethodCallOnObject,
+            Graph.addEdge(ObjNode,
+                          MethodNode,                          
+                          EdgeKind::CallsMethod,
                           MCE,
                           MCE->getExprLoc());
 
@@ -1029,13 +1065,15 @@ public:
             // reject the receiver. Try to prove the method can become const.
             //
             // If the method has no body, be conservative.
-            if (!Method->isConst() && !Method->hasBody()) {
+            if (!Method->isConst() && !shouldTrackAndAnalyzeBody(Method)) {
                 Graph.reject(ObjNode,
                              RejectReasonKind::NonConstMethodCall,
                              MCE->getExprLoc(),
                              MCE);
             }
         }
+
+        // Arguments are handled in VisitCallExpr.
 
         return true;
     }
@@ -1051,31 +1089,17 @@ bool TraverseFunctionDecl(clang::FunctionDecl* FD) {
             ::TraverseFunctionDecl(FD);
     }
 
-    Graph.getOrCreateDeclNode(FD);
-
-    if (!shouldAnalyzeBody(FD)) {
+    if (!shouldTrackAndAnalyzeBody(FD)) {
         return true;
     }
 
-    FunctionStack.push_back(FD);
+    Graph.getOrCreateDeclNode(FD, true, false);
 
-    if (Verbose) {
-        llvm::errs()
-            << "[constify] enter function "
-            << FD->getQualifiedNameAsString()
-            << "\n";
-    }
+    FunctionStack.push_back(FD);
 
     bool Result =
         clang::RecursiveASTVisitor<ConstGraphBuilder>
             ::TraverseFunctionDecl(FD);
-
-    if (Verbose) {
-        llvm::errs()
-            << "[constify] leave function "
-            << FD->getQualifiedNameAsString()
-            << "\n";
-    }
 
     FunctionStack.pop_back();
 
@@ -1087,36 +1111,17 @@ bool TraverseCXXMethodDecl(clang::CXXMethodDecl* MD) {
         return true;
     }
 
-    Graph.getOrCreateDeclNode(MD);
-
-    if (!shouldAnalyzeBody(MD)) {
+    if (!shouldTrackAndAnalyzeBody(MD)) {
         return true;
     }
 
+    Graph.getOrCreateDeclNode(MD, true, MD->isConst());
+
     FunctionStack.push_back(MD);
-
-    if (Verbose) {
-        llvm::errs()
-            << "[constify] enter method "
-            << MD->getQualifiedNameAsString();
-
-        if (llvm::isa<clang::CXXConstructorDecl>(MD)) {
-            llvm::errs() << " [constructor]";
-        }
-
-        llvm::errs() << "\n";
-    }
 
     bool Result =
         clang::RecursiveASTVisitor<ConstGraphBuilder>
             ::TraverseCXXMethodDecl(MD);
-
-    if (Verbose) {
-        llvm::errs()
-            << "[constify] leave method "
-            << MD->getQualifiedNameAsString()
-            << "\n";
-    }
 
     FunctionStack.pop_back();
 
@@ -1128,31 +1133,17 @@ bool TraverseCXXConstructorDecl(clang::CXXConstructorDecl* CD) {
         return true;
     }
 
-    Graph.getOrCreateDeclNode(CD);
-
-    if (!shouldAnalyzeBody(CD)) {
+    if (!shouldTrackAndAnalyzeBody(CD)) {
         return true;
     }
 
-    FunctionStack.push_back(CD);
+    Graph.getOrCreateDeclNode(CD, true, false);
 
-    if (Verbose) {
-        llvm::errs()
-            << "[constify] enter constructor "
-            << CD->getQualifiedNameAsString()
-            << "\n";
-    }
+    FunctionStack.push_back(CD);
 
     bool Result =
         clang::RecursiveASTVisitor<ConstGraphBuilder>
             ::TraverseCXXConstructorDecl(CD);
-
-    if (Verbose) {
-        llvm::errs()
-            << "[constify] leave constructor "
-            << CD->getQualifiedNameAsString()
-            << "\n";
-    }
 
     FunctionStack.pop_back();
 
@@ -1165,33 +1156,24 @@ private:
     std::vector<const clang::FunctionDecl*> FunctionStack;
 
 private:
-    bool shouldAnalyzeBody(const clang::Decl* D) const {
-        if (!D) {
-            return false;
+
+    bool isThisAccess(const clang::MemberExpr* ME) {
+        const clang::Expr* Base = ME->getBase();
+        if (!Base) return false;
+
+        Base = Base->IgnoreParenImpCasts();
+
+        if (llvm::isa<clang::CXXThisExpr>(Base))
+            return true;
+
+        if (const auto* UO = llvm::dyn_cast<clang::UnaryOperator>(Base)) {
+            if (UO->getOpcode() == clang::UO_Deref) {
+                const clang::Expr* Sub = UO->getSubExpr()->IgnoreParenImpCasts();
+                return llvm::isa<clang::CXXThisExpr>(Sub);
+            }
         }
 
-        if (D->isImplicit()) {
-            return false;
-        }
-
-        clang::SourceLocation Loc = D->getLocation();
-
-        if (Loc.isInvalid()) {
-            return false;
-        }
-
-        const clang::SourceManager& SM = Ctx.getSourceManager();
-        clang::SourceLocation SpellingLoc = SM.getSpellingLoc(Loc);
-
-        if (!SM.isWrittenInMainFile(SpellingLoc)) {
-            return false;
-        }
-
-        if (SM.isInSystemHeader(SpellingLoc)) {
-            return false;
-        }
-
-        return true;
+        return false;
     }
 
     void rejectCurrentMethodForMutation(clang::SourceLocation Loc,
@@ -1219,11 +1201,8 @@ private:
             return;
         }
 
-        if (!shouldTrackDecl(MD)) {
-            return;
-        }
-
-        NodeId MethodNode = Graph.getOrCreateDeclNode(MD);
+        assert(shouldTrackAndAnalyzeBody(MD));
+        NodeId MethodNode = Graph.getOrCreateDeclNode(MD, true, MD->isConst());
 
         Graph.reject(MethodNode, Reason, Loc, Stmt);
     }
@@ -1240,28 +1219,28 @@ private:
         return llvm::dyn_cast_or_null<clang::CXXMethodDecl>(currentFunction());
     }
 
-    bool isInMainFile(clang::SourceLocation Loc) const {
-        if (Loc.isInvalid()) {
-            return false;
-        }
+    // bool isInMainFile(clang::SourceLocation Loc) const {
+    //     if (Loc.isInvalid()) {
+    //         return false;
+    //     }
 
-        const clang::SourceManager& SM = Ctx.getSourceManager();
+    //     const clang::SourceManager& SM = Ctx.getSourceManager();
 
-        // Important: use spelling location for declarations.
-        Loc = SM.getSpellingLoc(Loc);
+    //     // Important: use spelling location for declarations.
+    //     Loc = SM.getSpellingLoc(Loc);
 
-        if (Loc.isInvalid()) {
-            return false;
-        }
+    //     if (Loc.isInvalid()) {
+    //         return false;
+    //     }
 
-        if (SM.isInSystemHeader(Loc) || SM.isInExternCSystemHeader(Loc)) {
-            return false;
-        }
+    //     if (SM.isInSystemHeader(Loc) || SM.isInExternCSystemHeader(Loc)) {
+    //         return false;
+    //     }
 
-        return SM.isWrittenInMainFile(Loc);
-    }
+    //     return SM.isWrittenInMainFile(Loc);
+    // }
 
-    bool shouldTrackDecl(const clang::Decl* D) const {
+    bool shouldTrackVarDecl(const clang::Decl* D) const {
         if (!D) {
             return false;
         }
@@ -1270,7 +1249,20 @@ private:
             return false;
         }
 
-        if (!isInMainFile(D->getLocation())) {
+        clang::SourceLocation Loc = D->getLocation();
+
+        if (Loc.isInvalid()) {
+            return false;
+        }
+
+        const clang::SourceManager& SM = Ctx.getSourceManager();
+        clang::SourceLocation SpellingLoc = SM.getSpellingLoc(Loc);
+
+        if (!SM.isWrittenInMainFile(SpellingLoc)) {
+            return false;
+        }
+
+        if (SM.isInSystemHeader(SpellingLoc) || SM.isInExternCSystemHeader(SpellingLoc)) {
             return false;
         }
 
@@ -1285,31 +1277,65 @@ private:
             return false;
         }
 
-        const clang::SourceManager& SM = Ctx.getSourceManager();
-        clang::SourceLocation Loc = SM.getExpansionLoc(S->getBeginLoc());
+        clang::SourceLocation Loc = S->getBeginLoc();
 
         if (Loc.isInvalid()) {
             return false;
         }
 
-        if (SM.isInSystemHeader(Loc) || SM.isInExternCSystemHeader(Loc)) {
+        const clang::SourceManager& SM = Ctx.getSourceManager();
+        clang::SourceLocation SpellingLoc = SM.getSpellingLoc(Loc);
+
+        if (!SM.isWrittenInMainFile(SpellingLoc)) {
             return false;
         }
 
-        return SM.isWrittenInMainFile(Loc);
-    }
-
-    static const clang::Expr* ignoreNoise(const clang::Expr* E) {
-        if (!E) {
-            return nullptr;
+        if (SM.isInSystemHeader(SpellingLoc) || SM.isInExternCSystemHeader(SpellingLoc)) {
+            return false;
         }
 
-        return E->IgnoreParenImpCasts();
+        return true;
+    }
+
+    bool shouldTrackAndAnalyzeBody(const clang::FunctionDecl* FD) const {
+        if (!FD) {
+            return false;
+        }
+
+        if (FD->isImplicit()) {
+            return false;
+        }
+
+        if(!FD->hasBody()) {
+            return false;
+        }
+
+        clang::SourceLocation Loc = FD->getLocation();
+
+        if (Loc.isInvalid()) {
+            return false;
+        }
+
+        const clang::SourceManager& SM = Ctx.getSourceManager();
+        clang::SourceLocation SpellingLoc = SM.getSpellingLoc(Loc);
+
+        if (!SM.isWrittenInMainFile(SpellingLoc)) {
+            return false;
+        }
+
+        if (SM.isInSystemHeader(SpellingLoc) || SM.isInExternCSystemHeader(SpellingLoc)) {
+            return false;
+        }
+
+        return true;
     }
 
     static const clang::ValueDecl*
     findReferencedValueDecl(const clang::Expr* E) {
-        E = ignoreNoise(E);
+        if (!E) {
+            return nullptr;
+        }
+        E = E->IgnoreParenImpCasts();
         if (!E) {
             return nullptr;
         }
@@ -1327,7 +1353,10 @@ private:
 
     static const clang::ValueDecl*
     findAddressOfValueDecl(const clang::Expr* E) {
-        E = ignoreNoise(E);
+        if (!E) {
+            return nullptr;
+        }
+        E = E->IgnoreParenImpCasts();
         if (!E) {
             return nullptr;
         }
