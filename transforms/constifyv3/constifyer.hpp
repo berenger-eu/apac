@@ -437,6 +437,14 @@ public:
             Changed = false;
 
             for (const Edge& E : Edges) {
+                if (Verbose) {
+                    llvm::errs() << "[propagateCannotBeConst] consider edge #"
+                                 << E.from.value << " (" << Nodes[E.from.value].qualifiedName << ")"
+                                 << " -> #" << E.to.value << " (" << Nodes[E.to.value].qualifiedName << ")"
+                                 << " kind=" << toString(E.kind)
+                                 << "\n";
+                }
+
                 if (!propagatesCannot(E.kind)) {
                     continue;
                 }
@@ -456,7 +464,7 @@ public:
 
                     if (Verbose) {
                         llvm::errs()
-                            << "[constify] propagate reject #"
+                            << "[propagateCannotBeConst] propagate reject #"
                             << E.from.value << " (" << From.qualifiedName << ")"
                             << " -> #"
                             << E.to.value << " (" << To.qualifiedName << ")"
@@ -1577,7 +1585,8 @@ public:
 
 enum class RewriteKind {
     AddMethodConst,
-    AddLocalVariableConst
+    AddLocalVariableConst,
+    AddParameterConst
 };
 
 struct RewriteEdit {
@@ -1604,6 +1613,12 @@ public:
 
             if (const auto* MD = llvm::dyn_cast_or_null<clang::CXXMethodDecl>(N.decl)) {
                 maybePlanMethodConst(N, MD);
+                continue;
+            }
+
+            if (const auto* PVD =
+                    llvm::dyn_cast_or_null<clang::ParmVarDecl>(N.decl)) {
+                maybePlanParameterConst(N, PVD);
                 continue;
             }
 
@@ -1635,6 +1650,9 @@ public:
                 break;
             case RewriteKind::AddLocalVariableConst:
                 OS << "AddLocalVariableConst";
+                break;
+            case RewriteKind::AddParameterConst:
+                OS << "AddParameterConst";
                 break;
             }
 
@@ -1820,6 +1838,96 @@ private:
         }
 
         return Begin.getLocWithOffset(static_cast<int>(Pos + 1));
+    }
+
+    void maybePlanParameterConst(const Node& N,
+                             const clang::ParmVarDecl* PVD) {
+        if (!PVD) {
+            return;
+        }
+
+        if (!isInMainFile(PVD->getLocation())) {
+            return;
+        }
+
+        clang::QualType QT = PVD->getType();
+
+        if (QT.isConstQualified()) {
+            return;
+        }
+
+        // Case:
+        //
+        //     Foo& other
+        //
+        // becomes:
+        //
+        //     const Foo& other
+        //
+        if (QT->isLValueReferenceType()) {
+            clang::QualType Referred = QT.getNonReferenceType();
+
+            if (Referred.isConstQualified()) {
+                return;
+            }
+
+            clang::SourceLocation InsertLoc = PVD->getBeginLoc();
+
+            if (InsertLoc.isInvalid()) {
+                return;
+            }
+
+            InsertLoc = SM.getSpellingLoc(InsertLoc);
+
+            if (!isInMainFile(InsertLoc)) {
+                return;
+            }
+
+            if (!reserveLocation(InsertLoc)) {
+                return;
+            }
+
+            RewriteEdit E;
+            E.kind = RewriteKind::AddParameterConst;
+            E.node = N.id;
+            E.loc = InsertLoc;
+            E.text = "const ";
+            E.description =
+                "add const to reference parameter " + PVD->getNameAsString();
+
+            Edits.push_back(std::move(E));
+            return;
+        }
+
+        // Case:
+        //
+        //     Foo* p
+        //
+        // Careful:
+        //
+        //     const Foo* p
+        //
+        // means pointer-to-const, not const pointer.
+        //
+        // This is often what we want for parameters, but it needs separate pointer
+        // analysis. Do not do it blindly in v1.
+        if (QT->isPointerType()) {
+            return;
+        }
+
+        // Case:
+        //
+        //     int x
+        //
+        // Could become:
+        //
+        //     const int x
+        //
+        // But top-level const on by-value parameters is not part of the function
+        // signature and can be annoying if declarations/definitions are separate.
+        //
+        // For v1, skip by-value parameters.
+        return;
     }
 
     void maybePlanLocalVariableConst(const Node& N,
