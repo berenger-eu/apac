@@ -1846,15 +1846,11 @@ private:
             return;
         }
 
-        if (!isInMainFile(PVD->getLocation())) {
-            return;
-        }
+        assert(isInMainFile(PVD->getLocation()));
 
         clang::QualType QT = PVD->getType();
 
-        if (QT.isConstQualified()) {
-            return;
-        }
+        assert(!QT.isConstQualified());
 
         // Case:
         //
@@ -1867,9 +1863,7 @@ private:
         if (QT->isLValueReferenceType()) {
             clang::QualType Referred = QT.getNonReferenceType();
 
-            if (Referred.isConstQualified()) {
-                return;
-            }
+            assert(!Referred.isConstQualified());
 
             clang::SourceLocation InsertLoc = PVD->getBeginLoc();
 
@@ -1879,9 +1873,7 @@ private:
 
             InsertLoc = SM.getSpellingLoc(InsertLoc);
 
-            if (!isInMainFile(InsertLoc)) {
-                return;
-            }
+            assert(isInMainFile(InsertLoc));
 
             if (!reserveLocation(InsertLoc)) {
                 return;
@@ -1923,10 +1915,29 @@ private:
         //
         //     const int x
         //
-        // But top-level const on by-value parameters is not part of the function
-        // signature and can be annoying if declarations/definitions are separate.
-        //
-        // For v1, skip by-value parameters.
+        clang::SourceLocation InsertLoc = PVD->getBeginLoc();
+
+        if (InsertLoc.isInvalid()) {
+            return;
+        }
+
+        InsertLoc = SM.getSpellingLoc(InsertLoc);
+
+        assert(isInMainFile(InsertLoc));
+
+        if (!reserveLocation(InsertLoc)) {
+            return;
+        }
+
+        RewriteEdit E;
+        E.kind = RewriteKind::AddParameterConst;
+        E.node = N.id;
+        E.loc = InsertLoc;
+        E.text = "const ";
+        E.description =
+            "add const to reference parameter " + PVD->getNameAsString();
+
+        Edits.push_back(std::move(E));
         return;
     }
 
@@ -1936,27 +1947,19 @@ private:
             return;
         }
 
-        if (llvm::isa<clang::ParmVarDecl>(VD)) {
-            return;
-        }
+        assert(!llvm::isa<clang::ParmVarDecl>(VD));
 
-        if (llvm::isa<clang::FieldDecl>(VD)) {
-            return;
-        }
+        assert(!llvm::isa<clang::FieldDecl>(VD));
 
-        if (!VD->isLocalVarDecl()) {
-            return;
-        }
+        assert(VD->isLocalVarDecl());
 
         clang::QualType QT = VD->getType();
 
-        if (QT.isConstQualified()) {
-            return;
-        }
+        assert(!QT.isConstQualified());
 
-        if (QT->isReferenceType()) {
-            return;
-        }
+        // if (QT->isReferenceType()) {
+        //     return;
+        // }
 
         if (QT->isPointerType()) {
             // Important:
@@ -1990,9 +1993,7 @@ private:
 
         InsertLoc = SM.getSpellingLoc(InsertLoc);
 
-        if (!isInMainFile(InsertLoc)) {
-            return;
-        }
+        assert(isInMainFile(InsertLoc));
 
         if (!reserveLocation(InsertLoc)) {
             return;
