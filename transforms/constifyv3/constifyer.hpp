@@ -11,6 +11,14 @@
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Support/raw_ostream.h>
 
+#include <clang/Rewrite/Core/Rewriter.h>
+#include <clang/Lex/Lexer.h>
+#include <llvm/Support/FileSystem.h>
+#include <llvm/Support/raw_ostream.h>
+#include <clang/AST/ParentMapContext.h>
+#include <clang/AST/ASTTypeTraits.h>
+#include <set>
+
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -1565,5 +1573,455 @@ public:
         // Do not rewrite here until the graph is trustworthy.
     }
 };
+
+
+enum class RewriteKind {
+    AddMethodConst,
+    AddLocalVariableConst
+};
+
+struct RewriteEdit {
+    RewriteKind kind;
+    NodeId node;
+    clang::SourceLocation loc;
+    std::string text;
+    std::string description;
+};
+
+class ConstRewritePlanner {
+public:
+    ConstRewritePlanner(clang::ASTContext& Ctx, const ConstGraph& Graph)
+        : Ctx(Ctx),
+          SM(Ctx.getSourceManager()),
+          LangOpts(Ctx.getLangOpts()),
+          Graph(Graph) {}
+
+    void compute() {
+        for (const Node& N : Graph.nodes()) {
+            if (!isCandidateForRewrite(N)) {
+                continue;
+            }
+
+            if (const auto* MD = llvm::dyn_cast_or_null<clang::CXXMethodDecl>(N.decl)) {
+                maybePlanMethodConst(N, MD);
+                continue;
+            }
+
+            if (const auto* VD = llvm::dyn_cast_or_null<clang::VarDecl>(N.decl)) {
+                maybePlanLocalVariableConst(N, VD);
+                continue;
+            }
+        }
+    }
+
+    const std::vector<RewriteEdit>& edits() const {
+        return Edits;
+    }
+
+    void dump(llvm::raw_ostream& OS) const {
+        OS << "\n[CONSTIFY REWRITE PLAN]\n";
+
+        if (Edits.empty()) {
+            OS << "  <no edits>\n";
+            return;
+        }
+
+        for (const RewriteEdit& E : Edits) {
+            OS << "  node #" << E.node.value << " ";
+
+            switch (E.kind) {
+            case RewriteKind::AddMethodConst:
+                OS << "AddMethodConst";
+                break;
+            case RewriteKind::AddLocalVariableConst:
+                OS << "AddLocalVariableConst";
+                break;
+            }
+
+            OS << " at ";
+            E.loc.print(OS, SM);
+            OS << " : " << E.description << "\n";
+        }
+    }
+
+private:
+    clang::ASTContext& Ctx;
+    clang::SourceManager& SM;
+    const clang::LangOptions& LangOpts;
+    const ConstGraph& Graph;
+
+    std::vector<RewriteEdit> Edits;
+    std::set<unsigned> UsedOffsets;
+
+private:
+    bool isInMainFile(clang::SourceLocation Loc) const {
+        if (Loc.isInvalid()) {
+            return false;
+        }
+
+        Loc = SM.getSpellingLoc(Loc);
+
+        return SM.isWrittenInMainFile(Loc);
+    }
+
+    bool isCandidateForRewrite(const Node& N) const {
+        if (!N.decl) {
+            return false;
+        }
+
+        if (N.state != ConstState::Candidate) {
+            return false;
+        }
+
+        if (!isInMainFile(N.decl->getLocation())) {
+            return false;
+        }
+
+        return true;
+    }
+
+    bool reserveLocation(clang::SourceLocation Loc) {
+        if (Loc.isInvalid()) {
+            return false;
+        }
+
+        Loc = SM.getSpellingLoc(Loc);
+
+        const unsigned Offset = SM.getFileOffset(Loc);
+
+        auto [It, Inserted] = UsedOffsets.insert(Offset);
+
+        return Inserted;
+    }
+
+    std::string getSourceText(clang::SourceRange Range) const {
+        if (Range.isInvalid()) {
+            return {};
+        }
+
+        clang::CharSourceRange CharRange =
+            clang::CharSourceRange::getTokenRange(Range);
+
+        return clang::Lexer::getSourceText(CharRange, SM, LangOpts).str();
+    }
+
+    void maybePlanMethodConst(const Node& N,
+                              const clang::CXXMethodDecl* MD) {
+        if (!MD) {
+            return;
+        }
+
+        if (llvm::isa<clang::CXXConstructorDecl>(MD)) {
+            return;
+        }
+
+        if (llvm::isa<clang::CXXDestructorDecl>(MD)) {
+            return;
+        }
+
+        if (MD->isStatic()) {
+            return;
+        }
+
+        if (MD->isConst()) {
+            return;
+        }
+
+        if (MD->isVirtual()) {
+            // v1 conservatrice.
+            // Ajouter const à une méthode virtuelle change la signature
+            // et peut casser l'override.
+            return;
+        }
+
+        if (!MD->hasBody()) {
+            return;
+        }
+
+        clang::SourceLocation InsertLoc = findMethodConstInsertionLoc(MD);
+
+        if (InsertLoc.isInvalid()) {
+            if (Verbose) {
+                llvm::errs()
+                    << "[constify] cannot find const insertion location for method "
+                    << MD->getQualifiedNameAsString()
+                    << "\n";
+            }
+            return;
+        }
+
+        if (!reserveLocation(InsertLoc)) {
+            return;
+        }
+
+        RewriteEdit E;
+        E.kind = RewriteKind::AddMethodConst;
+        E.node = N.id;
+        E.loc = InsertLoc;
+        E.text = " const";
+        E.description =
+            "add trailing const to method " + MD->getQualifiedNameAsString();
+
+        Edits.push_back(std::move(E));
+    }
+
+    clang::SourceLocation
+    findMethodConstInsertionLoc(const clang::CXXMethodDecl* MD) const {
+        if (!MD || !MD->hasBody()) {
+            return {};
+        }
+
+        const clang::Stmt* Body = MD->getBody();
+
+        if (!Body) {
+            return {};
+        }
+
+        clang::SourceLocation Begin = MD->getBeginLoc();
+        clang::SourceLocation BodyBegin = Body->getBeginLoc();
+
+        if (Begin.isInvalid() || BodyBegin.isInvalid()) {
+            return {};
+        }
+
+        Begin = SM.getSpellingLoc(Begin);
+        BodyBegin = SM.getSpellingLoc(BodyBegin);
+
+        if (!isInMainFile(Begin) || !isInMainFile(BodyBegin)) {
+            return {};
+        }
+
+        clang::SourceRange HeaderRange(Begin, BodyBegin);
+        std::string HeaderText = getSourceText(HeaderRange);
+
+        if (HeaderText.empty()) {
+            return {};
+        }
+
+        // v1:
+        // Find the last ')' before the body.
+        //
+        // This works for:
+        //
+        //     void f() {
+        //     int g(int x) {
+        //
+        // It is not yet perfect for:
+        //
+        //     void f() noexcept {
+        //     void f() override {
+        //     void f() & {
+        //
+        // For those, a later version should use TypeLoc / FunctionProtoTypeLoc.
+        const std::size_t Pos = HeaderText.rfind(')');
+
+        if (Pos == std::string::npos) {
+            return {};
+        }
+
+        return Begin.getLocWithOffset(static_cast<int>(Pos + 1));
+    }
+
+    void maybePlanLocalVariableConst(const Node& N,
+                                     const clang::VarDecl* VD) {
+        if (!VD) {
+            return;
+        }
+
+        if (llvm::isa<clang::ParmVarDecl>(VD)) {
+            return;
+        }
+
+        if (llvm::isa<clang::FieldDecl>(VD)) {
+            return;
+        }
+
+        if (!VD->isLocalVarDecl()) {
+            return;
+        }
+
+        clang::QualType QT = VD->getType();
+
+        if (QT.isConstQualified()) {
+            return;
+        }
+
+        if (QT->isReferenceType()) {
+            return;
+        }
+
+        if (QT->isPointerType()) {
+            // Important:
+            //
+            //     int* p;
+            //
+            // Prefixing with const gives:
+            //
+            //     const int* p;
+            //
+            // which changes the pointee constness, not the pointer object
+            // constness.
+            //
+            // Top-level const would be:
+            //
+            //     int* const p;
+            //
+            // Do not touch pointers in v1.
+            return;
+        }
+
+        if (!isSingleDeclarationStatement(VD)) {
+            return;
+        }
+
+        clang::SourceLocation InsertLoc = VD->getBeginLoc();
+
+        if (InsertLoc.isInvalid()) {
+            return;
+        }
+
+        InsertLoc = SM.getSpellingLoc(InsertLoc);
+
+        if (!isInMainFile(InsertLoc)) {
+            return;
+        }
+
+        if (!reserveLocation(InsertLoc)) {
+            return;
+        }
+
+        RewriteEdit E;
+        E.kind = RewriteKind::AddLocalVariableConst;
+        E.node = N.id;
+        E.loc = InsertLoc;
+        E.text = "const ";
+        E.description =
+            "add top-level const to local variable " + VD->getNameAsString();
+
+        Edits.push_back(std::move(E));
+    }
+
+    bool isSingleDeclarationStatement(const clang::VarDecl* VD) const {
+        if (!VD) {
+            return false;
+        }
+
+        auto Parents = Ctx.getParents(*VD);
+
+        if (Parents.empty()) {
+            return false;
+        }
+
+        for (const clang::DynTypedNode& Parent : Parents) {
+            if (const auto* DS = Parent.get<clang::DeclStmt>()) {
+                return DS->isSingleDecl();
+            }
+        }
+
+        return false;
+    }
+};
+
+class ConstRewriteApplier {
+public:
+    ConstRewriteApplier(clang::ASTContext& Ctx,
+                        const ConstRewritePlanner& Planner)
+        : Ctx(Ctx),
+          SM(Ctx.getSourceManager()),
+          LangOpts(Ctx.getLangOpts()),
+          Planner(Planner),
+          Rewriter(SM, LangOpts) {}
+
+    bool apply() {
+        bool Changed = false;
+
+        for (const RewriteEdit& E : Planner.edits()) {
+            if (E.loc.isInvalid()) {
+                continue;
+            }
+
+            if (Verbose) {
+                llvm::errs()
+                    << "[constify] applying edit: "
+                    << E.description
+                    << "\n";
+            }
+
+            const bool Failed =
+                Rewriter.InsertText(E.loc,
+                                    E.text,
+                                    /*InsertAfter=*/false,
+                                    /*IndentNewLines=*/false);
+
+            if (Failed) {
+                llvm::errs()
+                    << "[constify] failed to apply edit: "
+                    << E.description
+                    << "\n";
+                continue;
+            }
+
+            Changed = true;
+        }
+
+        return Changed;
+    }
+
+    void writeToStdout() {
+        const clang::FileID MainFileID = SM.getMainFileID();
+
+        const clang::RewriteBuffer* Buf =
+            Rewriter.getRewriteBufferFor(MainFileID);
+
+        if (!Buf) {
+            llvm::outs()
+                << "[constify] no rewrite buffer; source unchanged\n";
+            return;
+        }
+
+        Buf->write(llvm::outs());
+    }
+
+    bool overwriteChangedFiles() {
+        return !Rewriter.overwriteChangedFiles();
+    }
+
+    bool writeMainFileToPath(llvm::StringRef OutputPath) {
+        const clang::FileID MainFileID = SM.getMainFileID();
+
+        const clang::RewriteBuffer* Buf =
+            Rewriter.getRewriteBufferFor(MainFileID);
+
+        if (!Buf) {
+            llvm::errs()
+                << "[constify] no rewrite buffer; nothing to write\n";
+            return false;
+        }
+
+        std::error_code EC;
+        llvm::raw_fd_ostream OS(OutputPath, EC, llvm::sys::fs::OF_Text);
+
+        if (EC) {
+            llvm::errs()
+                << "[constify] cannot open output file "
+                << OutputPath
+                << ": "
+                << EC.message()
+                << "\n";
+            return false;
+        }
+
+        Buf->write(OS);
+        return true;
+    }
+
+private:
+    clang::ASTContext& Ctx;
+    clang::SourceManager& SM;
+    const clang::LangOptions& LangOpts;
+    const ConstRewritePlanner& Planner;
+    clang::Rewriter Rewriter;
+};
+
 
 } // namespace constify

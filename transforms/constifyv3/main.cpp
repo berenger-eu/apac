@@ -73,14 +73,28 @@ public:
 
         Builder.graph().dump(llvm::errs());
 
-        // Later:
-        //
-        //   ConstRewritePlanner Planner(Ctx, Builder.graph());
-        //   Planner.compute();
-        //   Planner.dump(llvm::errs());
-        //
-        //   ConstRewriteApplier Applier(Ctx, Planner);
-        //   Applier.apply();
+        constify::ConstRewritePlanner Planner(Ctx, Builder.graph());
+        Planner.compute();
+        Planner.dump(llvm::errs());
+
+        constify::ConstRewriteApplier Applier(Ctx, Planner);
+
+        const bool Changed = Applier.apply();
+
+        if (!Changed) {
+            llvm::errs() << "[constify] no source changes\n";
+            return;
+        }
+
+        // Option 1 : écrire le nouveau code sur stdout.
+        Applier.writeToStdout();
+
+        // Option 2 : écraser le fichier source.
+        // Attention : à utiliser seulement quand tu es sûr.
+        // Applier.overwriteChangedFiles();
+
+        // Option 3 : écrire dans un fichier de sortie.
+        // Applier.writeMainFileToPath("/tmp/constified.cpp");
     }
 
 private:
