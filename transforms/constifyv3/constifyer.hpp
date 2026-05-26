@@ -479,6 +479,49 @@ public:
         }
     }
 
+    void propagateMethodCallConstness() {
+        bool Changed = true;
+
+        while (Changed) {
+            Changed = false;
+
+            for (const Edge& E : Edges) {
+                if (E.kind != EdgeKind::MethodCallOnObject) {
+                    continue;
+                }
+
+                Node& Object = Nodes[E.from.value];
+                Node& Method = Nodes[E.to.value];
+
+                if (Method.state == ConstState::CannotBeConst &&
+                    Object.state == ConstState::Candidate) {
+
+                    Object.state = ConstState::CannotBeConst;
+
+                    Object.rejectReasons.push_back(
+                        RejectReason{
+                            RejectReasonKind::NonConstMethodCall,
+                            E.loc,
+                            nullptr
+                        });
+
+                    Changed = true;
+
+                    if (Verbose) {
+                        llvm::errs()
+                            << "[constify] reject object #"
+                            << Object.id.value
+                            << " name=" << Object.qualifiedName
+                            << " because it calls non-const method #"
+                            << Method.id.value
+                            << " name=" << Method.qualifiedName
+                            << "\n";
+                    }
+                }
+            }
+        }
+    }
+
     template <class T>
     void dump(T& OS) const {
         OS << "\n[CONSTIFY NODES]\n";

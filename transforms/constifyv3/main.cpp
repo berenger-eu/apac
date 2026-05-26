@@ -70,6 +70,7 @@ public:
         Builder.TraverseDecl(Ctx.getTranslationUnitDecl());
 
         Builder.graph().propagateCannotBeConst();
+        Builder.graph().propagateMethodCallConstness();
 
         Builder.graph().dump(llvm::errs());
 
