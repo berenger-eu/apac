@@ -15,8 +15,7 @@ set (COMMON_LIB ${CMAKE_CURRENT_SOURCE_DIR}/../../../core)
 set(INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../include ${COMMON_LIB})
 
 # Sources for your library (replace with actual source files)
-set(SOURCES ASTInitVisitor.cpp ASTConstifyVisitor.cpp ASTPrintVisitor.cpp SymTab.cpp core.cpp rewritersample.cpp)
-
+set(SOURCES constifyer.hpp)
 
 # Lib Creation
 add_library(${CURRENT_LIBRARY_NAME} ${SOURCES})  
