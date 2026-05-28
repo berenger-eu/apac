@@ -30,6 +30,7 @@ namespace constify {
 /// Global verbose flag.
 /// Keep it simple for now. Later, replace by llvm::cl::opt<bool>.
 inline bool Verbose = false;
+inline bool InPlace = false;
 
 
 /// A stable node id inside one translation unit.

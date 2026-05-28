@@ -45,6 +45,12 @@ llvm::cl::opt<bool> VerboseOpt(
     llvm::cl::init(false),
     llvm::cl::cat(ConstifyCategory));
 
+llvm::cl::opt<bool> InPlaceOpt(
+    "in-place",
+    llvm::cl::desc("Overwrite changed input files instead of writing rewritten code to stdout"),
+    llvm::cl::init(false),
+    llvm::cl::cat(ConstifyCategory));    
+
 /// Simple container for command-line filters.
 ///
 /// Right now this is only passed into the action/consumer.
@@ -54,6 +60,7 @@ struct ConstifyOptions {
     std::string FunctionFilter;
     std::string IgnoreFilter;
     bool Verbose = false;
+    bool InPlace = false;
 };
 
 /// ASTConsumer that owns one graph build for one translation unit.
@@ -64,6 +71,7 @@ public:
 
     void HandleTranslationUnit(ASTContext& Ctx) override {
         constify::Verbose = Options.Verbose;
+        constify::InPlace = Options.InPlace;
 
         constify::ConstGraphBuilder Builder(Ctx);
 
@@ -87,15 +95,15 @@ public:
             return;
         }
 
-        // Option 1 : écrire le nouveau code sur stdout.
-        Applier.writeToStdout();
-
-        // Option 2 : écraser le fichier source.
-        // Attention : à utiliser seulement quand tu es sûr.
-        // Applier.overwriteChangedFiles();
-
-        // Option 3 : écrire dans un fichier de sortie.
-        // Applier.writeMainFileToPath("/tmp/constified.cpp");
+        if(Options.InPlace){
+            // Applier.writeMainFileToPath("/tmp/constified.cpp");
+            llvm::errs() << "[constify] overwrite file\n";
+            Applier.overwriteChangedFiles();
+        }
+        else{
+            llvm::errs() << "[constify] write to stdout\n";
+            Applier.writeToStdout();
+        }
     }
 
 private:
@@ -171,6 +179,7 @@ int main(int argc, const char** argv) {
     Options.FunctionFilter = APACFunctionFilter.getValue();
     Options.IgnoreFilter = APACIgnoreFilter.getValue();
     Options.Verbose = VerboseOpt.getValue();
+    Options.InPlace = InPlaceOpt.getValue();
 
     if (Options.Verbose) {
         llvm::errs() << "[constify] options:\n";
