@@ -1119,181 +1119,214 @@ bool VisitBinaryOperator(clang::BinaryOperator* BO) {
     return true;
 }
 
-    bool VisitCallExpr(clang::CallExpr* CE) {
-        if (!CE) {
-            return true;
+void handleCallLikeArguments(const clang::FunctionDecl* Callee,
+                             unsigned NumArgs,
+                             llvm::function_ref<const clang::Expr*(unsigned)> GetArg,
+                             const clang::Stmt* Cause) {
+    if (!Callee) {
+        return;
+    }
+
+    const unsigned NArgs =
+        std::min<unsigned>(NumArgs, Callee->getNumParams());
+
+    for (unsigned I = 0; I < NArgs; ++I) {
+        const clang::Expr* Arg = GetArg(I);
+
+        if (!Arg) {
+            continue;
         }
-        if(!shouldTrackStmt(CE)) {
-            return true;
+
+        const clang::ValueDecl* ArgDecl = findReferencedValueDecl(Arg);
+        if (!ArgDecl || !shouldTrackVarDecl(ArgDecl)) {
+            continue;
         }
 
-        const clang::FunctionDecl* Callee = CE->getDirectCallee();
-        if (!Callee) {
-            // Function pointer / unresolved call.
-            // Be conservative later if needed.
-            // TODO Consider all args as const
-            return true;
+        const bool ArgIsConst = ArgDecl->getType().isConstQualified();
+        NodeId ArgNode = Graph.getOrCreateDeclNode(ArgDecl, true, ArgIsConst);
+
+        if (ArgIsConst) {
+            continue;
         }
 
-        NodeId CalleeNode = Graph.getOrCreateDeclNode(Callee, shouldTrackAndAnalyzeBody(Callee), false);
+        const clang::ParmVarDecl* Param = Callee->getParamDecl(I);
+        if (!Param) {
+            continue;
+        }
 
-        const unsigned NArgs =
-            std::min<unsigned>(CE->getNumArgs(), Callee->getNumParams());
+        clang::QualType ParamType = Param->getType();
+        const bool ParamIsConst = ParamType.isConstQualified();
 
-        for (unsigned I = 0; I < NArgs; ++I) {
-            const clang::Expr* Arg = CE->getArg(I);
+        NodeId ParamNode = Graph.getUnknownExternalNode();
 
-            if (!Arg) {
-                continue;
-            }
+        if (shouldTrackVarDecl(Param)) {
+            ParamNode =
+                Graph.getOrCreateDeclNode(Param,
+                                          shouldTrackVarDecl(Param),
+                                          ParamIsConst);
+        }
 
-            if (const clang::ValueDecl* ArgDecl = findReferencedValueDecl(Arg)) {
-                if (shouldTrackVarDecl(ArgDecl)) {
-                    const bool ArgIsConst = ArgDecl->getType().isConstQualified();
-                    NodeId ArgNode = Graph.getOrCreateDeclNode(ArgDecl, true, ArgIsConst);
+        if (ParamType->isLValueReferenceType()) {
+            clang::QualType Referred = ParamType.getNonReferenceType();
 
-                    if(ArgIsConst){
-                        // If the argument is already const, the parameter cannot prevent constness.
-                        continue;
-                    }
+            if (!Referred.isConstQualified()) {
+                if (shouldTrackVarDecl(Param)) {
+                    Graph.addEdge(ParamNode,
+                                  ArgNode,
+                                  EdgeKind::RefParamAlias,
+                                  Cause,
+                                  Arg->getExprLoc());
+                }
 
-
-                    const clang::ParmVarDecl* Param = Callee->getParamDecl(I);
-                    if (!Param) {
-                        // TODO Handle variadic arguments if needed.
-                        continue;
-                    }
-
-                    clang::QualType ParamType = Param->getType();
-                    const bool paramIsConst = ParamType.isConstQualified();
-
-                    NodeId ParamNode = Graph.getUnknownExternalNode();
-                    if(shouldTrackVarDecl(Param)){
-                        assert(shouldTrackAndAnalyzeBody(Callee));
-                        ParamNode = Graph.getOrCreateDeclNode(Param, shouldTrackVarDecl(Param), paramIsConst);
-                    }
-                
-                    // void f(int& x);
-                    // f(m);
-                    //
-                    // If parameter x cannot be const, then m cannot be const.
-                    //
-                    // Add:
-                    //     param -> argument
-                    if (ParamType->isLValueReferenceType()) {
-                        clang::QualType Referred = ParamType.getNonReferenceType();
-
-                        if (!Referred.isConstQualified()) {
-
-                            if(shouldTrackVarDecl(Param)){
-                                Graph.addEdge(ParamNode,
-                                            ArgNode,
-                                            EdgeKind::RefParamAlias,
-                                            CE,
-                                            Arg->getExprLoc());
-                            }
-
-                            // For a first conservative version, reject the argument
-                            // immediately when passed to a non-const reference of an
-                            // external or not-yet-analyzed function.
-                            //
-                            // If Callee has a body and your graph analysis can prove
-                            // ParamNode remains const, then remove this immediate
-                            // rejection and rely on propagation instead.
-                            if (!shouldTrackAndAnalyzeBody(Callee)) {
-                                assert(!shouldTrackVarDecl(Param));
-                                Graph.reject(ArgNode,
-                                            RejectReasonKind::PassedToNonConstRef,
-                                            Arg->getExprLoc(),
-                                            CE);
-                            }
-                        }
-                    }
-
-                    // void f(int* p);
-                    // f(&m);
-                    //
-                    // Conservative.
-                    if (ParamType->isPointerType()) {
-                        clang::QualType Pointee = ParamType->getPointeeType();
-
-                        if (!Pointee.isConstQualified()) {
-                            if(shouldTrackVarDecl(Param)){
-                                Graph.addEdge(ParamNode,
-                                        ArgNode,
-                                        EdgeKind::PointerParamAlias,
-                                        CE,
-                                        Arg->getExprLoc());
-                            }
-
-                            if (!shouldTrackAndAnalyzeBody(Callee)) {
-                                assert(!shouldTrackVarDecl(Param));
-                                Graph.reject(ArgNode,
-                                            RejectReasonKind::PassedToMutablePointer,
-                                            Arg->getExprLoc(),
-                                            CE);
-                            }
-                        }
-                    }
+                if (!shouldTrackAndAnalyzeBody(Callee)) {
+                    Graph.reject(ArgNode,
+                                 RejectReasonKind::PassedToNonConstRef,
+                                 Arg->getExprLoc(),
+                                 Cause);
                 }
             }
-        }        
-
-        (void)CalleeNode;
-        return true;
-    }
-
-    bool VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* MCE) {
-        if (!MCE) {
-            return true;
         }
 
-        const clang::CXXMethodDecl* Method = MCE->getMethodDecl();
-        if (!Method) {
-            // TODO if this a pointer or a virtual method
-            return true;
-        }
+        if (ParamType->isPointerType()) {
+            clang::QualType Pointee = ParamType->getPointeeType();
 
-        const bool methodIsConst = Method->isConst();
-        NodeId MethodNode = Graph.getOrCreateDeclNode(Method, shouldTrackAndAnalyzeBody(Method), methodIsConst);
+            if (!Pointee.isConstQualified()) {
+                if (shouldTrackVarDecl(Param)) {
+                    Graph.addEdge(ParamNode,
+                                  ArgNode,
+                                  EdgeKind::PointerParamAlias,
+                                  Cause,
+                                  Arg->getExprLoc());
+                }
 
-        // The object called on.
-        const clang::Expr* ObjExpr = MCE->getImplicitObjectArgument();
-        if (!ObjExpr) {
-            // TODO Handle operator calls if needed.
-            return true;
-        }
-
-        if (const clang::ValueDecl* ObjDecl = findReferencedValueDecl(ObjExpr)) {
-            const bool objIsConst = ObjDecl->getType().isConstQualified();
-            NodeId ObjNode = Graph.getOrCreateDeclNode(ObjDecl, shouldTrackVarDecl(ObjDecl), objIsConst);
-
-            Graph.addEdge(ObjNode,
-                          MethodNode,                          
-                          EdgeKind::MethodCallOnObject,
-                          MCE,
-                          MCE->getExprLoc());
-
-            // Critical rule:
-            //
-            // If the method is already const, the receiver is not rejected.
-            //
-            // If the method is non-const but has a body, do NOT immediately
-            // reject the receiver. Try to prove the method can become const.
-            //
-            // If the method has no body, be conservative.
-            if (!Method->isConst() && !shouldTrackAndAnalyzeBody(Method)) {
-                Graph.reject(ObjNode,
-                             RejectReasonKind::NonConstMethodCall,
-                             MCE->getExprLoc(),
-                             MCE);
+                if (!shouldTrackAndAnalyzeBody(Callee)) {
+                    Graph.reject(ArgNode,
+                                 RejectReasonKind::PassedToMutablePointer,
+                                 Arg->getExprLoc(),
+                                 Cause);
+                }
             }
         }
+    }
+}
 
-        // Arguments are handled in VisitCallExpr.
 
+ bool VisitCallExpr(clang::CallExpr* CE) {
+    if (!CE) {
         return true;
     }
+
+    if (!shouldTrackStmt(CE)) {
+        return true;
+    }
+
+    const clang::FunctionDecl* Callee = CE->getDirectCallee();
+
+    if (!Callee) {
+        return true;
+    }
+
+    Graph.getOrCreateDeclNode(Callee,
+                              shouldTrackAndAnalyzeBody(Callee),
+                              false);
+
+    handleCallLikeArguments(
+        Callee,
+        CE->getNumArgs(),
+        [&](unsigned I) -> const clang::Expr* {
+            return CE->getArg(I);
+        },
+        CE);
+
+    return true;
+}
+
+bool VisitCXXConstructExpr(clang::CXXConstructExpr* CE) {
+    if (!CE) {
+        return true;
+    }
+
+    if (!shouldTrackStmt(CE)) {
+        return true;
+    }
+
+    const clang::CXXConstructorDecl* Ctor = CE->getConstructor();
+
+    if (!Ctor) {
+        return true;
+    }
+
+    Graph.getOrCreateDeclNode(Ctor,
+                              shouldTrackAndAnalyzeBody(Ctor),
+                              false);
+
+    handleCallLikeArguments(
+        Ctor,
+        CE->getNumArgs(),
+        [&](unsigned I) -> const clang::Expr* {
+            return CE->getArg(I);
+        },
+        CE);
+
+    return true;
+}
+
+    bool VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* ME) {
+    if (!ME) {
+        return true;
+    }
+
+    if (!shouldTrackStmt(ME)) {
+        return true;
+    }
+
+    const clang::CXXMethodDecl* Method = ME->getMethodDecl();
+
+    if (!Method) {
+        return true;
+    }
+
+    NodeId MethodNode =
+        Graph.getOrCreateDeclNode(Method,
+                                  shouldTrackAndAnalyzeBody(Method),
+                                  Method->isConst());
+
+    // 1. Receiver object: obj.method()
+    if (const clang::Expr* Obj = ME->getImplicitObjectArgument()) {
+        const clang::ValueDecl* ObjDecl = findReferencedValueDecl(Obj);
+
+        if (ObjDecl && shouldTrackVarDecl(ObjDecl)) {
+            const bool ObjIsConst = ObjDecl->getType().isConstQualified();
+
+            NodeId ObjNode =
+                Graph.getOrCreateDeclNode(ObjDecl, true, ObjIsConst);
+
+            Graph.addEdge(ObjNode,
+                          MethodNode,
+                          EdgeKind::MethodCallOnObject,
+                          ME,
+                          ME->getExprLoc());
+
+            if (!Method->isConst()) {
+                Graph.reject(ObjNode,
+                             RejectReasonKind::NonConstMethodCall,
+                             ME->getExprLoc(),
+                             ME);
+            }
+        }
+    }
+
+    // 2. Explicit arguments: obj.method(arg1, arg2)
+    handleCallLikeArguments(
+        Method,
+        ME->getNumArgs(),
+        [&](unsigned I) -> const clang::Expr* {
+            return ME->getArg(I);
+        },
+        ME);
+
+    return true;
+}
 
 bool TraverseFunctionDecl(clang::FunctionDecl* FD) {
     if (!FD) {
