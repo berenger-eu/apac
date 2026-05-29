@@ -13,8 +13,9 @@ curPath="$(realpath $(dirname "$0"))"
 constify=$(command -v constify 2>/dev/null || echo "$curPath/../../../build/constify")
 expectedPath="$curPath/expected"
 testsPath="$curPath/autotests"
-resultPath=$testsPath
+resultPath="$testsPath"
 
+mkdir -p "$resultPath"
 
 
 # Iterate over all .cpp files in the current directory
@@ -25,31 +26,57 @@ for file in $testsPath/*.cpp; do
         differenceInText=false
         differenceInAST=false
         folderName=$(basename "$file" .cpp)
-        $constify $file > /dev/null 2> /dev/null
+        mkdir -p "$resultPath/$folderName"
+        fileName=$(basename "$file" /)
+        file2="$resultPath/$folderName/$fileName"
+        echo "Input: $file"
+        echo "Output: $file2"
+        cp "$file" "$file2"
+        # if copy failed
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}${BOLD}Failed to copy file : $file${NC}"
+            differenceInAST=true
+            differenceInText=true
+            continue
+        fi
+        # apply constify
+        $constify --in-place "$file2" > /dev/null 2> /dev/null
         if [ $? -ne 0 ]; then
             echo -e "${RED}${BOLD}Failed to process file : $file"
             differenceInAST=true
             differenceInText=true
-        else      
-            for file2 in "$resultPath/$folderName"/*; do
-                if [ -f "$file2" ] && [[ "$file2" != *"astdiff"* ]]; then
-                    fileName=$(basename "$file2" /)
-                    clang-format-18 -i "$file2"
-                    diff "$file2" "$expectedPath/$folderName"/"$fileName" > /dev/null
-                    if [ $? -ne 0 ]; then
-                        differenceInText=true
-                        echo -e "${RED}Different Text : $fileName${NC}"
-                    fi
-                    clang-check-18 -ast-print "$expectedPath/$folderName/$fileName" > $curPath/ast_expected 2> /dev/null
-                    clang-check-18 -ast-print $file2 > $curPath/ast_result 2> /dev/null
-                    diff $curPath/ast_expected $curPath/ast_result > "$resultPath/$folderName/astdiff"
-                    if [ $? -ne 0 ]; then
-                        differenceInAST=true
-                        echo -e "${RED}Different AST : $fileName${NC}"
-                    fi
-                    
-                fi
-            done
+        else
+            # format the output file
+            clang-format-18 -i "$file2"
+            if [ $? -ne 0 ]; then
+                echo -e "${RED}${BOLD}Failed to format file : $file2"
+                differenceInAST=true
+                differenceInText=true
+                continue
+            fi
+            expectedfile="$expectedPath/$folderName/$fileName"
+            diff "$file2" "$expectedfile" > /dev/null
+            if [ $? -ne 0 ]; then
+                differenceInText=true
+                echo -e "${RED}Different Text : $fileName${NC}"
+            fi
+            clang-check-18 -ast-print "$expectedfile" > $curPath/ast_expected 2> /dev/null
+            if [ $? -ne 0 ]; then
+                echo -e "${RED}${BOLD}Failed to generate AST for expected file : $expectedfile${NC}"
+                differenceInAST=true
+                continue
+            fi
+            clang-check-18 -ast-print "$file2" > $curPath/ast_result 2> /dev/null
+            if [ $? -ne 0 ]; then
+                echo -e "${RED}${BOLD}Failed to generate AST for result file : $file2${NC}"
+                differenceInAST=true
+                continue
+            fi
+            diff $curPath/ast_expected $curPath/ast_result > "$resultPath/$folderName/astdiff"
+            if [ $? -ne 0 ]; then
+                differenceInAST=true
+                echo -e "${RED}Different AST : $fileName${NC}"
+            fi
             rm $curPath/ast_expected
             rm $curPath/ast_result
         fi 
