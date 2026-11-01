@@ -1,106 +1,43 @@
 #!/bin/bash
-
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-BOLD='\033[1m'
-difference=false
+# Compare source and AST snapshots, then check observable behavior and qualifier levels.
+set -u
+curPath="$(cd "$(dirname "$0")" && pwd)"
+repoRoot="$(cd "$curPath/../../.." && pwd)"
+buildDir="${APAC_BUILD_DIR:-$repoRoot/build}"
+constify="$buildDir/constify"
+testsPath="$curPath/autotests"
+expectedPath="$curPath/expected"
+resultPath="$curPath/results"
 countPassed=0
 countTotal=0
-
-curPath="$(realpath $(dirname "$0"))"
-constify=$(command -v constify 2>/dev/null || echo "$curPath/../../../build/constify")
-expectedPath="$curPath/expected"
-testsPath="$curPath/autotests"
-resultPath="$testsPath"
-
 mkdir -p "$resultPath"
 
-
-# Iterate over all .cpp files in the current directory
-for file in $testsPath/*.cpp; do
-    # Check if the file exists and is a regular file
-    if [ -f "$file" ]; then
-        ((countTotal++))
-        differenceInText=false
-        differenceInAST=false
-        folderName=$(basename "$file" .cpp)
-        mkdir -p "$resultPath/$folderName"
-        fileName=$(basename "$file" /)
-        file2="$resultPath/$folderName/$fileName"
-        echo "Input: $file"
-        echo "Output: $file2"
-        cp "$file" "$file2"
-        # if copy failed
-        if [ $? -ne 0 ]; then
-            echo -e "${RED}${BOLD}Failed to copy file : $file${NC}"
-            differenceInAST=true
-            differenceInText=true
-            continue
-        fi
-        # apply constify
-        $constify --in-place "$file2" -- -std=c++17 -I"$testsPath" > /dev/null 2> /dev/null
-        if [ $? -ne 0 ]; then
-            echo -e "${RED}${BOLD}Failed to process file : $file"
-            differenceInAST=true
-            differenceInText=true
-        else
-            # format the output file
-            clang-format-18 -i "$file2"
-            if [ $? -ne 0 ]; then
-                echo -e "${RED}${BOLD}Failed to format file : $file2"
-                differenceInAST=true
-                differenceInText=true
-                continue
-            fi
-            expectedfile="$expectedPath/$folderName/$fileName"
-            diff "$file2" "$expectedfile" > /dev/null
-            if [ $? -ne 0 ]; then
-                differenceInText=true
-                echo -e "${RED}Different Text : $fileName${NC}"
-            fi
-            clang-check-18 -ast-print "$expectedfile" -- -std=c++17 -I"$testsPath" > $curPath/ast_expected 2> /dev/null
-            if [ $? -ne 0 ]; then
-                echo -e "${RED}${BOLD}Failed to generate AST for expected file : $expectedfile${NC}"
-                differenceInAST=true
-                continue
-            fi
-            clang-check-18 -ast-print "$file2" -- -std=c++17 -I"$testsPath" > $curPath/ast_result 2> /dev/null
-            if [ $? -ne 0 ]; then
-                echo -e "${RED}${BOLD}Failed to generate AST for result file : $file2${NC}"
-                differenceInAST=true
-                continue
-            fi
-            diff $curPath/ast_expected $curPath/ast_result > "$resultPath/$folderName/astdiff"
-            if [ $? -ne 0 ]; then
-                differenceInAST=true
-                echo -e "${RED}Different AST : $fileName${NC}"
-            fi
-            rm $curPath/ast_expected
-            rm $curPath/ast_result
-        fi 
-        
-        if $differenceInAST; then
-            echo -e "${RED}${BOLD}Test failed, AST : $folderName${NC}"
-        else 
-            ((countPassed++))
-            echo -e "${GREEN}${BOLD}Test succeeded : $folderName${NC}"
-        fi
-        if $differenceInText; then
-            echo -e "${RED}Test failed, TEXT : $folderName${NC}"
-        else 
-            echo -e "${GREEN}Test succeeded, TEXT : $folderName${NC}"
-        fi
-        
-        if [ $differenceInAST == false ] && [ $differenceInText == false ]; then
-            rm -rf "$resultPath/$folderName/"
-        fi
-        
+for input in "$testsPath"/*.cpp; do
+    [ -f "$input" ] || continue
+    ((countTotal+=1))
+    name="$(basename "$input" .cpp)"
+    folder="$resultPath/$name"
+    output="$folder/$name.cpp"
+    expected="$expectedPath/$name/$name.cpp"
+    mkdir -p "$folder"
+    # Every failed command counts as a failure; neither empty ASTs nor text-only
+    # differences can accidentally turn a broken transformation into a success.
+    if cp "$input" "$output" &&
+       "$constify" --in-place "$output" -- -std=c++17 -I"$testsPath" >"$folder/stdout" 2>"$folder/diagnostics" &&
+       clang-format-18 -i "$output" &&
+       clang-check-18 -ast-print "$expected" -- -std=c++17 -I"$testsPath" >"$folder/expected.ast" 2>"$folder/expected.errors" &&
+       clang-check-18 -ast-print "$output" -- -std=c++17 -I"$testsPath" >"$folder/result.ast" 2>"$folder/result.errors" &&
+       diff -u "$expected" "$output" >"$folder/source.diff" &&
+       diff -u "$folder/expected.ast" "$folder/result.ast" >"$folder/ast.diff"; then
+        ((countPassed+=1))
+        echo "PASS: Constify $name"
+        rm -rf "$folder"
+    else
+        echo "FAIL: Constify $name (diagnostics in $folder)"
     fi
 done
-echo -e "${BLUE}${BOLD}Tests passed : $countPassed/$countTotal ${NC}"
-if [ $countPassed != $countTotal ]; then
-    exit 1
-fi
-exit 0
+
+echo "Constify snapshots passed: $countPassed/$countTotal"
+semanticStatus=0
+python3 "$repoRoot/scripts/constify-regression.py" --build-dir "$buildDir" || semanticStatus=$?
+[ "$countTotal" -gt 0 ] && [ "$countPassed" -eq "$countTotal" ] && [ "$semanticStatus" -eq 0 ]

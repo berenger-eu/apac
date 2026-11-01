@@ -4,19 +4,19 @@
 
 #define SIZE 100000000
 
-void swap(int *a, int *b) {
+void swap(int *const a, int *const b) {
   const int temp = *a;
   *a = *b;
   *b = temp;
 }
 
-void init(int *arr) {
+void init(int *const arr) {
   for (int idx = 0; idx < SIZE; idx++) {
     arr[idx] = rand();
   }
 }
 
-void Partition(int *outPivot, int *arr, const int rightLimit) {
+void Partition(int *const outPivot, int *const arr, const int rightLimit) {
   const int pivot = arr[rightLimit - 1];
   int idxLeft = -1;
   int idxIter;
@@ -32,7 +32,7 @@ void Partition(int *outPivot, int *arr, const int rightLimit) {
   *outPivot = (idxLeft + 1);
 }
 
-void InsertionSort(int *arr, const int rightLimit) {
+void InsertionSort(int *const arr, const int rightLimit) {
   for (int idx = 0; idx < rightLimit - 1; ++idx) {
     int idxMin = idx;
     int idxIter;
@@ -45,7 +45,7 @@ void InsertionSort(int *arr, const int rightLimit) {
   }
 }
 
-void SortCore(int *inOutData, const int rightLimit) {
+void SortCore(int *const inOutData, const int rightLimit) {
   if (0 >= rightLimit) {
     return;
   }
@@ -60,11 +60,13 @@ void SortCore(int *inOutData, const int rightLimit) {
   }
 }
 
-void Sort(int *inOutData, const int inSize) { SortCore(inOutData, inSize); }
+void Sort(int *const inOutData, const int inSize) {
+  SortCore(inOutData, inSize);
+}
 
 int main() {
 
-  int *data = (int *)malloc(SIZE * sizeof(int));
+  int *const data = (int *)malloc(SIZE * sizeof(int));
 
   if (!data) {
     printf("Error while allocating data array!\n");

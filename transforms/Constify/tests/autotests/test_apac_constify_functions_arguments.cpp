@@ -1,6 +1,6 @@
 #include <stdlib.h>
 
-// 'a' should be unconstified because we do not know the prototype of 'free'.
+// free requires mutable pointed-to storage; the pointer itself may be const.
 void e(int *a) { free(a); }
 
 int f(int a) {

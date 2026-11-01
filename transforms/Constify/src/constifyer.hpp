@@ -250,7 +250,6 @@ struct Node {
     NodeId id;
     NodeKind kind = NodeKind::Unknown;
     ConstState state = ConstState::Candidate;
-    ConstState isPointerAndConstPointeeState = ConstState::Candidate;
     bool shouldTrack = false;
 
     const clang::Decl* decl = nullptr;
@@ -275,15 +274,6 @@ struct Edge {
 
     clang::SourceLocation loc;
 };
-
-static ConstState initialConstStatePointee(const clang::Decl *D) {
-  const auto *VD = llvm::dyn_cast_or_null<clang::ValueDecl>(D);
-  if (!VD || VD->getType().isNull() || !VD->getType()->isPointerType())
-    return ConstState::CannotBeConst;
-  return VD->getType()->getPointeeType().isConstQualified()
-             ? ConstState::AlreadyConst
-             : ConstState::Candidate;
-}
 
 /// Main graph container.
 ///
@@ -315,8 +305,7 @@ public:
     }
 
     NodeId getOrCreateDeclNode(const clang::Decl *D, const bool shouldTrack,
-                               const bool isAlreadyConst,
-                               const bool isPointerAndConstPointee = false) {
+                               const bool isAlreadyConst) {
       if (!D) {
         return {};
       }
@@ -342,11 +331,6 @@ public:
       N.state = (shouldTrack ? initialConstState(D)
                              : (isAlreadyConst ? ConstState::AlreadyConst
                                                : ConstState::CannotBeConst));
-
-      N.isPointerAndConstPointeeState =
-          shouldTrack ? initialConstStatePointee(D)
-                      : (isPointerAndConstPointee ? ConstState::AlreadyConst
-                                                  : ConstState::CannotBeConst);
 
       Nodes.push_back(std::move(N));
       DeclToNode[D] = Nodes.back().id;
@@ -403,11 +387,6 @@ public:
         }
 
         Node& N = Nodes[Id.value];
-        if ((Reason == RejectReasonKind::PointedValueIncrementOrDecrement ||
-             Reason == RejectReasonKind::PointedValueAssignedTo) &&
-            N.isPointerAndConstPointeeState == ConstState::Candidate) {
-          N.isPointerAndConstPointeeState = ConstState::CannotBeConst;
-        }
 
         if (N.state == ConstState::AlreadyConst) {
             // Original code compiled. If an already-const node appears written,
@@ -993,7 +972,6 @@ bool VisitUnaryOperator(clang::UnaryOperator* UO) {
                     if (shouldTrackVarDecl(BaseDecl)) {
                         const bool baseIsConst =
                             BaseDecl->getType().isConstQualified();
-                        assert(!baseIsConst);
 
                         NodeId BaseNode =
                             Graph.getOrCreateDeclNode(BaseDecl,
@@ -1038,29 +1016,12 @@ bool VisitUnaryOperator(clang::UnaryOperator* UO) {
     //
     // It should NOT reject the current method, because mutating a local variable
     // does not prevent the method from being const.
-    if (const clang::ValueDecl *VD = findMutationBase(Sub)) {
+    if (const auto *VD = findMutationBase(Sub)) {
       if (shouldTrackVarDecl(VD)) {
-        const auto *UOOP = llvm::dyn_cast_or_null<clang::UnaryOperator>(Sub);
-        if (UOOP && UOOP->getOpcode() == clang::UO_Deref) {
-          assert(VD->getType()->isAnyPointerType());
-          const clang::QualType Pointee = VD->getType()->getPointeeType();
-          const bool pointeeIsConst = Pointee.isConstQualified();
-          assert(!pointeeIsConst);
-
-          NodeId PointeeNode =
-              Graph.getOrCreateDeclNode(VD, true, pointeeIsConst);
-          Graph.reject(PointeeNode,
-                       RejectReasonKind::PointedValueIncrementOrDecrement,
-                       UO->getOperatorLoc(), UO);
-        } else {
-          const bool isConst = VD->getType().isConstQualified();
-          assert(!isConst);
-
-          NodeId N = Graph.getOrCreateDeclNode(VD, true, isConst);
-
-          Graph.reject(N, RejectReasonKind::IncrementOrDecrement,
-                       UO->getOperatorLoc(), UO);
-        }
+        auto Id = Graph.getOrCreateDeclNode(VD, true,
+                                            VD->getType().isConstQualified());
+        Graph.reject(Id, RejectReasonKind::IncrementOrDecrement,
+                     UO->getOperatorLoc(), UO);
       }
     }
 
@@ -1772,6 +1733,9 @@ public:
     }
 };
 
+} // namespace constify
+#include "pointer_const_analysis.hpp"
+namespace constify {
 
 enum class RewriteKind {
     AddMethodConst,
@@ -1785,38 +1749,47 @@ struct RewriteEdit {
     clang::SourceLocation loc;
     std::string text;
     std::string description;
+    unsigned replaceLength = 0;
 };
 
 class ConstRewritePlanner {
 public:
-    ConstRewritePlanner(clang::ASTContext& Ctx, const ConstGraph& Graph)
-        : Ctx(Ctx),
-          SM(Ctx.getSourceManager()),
-          LangOpts(Ctx.getLangOpts()),
-          Graph(Graph) {}
+  ConstRewritePlanner(clang::ASTContext &Ctx, const ConstGraph &Graph)
+      : Ctx(Ctx), SM(Ctx.getSourceManager()), LangOpts(Ctx.getLangOpts()),
+        Graph(Graph), PointerAnalysis(Ctx, Graph) {}
 
-    void compute() {
-        for (const Node& N : Graph.nodes()) {
-            if (!isCandidateForRewrite(N)) {
-                continue;
-            }
-
-            if (const auto* MD = llvm::dyn_cast_or_null<clang::CXXMethodDecl>(N.decl)) {
-                maybePlanMethodConst(N, MD);
-                continue;
-            }
-
-            if (const auto* PVD =
-                    llvm::dyn_cast_or_null<clang::ParmVarDecl>(N.decl)) {
-                maybePlanParameterConst(N, PVD);
-                continue;
-            }
-
-            if (const auto* VD = llvm::dyn_cast_or_null<clang::VarDecl>(N.decl)) {
-                maybePlanLocalVariableConst(N, VD);
-                continue;
-            }
+  void compute() {
+    PointerAnalysis.analyze();
+    for (const Node &N : Graph.nodes()) {
+      if (const auto *VD = llvm::dyn_cast_or_null<clang::VarDecl>(N.decl)) {
+        if (VD->getType().getNonReferenceType()->isPointerType()) {
+          maybePlanPointerConst(N, VD);
+          continue;
         }
+        if (!PointerAnalysis.canConst(VD))
+          continue;
+      }
+      if (!isCandidateForRewrite(N)) {
+        continue;
+      }
+
+      if (const auto *MD =
+              llvm::dyn_cast_or_null<clang::CXXMethodDecl>(N.decl)) {
+        maybePlanMethodConst(N, MD);
+        continue;
+      }
+
+      if (const auto *PVD =
+              llvm::dyn_cast_or_null<clang::ParmVarDecl>(N.decl)) {
+        maybePlanParameterConst(N, PVD);
+        continue;
+      }
+
+      if (const auto *VD = llvm::dyn_cast_or_null<clang::VarDecl>(N.decl)) {
+        maybePlanLocalVariableConst(N, VD);
+        continue;
+      }
+    }
     }
 
     const std::vector<RewriteEdit>& edits() const {
@@ -1857,6 +1830,7 @@ private:
     clang::SourceManager& SM;
     const clang::LangOptions& LangOpts;
     const ConstGraph& Graph;
+    PointerConstAnalysis PointerAnalysis;
 
     std::vector<RewriteEdit> Edits;
     std::set<unsigned> UsedOffsets;
@@ -1872,15 +1846,19 @@ private:
         return SM.isWrittenInMainFile(Loc);
     }
 
-    bool isCandidateForRewrite(const Node& N) const {
+    bool isCandidateForRewrite(const Node &N) {
       if (!N.decl || N.decl->getBeginLoc().isMacroID() ||
           N.decl->getLocation().isMacroID()) {
         return false;
       }
 
-        if (N.state != ConstState::Candidate) {
-            return false;
-        }
+      if (const auto *VD = llvm::dyn_cast<clang::VarDecl>(N.decl)) {
+        if (VD->getType().getNonReferenceType().isConstQualified() ||
+            !PointerAnalysis.canConst(VD))
+          return false;
+      } else if (N.state != ConstState::Candidate) {
+        return false;
+      }
 
         if (!isInMainFile(N.decl->getLocation())) {
             return false;
@@ -1901,17 +1879,6 @@ private:
         auto [It, Inserted] = UsedOffsets.insert(Offset);
 
         return Inserted;
-    }
-
-    std::string getSourceText(clang::SourceRange Range) const {
-        if (Range.isInvalid()) {
-            return {};
-        }
-
-        clang::CharSourceRange CharRange =
-            clang::CharSourceRange::getTokenRange(Range);
-
-        return clang::Lexer::getSourceText(CharRange, SM, LangOpts).str();
     }
 
     void maybePlanMethodConst(const Node& N,
@@ -1947,10 +1914,9 @@ private:
             return;
         }
 
-        if (!MD->isThisDeclarationADefinition() ||
-            std::distance(MD->redecls_begin(), MD->redecls_end()) != 1) {
+        if (PointerAnalysis.functionAddressTaken(MD) ||
+            !PointerAnalysis.canConst(MD, 1))
           return;
-        }
         for (const auto *Other : MD->getParent()->methods()) {
           if (Other->getCanonicalDecl() == MD->getCanonicalDecl() ||
               Other->getDeclName() != MD->getDeclName() || !Other->isConst() ||
@@ -1966,38 +1932,36 @@ private:
             return;
         }
 
-        clang::SourceLocation InsertLoc = findMethodConstInsertionLoc(MD);
-
-        if (InsertLoc.isInvalid()) {
-            if (Verbose) {
-                llvm::errs()
-                    << "[constify] cannot find const insertion location for method "
-                    << MD->getQualifiedNameAsString()
-                    << "\n";
-            }
+        // A method signature must be changed consistently in every declaration.
+        std::vector<clang::SourceLocation> Locations;
+        for (const auto *Declaration : MD->redecls()) {
+          auto Location = findMethodConstInsertionLoc(
+              llvm::cast<clang::CXXMethodDecl>(Declaration));
+          if (Location.isInvalid() ||
+              !isInMainFile(Declaration->getBeginLoc()) ||
+              Declaration->getBeginLoc().isMacroID())
             return;
+          Locations.push_back(Location);
         }
-
-        if (!reserveLocation(InsertLoc)) {
-            return;
+        for (auto Location : Locations) {
+          if (!reserveLocation(Location))
+            continue;
+          RewriteEdit E;
+          E.kind = RewriteKind::AddMethodConst;
+          E.node = N.id;
+          E.loc = Location;
+          E.text = " const";
+          E.description =
+              "add trailing const to method " + MD->getQualifiedNameAsString();
+          Edits.push_back(std::move(E));
         }
-
-        RewriteEdit E;
-        E.kind = RewriteKind::AddMethodConst;
-        E.node = N.id;
-        E.loc = InsertLoc;
-        E.text = " const";
-        E.description =
-            "add trailing const to method " + MD->getQualifiedNameAsString();
-
-        Edits.push_back(std::move(E));
     }
 
     clang::SourceLocation
     findMethodConstInsertionLoc(const clang::CXXMethodDecl* MD) const {
-        if (!MD || !MD->hasBody()) {
-            return {};
-        }
+      if (!MD) {
+        return {};
+      }
 
         const auto *Info = MD->getTypeSourceInfo();
         if (!Info)
@@ -2010,6 +1974,48 @@ private:
         if (RParen.isInvalid() || RParen.isMacroID() || !isInMainFile(RParen))
           return {};
         return clang::Lexer::getLocForEndOfToken(RParen, 0, SM, LangOpts);
+    }
+
+    void maybePlanPointerConst(const Node &N, const clang::VarDecl *VD) {
+      auto NewType = PointerAnalysis.rewrittenType(VD);
+      if (Ctx.hasSameType(NewType, VD->getType()) ||
+          !isInMainFile(VD->getLocation()))
+        return;
+      auto Begin = VD->getBeginLoc();
+      auto Name = VD->getLocation();
+      if (Begin.isInvalid() || Name.isInvalid() || Begin.isMacroID() ||
+          Name.isMacroID() || SM.getFileID(Begin) != SM.getFileID(Name) ||
+          !reserveLocation(Begin))
+        return;
+      std::string Prefix;
+      if (VD->getStorageClass() == clang::SC_Static)
+        Prefix += "static ";
+      if (VD->getStorageClass() == clang::SC_Register)
+        Prefix += "register ";
+      if (VD->getTLSKind() != clang::VarDecl::TLS_None)
+        Prefix += "thread_local ";
+      clang::PrintingPolicy Policy(LangOpts);
+      Policy.SuppressTagKeyword = true;
+      RewriteEdit Edit;
+      Edit.kind = llvm::isa<clang::ParmVarDecl>(VD)
+                      ? RewriteKind::AddParameterConst
+                      : RewriteKind::AddLocalVariableConst;
+      Edit.node = N.id;
+      Edit.loc = Begin;
+      auto End = VD->getTypeSourceInfo()->getTypeLoc().getEndLoc();
+      if (End.isInvalid() || End.isMacroID() ||
+          SM.getFileID(End) != SM.getFileID(Begin))
+        return;
+      if (!VD->getName().empty() &&
+          SM.getFileOffset(End) < SM.getFileOffset(Name))
+        End = Name;
+      End = clang::Lexer::getLocForEndOfToken(End, 0, SM, LangOpts);
+      Edit.text =
+          Prefix + NewType.getAsString(Policy) + " " + VD->getNameAsString();
+      Edit.replaceLength = SM.getFileOffset(End) - SM.getFileOffset(Begin);
+      Edit.description = "qualify pointer levels of " + VD->getNameAsString();
+      if (Edit.replaceLength)
+        Edits.push_back(std::move(Edit));
     }
 
     void maybePlanParameterConst(const Node& N,
@@ -2235,10 +2241,11 @@ public:
             }
 
             const bool Failed =
-                Rewriter.InsertText(E.loc,
-                                    E.text,
-                                    /*InsertAfter=*/false,
-                                    /*IndentNewLines=*/false);
+                E.replaceLength
+                    ? Rewriter.ReplaceText(E.loc, E.replaceLength, E.text)
+                    : Rewriter.InsertText(E.loc, E.text,
+                                          /*InsertAfter=*/false,
+                                          /*IndentNewLines=*/false);
 
             if (Failed) {
                 llvm::errs()
@@ -2252,6 +2259,17 @@ public:
         }
 
         return Changed;
+    }
+
+    std::string sourceText() const {
+      auto File = SM.getMainFileID();
+      if (const auto *Buffer = Rewriter.getRewriteBufferFor(File)) {
+        std::string Text;
+        llvm::raw_string_ostream Stream(Text);
+        Buffer->write(Stream);
+        return Text;
+      }
+      return SM.getBufferData(File).str();
     }
 
     void writeToStdout() {
@@ -2308,6 +2326,5 @@ private:
     const ConstRewritePlanner& Planner;
     clang::Rewriter Rewriter;
 };
-
 
 } // namespace constify

@@ -1,7 +1,7 @@
 #include <stdlib.h>
 
-// 'a' should be unconstified because we do not know the prototype of 'free'.
-void e(int *a) { free(a); }
+// free requires mutable pointed-to storage; the pointer itself may be const.
+void e(int *const a) { free(a); }
 
 int f(const int a) {
   int b = a;
@@ -9,13 +9,13 @@ int f(const int a) {
   return b;
 }
 
-void g(int a[2]) { a[f(1)]--; }
+void g(int *const a) { a[f(1)]--; }
 
 void h(int &a) { a = 1; }
 
 void j(int &a) { h(a); }
 
-void k(int *a, int *b, const int c) {
+void k(int *const a, int *const b, const int c) {
   int *d = a;
   d = b;
   *d = 1;
@@ -30,18 +30,18 @@ void l3(int &a) {
   l2(b);
 }
 
-void m(const int &a, int *b, const int *const &c) {
-  int *d = a + b;
+void m(const int &a, int *const b, const int *const &c) {
+  int *const d = a + b;
   d[0] = 1;
 }
 
-int *n1(int *a, const int &b) {
-  int *c = a;
+int *n1(int *const a, const int &b) {
+  int *const c = a;
   return c;
 }
 
-int *n2(int *a, const int &b) {
-  int *c = a;
+int *n2(int *const a, const int &b) {
+  int *const c = a;
   return n1(c, b);
 }
 
@@ -52,32 +52,32 @@ int &n4(int &a, const int &b) {
   return n3(c, b);
 }
 
-void n5(int *a, int &b, const int c) {
-  int *d = n2(a, c);
-  int &e = n4(b, c);
+void n5(int *const a, int &b, const int c) {
+  const int *const d = n2(a, c);
+  const int &e = n4(b, c);
 }
 
 void o(int a, int b, const int c) {
   int &d = a;
-  int *e = &b;
+  int *const e = &b;
 
   d = 1;
   *e = 1;
 }
 
-void c1(int *a, const int *const b, const int *const c, int *d) {
-  int *aa = a;
+void c1(int *const a, const int *const b, const int *const c, int *const d) {
+  int *const aa = a;
   const int *const bb = b;
   const int *const cc = c;
-  int *dd = d;
+  int *const dd = d;
 
   *aa = 42;
   *dd = 12;
 }
 
-void c2(int *a, const int *const b, const int *const c, int *d) {
-  int *aa = a;
-  int *dd = d;
+void c2(int *const a, const int *const b, const int *const c, int *const d) {
+  int *const aa = a;
+  int *const dd = d;
 
   const int *const bb = b;
   const int *const cc = c;
@@ -86,9 +86,9 @@ void c2(int *a, const int *const b, const int *const c, int *d) {
   *dd = 12;
 }
 
-void c3(int *a, const int *const b, const int *const c, int *d) {
-  int *aa = a;
-  int *dd = d;
+void c3(int *const a, const int *const b, const int *const c, int *const d) {
+  int *const aa = a;
+  int *const dd = d;
 
   const int *const bb = b;
   const int *const cc = c;
@@ -118,15 +118,15 @@ public:
   int *i;
   int *j;
 
-  void f(int *a, const int b) {
+  void f(int *const a, const int b) {
     i = a;
     *j = 42;
     p(i, j);
   }
 
-  int q(const int a) const;
+  int q(int a) const;
 
-  void p(int *a, const int *const b) const { *a = *b + 1; }
+  void p(int *const a, const int *const b) const { *a = *b + 1; }
 };
 
 int CC::q(const int a) const { return a; }

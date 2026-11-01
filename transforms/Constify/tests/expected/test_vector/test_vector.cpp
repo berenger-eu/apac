@@ -12,7 +12,7 @@ int main() {
   const std::vector<int> vect4({8, 8, 8});
 
   const std::vector<int> *const vectPtr = new std::vector<int>;
-  std::vector<int> *vectPtr2 = new std::vector<int>;
+  std::vector<int> *const vectPtr2 = new std::vector<int>;
   vectPtr2->push_back(5);
   const std::vector<int> *const vectPtr3 = new std::vector<int>({8, 8, 8});
   using namespace std;
