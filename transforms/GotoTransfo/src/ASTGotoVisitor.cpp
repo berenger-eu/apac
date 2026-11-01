@@ -29,10 +29,11 @@ bool ASTGotoVisitor::VisitFunctionDecl(FunctionDecl *fDecl) {
   for (auto &child : funcChildren) {
     lastFuncStmt = child;
   }
-  if (returnsCounter > 1 ||
+  if ((returnsCounter >= 1 && !fDecl->getReturnType()->isVoidType()) ||
+      returnsCounter > 1 ||
       (returnsCounter == 1 &&
        fDecl->getReturnType().getTypePtr()->isVoidType() &&
-        lastFuncStmt != returnsList[0].first)) {
+       lastFuncStmt != returnsList[0].first)) {
 
     TheRewriter.InsertTextAfterToken(fDecl->getBody()->getBeginLoc(),
                                      SSprint.str());
@@ -97,6 +98,13 @@ void ASTGotoVisitor::handleSubStmt(Stmt *st) {
     subVisitForStmt(cast<ForStmt>(st));
   } else if (isa<WhileStmt>(st)) {
     subVisitWhileStmt(cast<WhileStmt>(st));
+  } else if (!isa<Expr>(st) && !isa<DeclStmt>(st)) {
+    for (auto *child : st->children()) {
+      if (auto *ret = dyn_cast_or_null<ReturnStmt>(child))
+        subVisitReturnStmt(ret, true);
+      else
+        handleSubStmt(child);
+    }
   }
 }
 

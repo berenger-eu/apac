@@ -94,10 +94,13 @@ void IndexTableMapStruct::insert(
           getVariantAliasArgStruct(curMap->at(indexes.back()));
       curMap->at(indexes.back()) = element;
     }
-    if (isVariantSubArray(curMap->at(indexes.back())) &&
-        elemArgStruct != nullptr)
-      *getVariantSubArray(curMap->at(indexes.back()))->aliasStruct +=
-          *elemArgStruct;
+    if (isVariantSubArray(curMap->at(indexes.back()))) {
+      auto subArray = getVariantSubArray(curMap->at(indexes.back()));
+      if (!subArray->aliasStruct)
+        subArray->aliasStruct = elemArgStruct;
+      else
+        *subArray->aliasStruct += *elemArgStruct;
+    }
   }
 }
 void IndexTableMapStruct::dumpPrep(std::string *varTable, std::string *refTable,

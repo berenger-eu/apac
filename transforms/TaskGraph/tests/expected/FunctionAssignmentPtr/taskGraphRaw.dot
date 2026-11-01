@@ -44,8 +44,7 @@ subgraph cluster_f1 {
     0 -> 6[label="  aR"];
     0 -> 11[label="  aRW"];
     1 -> 7[label="  bR"];
-    1 -> 11[label="  bR"];
-    1 -> 14[label="  bR"];
+    1 -> 11[label="  bRW"];
     2 -> 8[label="  cR"];
     2 -> 11[label="  cR"];
     2 -> 15[label="  cR"];
@@ -58,6 +57,7 @@ subgraph cluster_f1 {
     5 -> 13[label="  dRW"];
     6 -> 11[label="  aW"];
     6 -> 12[label="  valARW"];
+    7 -> 11[label="  bW"];
     7 -> 12[label="  valBRW"];
     8 -> 12[label="  valCRW"];
     9 -> 10[label="  fW"];
@@ -66,6 +66,7 @@ subgraph cluster_f1 {
     10 -> 17[label="  fR"];
     11 -> 12[label="  aR"];
     11 -> 13[label="  dW"];
+    11 -> 14[label="  bR"];
     11 -> 18[label="  aR"];
     12 -> 14[label="  valBRW"];
     12 -> 15[label="  valCRW"];

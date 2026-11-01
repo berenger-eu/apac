@@ -2,6 +2,7 @@
 int findFirst(int *arr, int n, int target) {
   wrapper_t<int> __result;
   {
+
     int i = 0;
     do {
       if (arr[i] == target) {
@@ -18,12 +19,13 @@ __exit0:;
 }
 
 int main() {
-  int arr[5] = {3, 1, 4, 1, 5};
   wrapper_t<int> __result;
   {
+
+    int arr[5] = {3, 1, 4, 1, 5};
     __result = build_wrapper<int>(findFirst(arr, 5, 4));
-    goto __exit0;
+    goto __exit1;
   }
-__exit0:;
+__exit1:;
   return *__result;
 }

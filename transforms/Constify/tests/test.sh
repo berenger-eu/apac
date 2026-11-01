@@ -40,7 +40,7 @@ for file in $testsPath/*.cpp; do
             continue
         fi
         # apply constify
-        $constify --in-place "$file2" > /dev/null 2> /dev/null
+        $constify --in-place "$file2" -- -std=c++17 -I"$testsPath" > /dev/null 2> /dev/null
         if [ $? -ne 0 ]; then
             echo -e "${RED}${BOLD}Failed to process file : $file"
             differenceInAST=true
@@ -60,13 +60,13 @@ for file in $testsPath/*.cpp; do
                 differenceInText=true
                 echo -e "${RED}Different Text : $fileName${NC}"
             fi
-            clang-check-18 -ast-print "$expectedfile" > $curPath/ast_expected 2> /dev/null
+            clang-check-18 -ast-print "$expectedfile" -- -std=c++17 -I"$testsPath" > $curPath/ast_expected 2> /dev/null
             if [ $? -ne 0 ]; then
                 echo -e "${RED}${BOLD}Failed to generate AST for expected file : $expectedfile${NC}"
                 differenceInAST=true
                 continue
             fi
-            clang-check-18 -ast-print "$file2" > $curPath/ast_result 2> /dev/null
+            clang-check-18 -ast-print "$file2" -- -std=c++17 -I"$testsPath" > $curPath/ast_result 2> /dev/null
             if [ $? -ne 0 ]; then
                 echo -e "${RED}${BOLD}Failed to generate AST for result file : $file2${NC}"
                 differenceInAST=true

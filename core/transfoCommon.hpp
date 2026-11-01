@@ -9,6 +9,8 @@ inline void callParse(const std::string &main, const std::string &functions,
                       std::vector<std::string> &functionsToIgnore,
                       std::vector<std::string> &functionsToParse) {
   mainName = main.empty() ? "main" : main;
+  functionsToIgnore.clear();
+  functionsToParse.clear();
   if (!functions.empty()) {
     std::stringstream ss(functions);
     std::string function;

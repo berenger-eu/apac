@@ -3,8 +3,8 @@
 void ASTUnstackVisitor::retrieveCalls(DeclStmt *declSt) {
   std::vector<CallExpr *> calls;
   if (declSt->isSingleDecl()) {
-    VarDecl *varDec = cast<VarDecl>(declSt->getSingleDecl());
-    if (varDec->hasInit()) {
+    auto *varDec = dyn_cast<VarDecl>(declSt->getSingleDecl());
+    if (varDec && varDec->hasInit()) {
       findTopCallsInExpr(varDec->getInit(), calls);
     }
   } else {

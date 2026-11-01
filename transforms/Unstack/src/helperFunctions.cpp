@@ -7,6 +7,11 @@ void findTopCallsInExpr(Expr *ex, std::vector<CallExpr *> &callExprVect) {
     while (!exprStack.empty()) {
       Expr *currentExpr = exprStack.top();
       exprStack.pop();
+      if (isa<LambdaExpr>(currentExpr) ||
+          isa<AbstractConditionalOperator>(currentExpr) ||
+          (isa<BinaryOperator>(currentExpr) &&
+           cast<BinaryOperator>(currentExpr)->isLogicalOp()))
+        continue;
       if (isa<CallExpr>(currentExpr)) {
         callExprVect.push_back(cast<CallExpr>(currentExpr));
       } else {
@@ -28,6 +33,11 @@ void findAllCallExpr(CallExpr *calExp, std::vector<CallExpr *> &callExprVect) {
     while (!exprStack.empty()) {
       Expr *currentExpr = exprStack.top();
       exprStack.pop();
+      if (isa<LambdaExpr>(currentExpr) ||
+          isa<AbstractConditionalOperator>(currentExpr) ||
+          (isa<BinaryOperator>(currentExpr) &&
+           cast<BinaryOperator>(currentExpr)->isLogicalOp()))
+        continue;
       if (isa<CallExpr>(currentExpr)) {
         callExprVect.push_back(cast<CallExpr>(currentExpr));
       }

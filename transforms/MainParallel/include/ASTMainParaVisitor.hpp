@@ -57,9 +57,34 @@ public:
   inline void addParaZone() {
     std::stringstream SSprintBefore, SSprintAfter;
     SourceLocation locBefore, locAfter;
-    if (mainFuncDecl != nullptr) {
+    if (mainFuncDecl != nullptr && firstValidFunctionIf != nullptr &&
+        isa<CompoundStmt>(firstValidFunctionIf->getThen())) {
       locBefore = firstValidFunctionIf->getThen()->getBeginLoc();
       locAfter = firstValidFunctionIf->getThen()->getEndLoc();
+      auto &sm = TheRewriter.getSourceMgr();
+      ReturnStmt *parallelReturn = nullptr;
+      for (auto *statement :
+           cast<CompoundStmt>(firstValidFunctionIf->getThen())->body()) {
+        if (auto *ret = dyn_cast<ReturnStmt>(statement))
+          parallelReturn = ret;
+      }
+      // The result must outlive the parallel region, and the final return must
+      // execute after leaving OpenMP's structured block.
+      if (parallelReturn &&
+          sm.isBeforeInTranslationUnit(locBefore,
+                                       parallelReturn->getBeginLoc()) &&
+          sm.isBeforeInTranslationUnit(parallelReturn->getEndLoc(), locAfter)) {
+        locAfter = parallelReturn->getBeginLoc();
+        if (resultWrapperDecl &&
+            sm.isBeforeInTranslationUnit(locBefore,
+                                         resultWrapperDecl->getBeginLoc())) {
+          TheRewriter.InsertTextBefore(
+              firstValidFunctionIf->getBeginLoc(),
+              getStmtAsString(resultWrapperDecl, TheRewriter.getLangOpts()) +
+                  "\n");
+          TheRewriter.RemoveText(resultWrapperDecl->getSourceRange());
+        }
+      }
       SSprintBefore << "\n#pragma omp parallel num_threads(nb_cores)\n "
                     << "#pragma omp master\n{";
       SSprintAfter << "}\n";

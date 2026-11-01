@@ -100,7 +100,12 @@ void ASTTaskGraphVisitor::computeAliasesForRHS(
   else if (isa<CallExpr>(rhs)) {
     const CallExpr *c = cast<CallExpr>(rhs);
     const FunctionDecl *f = c->getDirectCallee();
-    for (unsigned int i = 0; i < c->getNumArgs(); i++) {
+    if (!f) {
+      handleCallExpr(*c, instr);
+      return;
+    }
+    for (unsigned int i = 0; i < std::min(c->getNumArgs(), f->getNumParams());
+         i++) {
       const ParmVarDecl *curParam = f->getParamDecl(i);
       if ((isPointerQualType(curParam->getType()) ||
            isReferenceQualType(curParam->getType())) &&
@@ -110,7 +115,8 @@ void ASTTaskGraphVisitor::computeAliasesForRHS(
         computeAliasesForRHS(arg, subAliases, instr);
         for (auto &alias : subAliases)
           aliases.insert(alias);
-        if (isa<VarDecl>(getSingleDeclRefExprInsideExpr(arg)->getDecl())) {
+        const auto *argDecl = getSingleDeclRefExprInsideExpr(arg);
+        if (argDecl && isa<VarDecl>(argDecl->getDecl())) {
           const VarDecl *v =
               cast<VarDecl>(getSingleDeclRefExprInsideExpr(arg)->getDecl());
           if (getPtrDepthAccess(*v, *arg) == -1) {
@@ -166,10 +172,15 @@ void ASTTaskGraphVisitor::handleCXXOperatorCallExpr(
           std::vector<const Expr *> arguments;
           for (auto arg : rightCall->arguments())
             arguments.push_back(arg);
-          getLowestType(
-              arguments, types,
-              callExprVect.front()->getDirectCallee()->getASTContext());
-          for (long unsigned int i = 0; i < arguments.size(); i++) {
+          if (!functionCalled) {
+            handleCallExpr(*rightCall, instr);
+            return;
+          }
+          getLowestType(arguments, types, functionCalled->getASTContext());
+          for (long unsigned int i = 0;
+               i < std::min(arguments.size(),
+                            size_t(functionCalled->getNumParams()));
+               i++) {
             // TODO: Handle Pointers
             if ((calQType == types[i]) &&
                 (isReferenceQualType(
@@ -343,9 +354,13 @@ void ASTTaskGraphVisitor::handlePointersBinaryAssignment(
       auto curCall = callStack.top();
       auto rightFunction = curCall->getDirectCallee();
       callStack.pop();
-      for (unsigned int i = 0; i < rightCall->getNumArgs(); i++) {
+      if (!rightFunction)
+        continue;
+      for (unsigned int i = 0;
+           i < std::min(curCall->getNumArgs(), rightFunction->getNumParams());
+           i++) {
         if (isPointerQualType(rightFunction->getParamDecl(i)->getType())) {
-          const Expr *arg = rightCall->getArg(i);
+          const Expr *arg = curCall->getArg(i);
           if (isa<CallExpr>(arg->IgnoreParenImpCasts()))
             callStack.push(cast<CallExpr>(arg->IgnoreParenImpCasts()));
           else {
@@ -423,9 +438,19 @@ void ASTTaskGraphVisitor::handleMemberCallExpr(const CXXMemberCallExpr &c,
 void ASTTaskGraphVisitor::handleCallExpr(const CallExpr &c,
                                          Instruction &curInstr, bool isWrite) {
   // TODO: Methods and read/write on object/data ?
-  const FunctionDecl &f = *(c.getDirectCallee());
-  // We look though each parameter of the function
-  for (unsigned int i = 0; i < f.getNumParams(); i++) {
+  const auto *callee = c.getDirectCallee();
+  if (!callee) {
+    handleStmt(*c.getCallee(), curInstr);
+    for (const auto *arg : c.arguments())
+      handleStmt(*arg, curInstr, true);
+    return;
+  }
+  const FunctionDecl &f = *callee;
+  // Variadic arguments can also carry addresses of mutable data.
+  for (unsigned i = f.getNumParams(); i < c.getNumArgs(); ++i)
+    handleStmt(*c.getArg(i), curInstr, true);
+  for (unsigned int i = 0; i < std::min(f.getNumParams(), c.getNumArgs());
+       i++) {
     // The parameter
     const ParmVarDecl &p = *(f.getParamDecl(i));
     // The corresponding argument

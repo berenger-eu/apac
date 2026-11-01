@@ -29,12 +29,13 @@ public:
 private:
   std::unordered_map<const FunctionDecl *, std::unordered_set<unsigned>> writtenParams_;
 
+  std::vector<const FunctionDecl *> functions_;
   ASTContext *ctx_ = nullptr;
 
   void analyzeFunction(const FunctionDecl *f);
 
   // Check if the tree contains any write to the given parameter
-  // parentFunc is used to skip self-recursive calls
+  // parentFunc provides the return type for escape analysis
   bool containsWriteTo(const Stmt *s, const ParmVarDecl *param, const FunctionDecl *parentFunc) const;
 
   // Check if an expression refers to the given parameter

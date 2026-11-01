@@ -18,7 +18,9 @@ struct SmallerBeginLocation {
   bool operator()(
       const std::pair<const Stmt *, std::shared_ptr<StmtOrder>> &a,
       const std::pair<const Stmt *, std::shared_ptr<StmtOrder>> &b) const {
-    return a.first->getBeginLoc() <= b.first->getBeginLoc();
+    if (a.first->getBeginLoc() != b.first->getBeginLoc())
+      return a.first->getBeginLoc() < b.first->getBeginLoc();
+    return std::less<const Stmt *>{}(a.first, b.first);
   }
 };
 using InstructionLinksMap = std::map<const Stmt *, int>;

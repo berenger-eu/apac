@@ -21,6 +21,11 @@ int main(int argc, const char **argv) {
       CommonOptionsParser::create(argc, argv, ToolingSampleCategory,
                                   llvm::cl::OneOrMore);
 
+  if (!option) {
+    llvm::errs() << llvm::toString(option.takeError()) << "\n";
+    return 1;
+  }
+
   auto files = option->getSourcePathList();
   for (auto file : files) {
     llvm::errs() << file << "\n";
@@ -45,58 +50,81 @@ int main(int argc, const char **argv) {
       outputFile = "APAC" + outputFile;
     }
 
-    // Empty the output file beforehand
-    std::ofstream dst(outputFile, std::ios::binary | std::ios::trunc);
-    if (!dst) {
-      llvm::errs() << "Error creating file: " << outputFile << "\n";
-      continue;
-    }
-
     std::ifstream src(file, std::ios::binary);
     if (!src) {
       llvm::errs() << "Error reading file: " << file << "\n";
-      continue;
+      return 1;
+    }
+
+    std::ofstream dst(outputFile, std::ios::binary | std::ios::trunc);
+    if (!dst) {
+      llvm::errs() << "Error creating file: " << outputFile << "\n";
+      return 1;
     }
 
     dst << src.rdbuf();
     src.close();
     dst.close();
+    if (!dst) {
+      llvm::errs() << "Error writing file: " << outputFile << "\n";
+      return 1;
+    }
     filesOutput.push_back(outputFile);
   }
   llvm::errs() << "DuplicateFunctionsHandler\n";
-  DuplicateFunctionsHandler::run(option, filesOutput, APACMainFilter.getValue(),
-                                 APACFunctionFilter.getValue(),
-                                 APACIgnoreFilter.getValue(), filesOutput);
+  if (DuplicateFunctionsHandler::run(
+          option, filesOutput, APACMainFilter.getValue(),
+          APACFunctionFilter.getValue(), APACIgnoreFilter.getValue(),
+          filesOutput)) {
+    return 1;
+  }
   llvm::errs() << "ConditionUnstackHandler\n";
-  ConditionUnstackHandler::run(option, filesOutput, APACMainFilter.getValue(),
-                               APACFunctionFilter.getValue(),
-                               APACIgnoreFilter.getValue(), filesOutput);
+  if (ConditionUnstackHandler::run(option, filesOutput,
+                                   APACMainFilter.getValue(),
+                                   APACFunctionFilter.getValue(),
+                                   APACIgnoreFilter.getValue(), filesOutput)) {
+    return 1;
+  }
 
   llvm::errs() << "MultipleDeclSplitterHandler\n";
-  MultipleDeclSplitterHandler::run(
-      option, filesOutput, APACMainFilter.getValue(),
-      APACFunctionFilter.getValue(), APACIgnoreFilter.getValue(), filesOutput);
+  if (MultipleDeclSplitterHandler::run(
+          option, filesOutput, APACMainFilter.getValue(),
+          APACFunctionFilter.getValue(), APACIgnoreFilter.getValue(),
+          filesOutput)) {
+    return 1;
+  }
   llvm::errs() << "UnstackHandler\n";
-  UnstackHandler::run(option, files, APACMainFilter.getValue(),
-                      APACFunctionFilter.getValue(),
-                      APACIgnoreFilter.getValue(), filesOutput);
+  if (UnstackHandler::run(option, filesOutput, APACMainFilter.getValue(),
+                          APACFunctionFilter.getValue(),
+                          APACIgnoreFilter.getValue(), filesOutput)) {
+    return 1;
+  }
   llvm::errs() << "DeclarationSplitterHandler\n";
-  DeclarationSplitterHandler::run(
-      option, filesOutput, APACMainFilter.getValue(),
-      APACFunctionFilter.getValue(), APACIgnoreFilter.getValue(), filesOutput);
+  if (DeclarationSplitterHandler::run(
+          option, filesOutput, APACMainFilter.getValue(),
+          APACFunctionFilter.getValue(), APACIgnoreFilter.getValue(),
+          filesOutput)) {
+    return 1;
+  }
   llvm::errs() << "GotoRetHandler\n";
-  GotoRetHandler::run(option, filesOutput, APACMainFilter.getValue(),
-                      APACFunctionFilter.getValue(),
-                      APACIgnoreFilter.getValue(), filesOutput);
+  if (GotoRetHandler::run(option, filesOutput, APACMainFilter.getValue(),
+                          APACFunctionFilter.getValue(),
+                          APACIgnoreFilter.getValue(), filesOutput)) {
+    return 1;
+  }
   llvm::errs() << "TaskGraphHandler\n";
-  TaskGraphHandler::run(option, filesOutput, APACMainFilter.getValue(),
-                        APACFunctionFilter.getValue(),
-                        APACIgnoreFilter.getValue(), filesOutput);
+  if (TaskGraphHandler::run(option, filesOutput, APACMainFilter.getValue(),
+                            APACFunctionFilter.getValue(),
+                            APACIgnoreFilter.getValue(), filesOutput)) {
+    return 1;
+  }
 
   llvm::errs() << "MainParallelHandler\n";
-  MainParallelHandler::run(option, filesOutput, APACMainFilter.getValue(),
-                           APACFunctionFilter.getValue(),
-                           APACIgnoreFilter.getValue(), filesOutput);
+  if (MainParallelHandler::run(option, filesOutput, APACMainFilter.getValue(),
+                               APACFunctionFilter.getValue(),
+                               APACIgnoreFilter.getValue(), filesOutput)) {
+    return 1;
+  }
 
   /*
   StackHeapHandler::run(option, files, APACMainFilter.getValue(),

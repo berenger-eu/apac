@@ -1,8 +1,10 @@
 #include "_apac_header.hpp"
 #include <functional>
+
 int applyAndAdd(int a, int b) {
   wrapper_t<int> __result;
   {
+
     auto doubler = [](int x) { return x * 2; };
     if (a > 0) {
       __result = build_wrapper<int>(doubler(b) + a);
@@ -18,9 +20,10 @@ __exit0:;
 int main() {
   wrapper_t<int> __result;
   {
+
     __result = build_wrapper<int>(applyAndAdd(3, 4));
-    goto __exit0;
+    goto __exit1;
   }
-__exit0:;
+__exit1:;
   return *__result;
 }

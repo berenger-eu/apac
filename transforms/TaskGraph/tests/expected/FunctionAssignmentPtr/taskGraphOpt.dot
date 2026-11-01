@@ -7,15 +7,15 @@ subgraph cluster_f1 {
     0 [label="a = &valA;
 *a = 1;
 *a : valA"];
-    1 [label="b = &valB;"];
+    1 [label="b = &valB;
+*b = 2;
+*b : valB"];
     2 [label="c = &valC;"];
     3 [label="f = &valF;
 *f = 10;
 *f : valF"];
     4 [label="e = &f;"];
     5 [label="d = 4;"];
-    7 [label="*b = 2;
-*b : valB"];
     8 [label="*c = 3;
 *c : valC"];
     10 [label="*e = f;
@@ -42,8 +42,7 @@ subgraph cluster_f1 {
 *a : valF"];
 }
     0 -> 11[label="  aW"];
-    1 -> 7[label="  bR"];
-    1 -> 11[label="  bR"];
+    1 -> 11[label="  bW"];
     2 -> 8[label="  cR"];
     2 -> 11[label="  cR"];
     3 -> 10[label="  fW"];
@@ -51,7 +50,6 @@ subgraph cluster_f1 {
     4 -> 10[label="  eR"];
     4 -> 11[label="  eR"];
     5 -> 11[label="  dR"];
-    7 -> 12[label="  valBRW"];
     8 -> 12[label="  valCRW"];
     10 -> 16[label="  fR"];
     11 -> 12[label="  aR"];

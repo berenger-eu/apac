@@ -70,29 +70,33 @@ public:
         : Options(std::move(Options)) {}
 
     void HandleTranslationUnit(ASTContext& Ctx) override {
-        constify::Verbose = Options.Verbose;
-        constify::InPlace = Options.InPlace;
+      if (Ctx.getDiagnostics().hasErrorOccurred())
+        return;
+      constify::Verbose = Options.Verbose;
+      constify::InPlace = Options.InPlace;
 
-        constify::ConstGraphBuilder Builder(Ctx);
+      constify::ConstGraphBuilder Builder(Ctx);
 
-        Builder.TraverseDecl(Ctx.getTranslationUnitDecl());
+      Builder.TraverseDecl(Ctx.getTranslationUnitDecl());
 
-        Builder.graph().propagateCannotBeConst();
-        Builder.graph().propagateMethodCallConstness();
+      Builder.graph().propagateCannotBeConst();
+      Builder.graph().propagateMethodCallConstness();
 
-        Builder.graph().dump(llvm::errs());
+      Builder.graph().dump(llvm::errs());
 
-        constify::ConstRewritePlanner Planner(Ctx, Builder.graph());
-        Planner.compute();
-        Planner.dump(llvm::errs());
+      constify::ConstRewritePlanner Planner(Ctx, Builder.graph());
+      Planner.compute();
+      Planner.dump(llvm::errs());
 
-        constify::ConstRewriteApplier Applier(Ctx, Planner);
+      constify::ConstRewriteApplier Applier(Ctx, Planner);
 
-        const bool Changed = Applier.apply();
+      const bool Changed = Applier.apply();
 
-        if (!Changed) {
-            llvm::errs() << "[constify] no source changes\n";
-            return;
+      if (!Changed) {
+        llvm::errs() << "[constify] no source changes\n";
+        if (!Options.InPlace)
+          Applier.writeToStdout();
+        return;
         }
 
         if(Options.InPlace){

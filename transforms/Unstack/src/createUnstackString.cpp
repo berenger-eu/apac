@@ -71,48 +71,28 @@ std::string
 UnstackTransformer::createCallArgString(std::shared_ptr<Node> node,
                                         Expr *argExpr,
                                         long unsigned int &childCounter) {
-  std::stringstream res;
-  if (argExpr == nullptr) {
+  if (!argExpr)
     return "";
-  }
-  argExpr = argExpr->IgnoreImpCasts();
-  // If it's a call, we can replace it by the corresponding variable
-  if (isa<CallExpr>(argExpr)) {
-    CallExpr *callExpr = cast<CallExpr>(argExpr);
-    if (childCounter >= node->children.size()) {
-      return getExprAsString(argExpr, TheRewriter.getLangOpts());
+  class TempPrinter : public PrinterHelper {
+  public:
+    explicit TempPrinter(const std::shared_ptr<Node> &node) : node(node) {}
+    bool handledStmt(Stmt *stmt, llvm::raw_ostream &out) override {
+      auto *call = dyn_cast<CallExpr>(stmt);
+      auto it = node->children.find(call);
+      if (it == node->children.end())
+        return false;
+      out << " __tempVar_" << it->second->id << " ";
+      return true;
     }
-    res << " __tempVar_" << node->children[callExpr]->id << " ";
-    childCounter++;
-  }
-  // If it's a BinaryOperator, then we have to look at both expressions
-  else if (isa<BinaryOperator>(argExpr)) {
-    BinaryOperator *bop = cast<BinaryOperator>(argExpr);
-    res << createCallArgString(node, bop->getLHS(), childCounter)
-        << bop->getOpcodeStr().str()
-        << createCallArgString(node, bop->getRHS(), childCounter);
-  } else if (isa<UnaryOperator>(argExpr)) {
-    UnaryOperator *uop = cast<UnaryOperator>(argExpr);
-    std::string opcodeStr;
-    if (uop->isDecrementOp()) {
-      opcodeStr = "--";
-    } else {
-      opcodeStr = "++";
-    }
-    if (uop->isPostfix()) {
-      res << createCallArgString(node, uop->getSubExpr(), childCounter)
-          << opcodeStr;
-    } else {
-      res << opcodeStr
-          << createCallArgString(node, uop->getSubExpr(), childCounter);
-    }
-  }
-  // Either the Expr does not contain a call, or we haven't found it
-  // So we don't change anything either way
-  else {
-    res << getExprAsString(argExpr, TheRewriter.getLangOpts());
-  }
-  return res.str();
+
+  private:
+    const std::shared_ptr<Node> &node;
+  } printer(node);
+  std::string result;
+  llvm::raw_string_ostream stream(result);
+  argExpr->printPretty(stream, &printer,
+                       PrintingPolicy(TheRewriter.getLangOpts()));
+  return result;
 }
 
 // Create string : type __tempVar_x; __tempVar_x = unstackedCall;
@@ -122,14 +102,19 @@ UnstackTransformer::createTempVarString(std::shared_ptr<Node> node) {
   // Get the return type of the function
   auto &calExp = node->call;
   auto &nodeID = node->id;
-  ASTContext &aCons = calExp->getDirectCallee()->getASTContext();
   std::string functionType =
-      calExp->getCallReturnType(aCons).getAsString(TheRewriter.getLangOpts());
+      calExp->getType().getAsString(TheRewriter.getLangOpts());
+  if (calExp->isLValue())
+    functionType += " &";
+  else if (calExp->isXValue())
+    functionType += " &&";
   // Type __tempVar_x;
   SSresult << functionType << " __tempVar_"
            << nodeID
            //= functionName (
-           << " = " << calExp->getDirectCallee()->getNameAsString() << "(";
+           << " = "
+           << getExprAsString(calExp->getCallee(), TheRewriter.getLangOpts())
+           << "(";
   bool firstArg = true;
   // Prints all of its arguments
   long unsigned int childCounter = 0;

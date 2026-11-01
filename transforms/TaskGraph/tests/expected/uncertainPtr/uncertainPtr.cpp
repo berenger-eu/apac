@@ -38,7 +38,7 @@ int main() {
       int *p;
 
 // Issue when using address of a variable
-#pragma omp task default(shared) depend(in : i, j)                             \
+#pragma omp task default(shared) depend(inout : i) depend(in : j)              \
     firstprivate(__apac_depth_local)
       {
         __apac_depth = __apac_depth_local + 1;

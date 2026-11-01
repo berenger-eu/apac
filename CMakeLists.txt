@@ -46,9 +46,9 @@ set(EXECUTABLES apac multipleDeclSplitter conditionUnstack apacDepth mainParalle
 
 add_custom_target(test 
 COMMENT "Building project"
-DEPENDS ${EXECUTABLES}
+DEPENDS ${EXECUTABLES} paramWriteAnalyzerRegression
 COMMENT "Starting tests"
-WORKING_DIRECTORY ..
-COMMAND ./scripts/run-tests.sh
+WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+COMMAND ${CMAKE_COMMAND} -E env "APAC_BUILD_DIR=${CMAKE_BINARY_DIR}" bash "${CMAKE_SOURCE_DIR}/scripts/run-tests.sh"
 COMMENT "Ending tests"
 )

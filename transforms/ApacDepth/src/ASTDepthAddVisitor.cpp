@@ -9,6 +9,8 @@ bool ASTDepthAddVisitor::lookForRecCall(Stmt *st) {
   while (!(foundRecCall || stack.empty())) {
     Stmt *current = stack.top();
     stack.pop();
+    if (!current)
+      continue;
     // If it is a recursive call, then we need to add the depth incrementation
     if (isa<CallExpr>(current)) {
       auto currentCall = cast<CallExpr>(current);

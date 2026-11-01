@@ -77,14 +77,15 @@ void handleFunctionTaskGroup(Rewriter &TheRewriter, FunctionDecl *f,
     else
       TheRewriter.InsertText(returnStmt->getBeginLoc(), "}\n");
     bool placedTaskGroup = false;
-    Stmt *firstStmt = *(f->getBody()->child_begin());
-    if (isa<DeclStmt>(firstStmt)) {
+    auto children = f->getBody()->children();
+    Stmt *firstStmt = children.empty() ? nullptr : *children.begin();
+    if (firstStmt && isa<DeclStmt>(firstStmt)) {
       DeclStmt *d = cast<DeclStmt>(firstStmt);
       if (d->isSingleDecl() && isa<VarDecl>(d->getSingleDecl())) {
         VarDecl *var = cast<VarDecl>(d->getSingleDecl());
         if (var->getNameAsString().find("__result") != std::string::npos) {
-          TheRewriter.InsertTextBefore(firstStmt->getEndLoc(),
-                                       "\n#pragma omp taskgroup\n{\n");
+          TheRewriter.InsertTextAfterToken(firstStmt->getEndLoc(),
+                                           "\n#pragma omp taskgroup\n{\n");
           placedTaskGroup = true;
         }
       }

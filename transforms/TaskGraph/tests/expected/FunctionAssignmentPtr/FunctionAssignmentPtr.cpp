@@ -36,9 +36,6 @@ int main() {
 
       int *f, **e;
 
-#pragma omp task default(shared) depend(inout : b)
-      { b = &valB; }
-
 #pragma omp task default(shared) depend(inout : c)
       { c = &valC; }
 
@@ -54,8 +51,11 @@ int main() {
         *a = 1;
       }
 
-#pragma omp task default(shared) depend(inout : valB) depend(in : b)
-      { *b = 2; }
+#pragma omp task default(shared) depend(inout : b)
+      {
+        b = &valB;
+        *b = 2;
+      }
 
 #pragma omp task default(shared) depend(inout : valC) depend(in : c)
       { *c = 3; }
@@ -69,7 +69,7 @@ int main() {
 #pragma omp task default(shared) depend(inout : f) depend(in : e)
       { *e = f; }
 
-#pragma omp task default(shared) depend(inout : a) depend(in : b, c, e, d)     \
+#pragma omp task default(shared) depend(inout : a, b) depend(in : c, e, d)     \
     firstprivate(__apac_depth_local)
       {
         __apac_depth = __apac_depth_local + 1;
