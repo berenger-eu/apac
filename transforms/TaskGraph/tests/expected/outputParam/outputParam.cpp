@@ -7,13 +7,17 @@ int __apac_depth = 0;
 const static int __apac_depth_max = parallel_depth;
 
 void writeResult(int *p, int val) {
+  char __apac_array_phase_0;
   int __apac_depth_local = __apac_depth;
   int __apac_depth_ok = (__apac_depth_local < __apac_depth_max);
   if (__apac_depth_ok) {
 
 #pragma omp taskgroup
     {
-#pragma omp task default(shared)
+
+#pragma omp taskwait depend(in : p)
+#pragma omp task default(shared) depend(in : p, val)                           \
+    depend(in : __apac_array_phase_0) depend(inout : (p)[0]) firstprivate(p)
       { *p = val * 2; }
     }
   } else {

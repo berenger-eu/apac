@@ -21,6 +21,8 @@
 
 Given a plain C++ source file, APAC analyses data dependencies between statements and rewrites the source with `#pragma omp task depend(...)` directives so that the output can exploit multiple processor cores without requiring manual annotations.
 
+Array and pointer dependency conventions are described in [Array dependencies and phases](docs/array-phases.md).
+
 APAC is built on **LLVM/Clang 18** and implements its analysis as a pipeline of composable transformation passes.
 
 ---

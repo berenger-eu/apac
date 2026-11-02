@@ -1,7 +1,9 @@
 digraph G {
 subgraph cluster_f0 {
     invisibleNodeScope_0 [style=invis];
-    0 [label="tab[4]++;"];
+    0 [label="tab[4]++;
+phase: element:int
+tab[4] RW"];
 }
 subgraph cluster_f1 {
     invisibleNodeScope_1 [style=invis];
@@ -12,14 +14,22 @@ subgraph cluster_f2 {
     2 [label="apacMemeBloc__tab_0 = new int [10];"];
     3 [label="tab = apacMemeBloc__tab_0;"];
     4 [label="x = 4;"];
-    5 [label="fdummy(tab);"];
-    6 [label="fdummyRef(tab[5]);"];
-    7 [label="fdummyRef(tab[x]);"];
+    5 [label="fdummy(tab);
+phase: whole"];
+    6 [label="fdummyRef(tab[5]);
+phase: element:int
+tab.get()[5] RW"];
+    7 [label="fdummyRef(tab[x]);
+phase: element:int
+tab.get()[x] RW"];
 }
     2 -> 3[label="  apacMemeBloc__tab_0RW"];
-    3 -> 5[label="  apacMemeBloc__tab_0RW,tabRW"];
+    3 -> 5[label="  apacMemeBloc__tab_0R,tabR"];
+    3 -> 6[label="  apacMemeBloc__tab_0R,tabR"];
+    3 -> 7[label="  apacMemeBloc__tab_0R,tabR"];
     4 -> 7[label="  xR"];
-    5 -> 6[label="  apacMemeBloc__tab_0R,tabR"];
-    5 -> 7[label="  apacMemeBloc__tab_0R,tabR"];
-    6 -> 7[label="  tab[x]RW"];
+    array_phase_transition_6 [shape=diamond,label="whole -> element:int"];
+    5 -> array_phase_transition_6 [color=purple,label="phase join"];
+    array_phase_transition_6 -> 6 [color=purple,label="phase"];
+    array_phase_transition_6 -> 7 [color=purple,label="phase"];
 }

@@ -14,13 +14,17 @@ int __apac_depth = 0;
 const static int __apac_depth_max = parallel_depth;
 
 void fdummy(int *tab) {
+  char __apac_array_phase_0;
   int __apac_depth_local = __apac_depth;
   int __apac_depth_ok = (__apac_depth_local < __apac_depth_max);
   if (__apac_depth_ok) {
 
 #pragma omp taskgroup
     {
-#pragma omp task default(shared)
+
+#pragma omp taskwait depend(in : tab)
+#pragma omp task default(shared) depend(in : tab)                              \
+    depend(in : __apac_array_phase_0) depend(inout : tab[4]) firstprivate(tab)
       { tab[4]++; }
     }
   } else {
@@ -42,6 +46,7 @@ void fdummyRef(int &ref) {
   }
 }
 int main() {
+  char __apac_array_phase_2;
   int __apac_depth_local = __apac_depth;
   int __apac_depth_ok = (__apac_depth_local < __apac_depth_max);
   if (__apac_depth_ok) {
@@ -51,26 +56,43 @@ int main() {
 
       int *apacMemeBloc__tab_0;
 
+#pragma omp taskwait
+#pragma omp taskwait
+      apacMemeBloc__tab_0 = new int[10];
+
       std::reference_wrapper<int *> tab = invalid_ref<int *>();
+
+#pragma omp taskwait
+      tab = apacMemeBloc__tab_0;
 
       int x;
 
 #pragma omp task default(shared) depend(inout : x)
       { x = 4; }
 
-#pragma omp task default(shared) depend(inout : tab.get()[5])                  \
+#pragma omp taskwait depend(in : apacMemeBloc__tab_0, tab)
+#pragma omp task default(shared) depend(in : apacMemeBloc__tab_0, tab)         \
+    depend(inout : __apac_array_phase_2) firstprivate(__apac_depth_local)
+      {
+        __apac_depth = __apac_depth_local + 1;
+        fdummy(tab);
+      }
+
+#pragma omp taskwait depend(in : apacMemeBloc__tab_0, tab)
+
+#pragma omp task depend(inout : __apac_array_phase_2)
+      {}
+#pragma omp task default(shared) depend(in : apacMemeBloc__tab_0, tab)         \
+    depend(in : __apac_array_phase_2) depend(inout : tab.get()[5])             \
     firstprivate(__apac_depth_local)
       {
         __apac_depth = __apac_depth_local + 1;
-        apacMemeBloc__tab_0 = new int[10];
-        tab = apacMemeBloc__tab_0;
-        fdummy(tab);
         fdummyRef(tab[5]);
       }
 
-#pragma omp taskwait depend(in : x)
-#pragma omp task default(shared) depend(inout : tab.get()[x])                  \
-    depend(in : apacMemeBloc__tab_0, tab, x)                                   \
+#pragma omp taskwait depend(in : apacMemeBloc__tab_0, tab, x)
+#pragma omp task default(shared) depend(in : apacMemeBloc__tab_0, tab, x)      \
+    depend(in : __apac_array_phase_2) depend(inout : tab.get()[x])             \
     firstprivate(__apac_depth_local, x)
       {
         __apac_depth = __apac_depth_local + 1;

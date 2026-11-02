@@ -24,7 +24,8 @@ void addInitApacPart(Rewriter &TheRewriter, const SourceLocation &beginCodeLoc,
 
 void handleFunctions(
     Rewriter &TheRewriter, std::vector<FunctionDecl *> &functions,
-    std::vector<std::pair<ReturnStmt *, FunctionDecl *>> &returnStmts) {
+    std::vector<std::pair<ReturnStmt *, FunctionDecl *>> &returnStmts,
+    const std::map<FunctionDecl *, std::string> &phaseTokens) {
   std::unordered_map<FunctionDecl *, ReturnStmt *> returnMap;
   for (auto &r : returnStmts) {
     returnMap[r.second] = r.first;
@@ -32,6 +33,9 @@ void handleFunctions(
   for (auto &f : functions) {
 
     std::stringstream SSprintBefore, SSprintAfter;
+    auto phase = phaseTokens.find(f);
+    if (phase != phaseTokens.end())
+      SSprintBefore << "char " << phase->second << ";\n";
     addFunctionDepth(TheRewriter, SSprintBefore, SSprintAfter, f);
     handleFunctionTaskGroup(TheRewriter, f,
                             returnMap.count(f) ? returnMap.at(f) : nullptr,

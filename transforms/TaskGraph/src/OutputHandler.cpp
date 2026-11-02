@@ -1,5 +1,58 @@
 #include "OutputHandler.hpp"
 int invisibleNodeCounter = 0;
+namespace {
+std::pair<std::string, bool> phaseKind(const Instruction &instruction);
+// Phase edges are emitted separately from scalar alias edges. Representative
+// equality across different pointer names is resolved by OpenMP at runtime.
+void generatePhaseLinks(const Graph &graph, std::ofstream &file) {
+  std::string mode, anchor, writer;
+  std::set<std::string> members, readers;
+  std::map<std::string, std::pair<std::string, std::set<std::string>>> locations;
+  auto link = [&](const std::string &from, const std::string &to, const std::string &label) {
+    if (!from.empty() && from != to)
+      file << "    " << from << " -> " << to << " [color=purple,label=\"" << label << "\"];\n";
+  };
+  for (const auto &node : graph.nodes) {
+    const auto &instruction = *node->instructionPtr.front();
+    auto id = std::to_string(node->id);
+    if (instruction.synchronous || !node->graph.empty()) {
+      for (const auto &previous : members) link(previous, id, "phase wait");
+      if (!members.empty() || !anchor.empty()) anchor = id;
+      mode.clear(); members.clear(); writer.clear(); readers.clear(); locations.clear();
+    }
+    if (!instruction.arrayAccesses.empty() && !instruction.synchronous) {
+      auto kind = phaseKind(instruction);
+      if (!mode.empty() && mode != kind.first) {
+        auto transition = "array_phase_transition_" + id;
+        file << "    " << transition << " [shape=diamond,label=\"" << mode << " -> " << kind.first << "\"];\n";
+        for (const auto &previous : members) link(previous, transition, "phase join");
+        anchor = transition;
+        members.clear(); writer.clear(); readers.clear(); locations.clear();
+      }
+      mode = kind.first;
+      link(anchor, id, "phase");
+      members.insert(id);
+      if (mode == "whole") {
+        link(writer, id, "whole");
+        if (kind.second) {
+          for (const auto &previous : readers) link(previous, id, "whole");
+          readers.clear(); writer = id;
+        } else readers.insert(id);
+      } else {
+        for (const auto &access : instruction.arrayAccesses) {
+          auto &location = locations[access.representative];
+          link(location.first, id, access.representative);
+          if (access.write) {
+            for (const auto &previous : location.second) link(previous, id, access.representative);
+            location.second.clear(); location.first = id;
+          } else location.second.insert(id);
+        }
+      }
+    }
+    for (const auto &subgraph : node->graph) generatePhaseLinks(*subgraph, file);
+  }
+}
+} // namespace
 
 void OutputHandler::generateLinks(const Graph &inGraph, std::ofstream &file) {
   for (const auto &node : inGraph.nodes) {
@@ -35,6 +88,12 @@ void OutputHandler::subGenerateDotGraph(const Graph &inGraph,
   for (const auto &node : inGraph.nodes) {
     file << "    " << node->id << " [label=\"" << node->instruction;
     for (auto instr : node->instructionPtr) {
+      if (!instr->arrayAccesses.empty()) {
+        file << "\nphase: " << phaseKind(*instr).first;
+        for (const auto &access : instr->arrayAccesses)
+          if (!access.representative.empty())
+            file << "\n" << access.representative << (access.write ? " RW" : " R");
+      }
       std::vector<std::string> aliasLines;
       for (auto alias : instr->curAliases) {
         std::string line;
@@ -91,8 +150,10 @@ void OutputHandler::GenerateDotGraph(const std::vector<Graph> &graphs,
     file << "}\n";
     i++;
   }
-  for (auto graph : graphs)
+  for (const auto &graph : graphs) {
     generateLinks(graph, file);
+    generatePhaseLinks(graph, file);
+  }
   file << "}\n";
   file.close();
 }
@@ -150,12 +211,32 @@ OutputHandler::modifyGroup(const StmtOrder &instructionsOrderManager,
   createPragmaString(instructionsOrderManager, instructionGroup, pragmaStart,
                      pragmaEnd);
 
+  auto node = instructionsOrderManager.getNode(instructionGroup.begin()->first);
+  bool initializedDeclaration = false;
+  if (const auto *decl = dyn_cast<DeclStmt>(instructionGroup.begin()->first))
+    for (const auto *item : decl->decls())
+      if (const auto *variable = dyn_cast<VarDecl>(item))
+        initializedDeclaration |= variable->hasInit();
+  bool scopeBoundary = instructionGroup.size() == 1 &&
+      (instructionGroup.begin()->second != nullptr ||
+       initializedDeclaration || isa<CXXDeleteExpr>(instructionGroup.begin()->first) ||
+       isa<GotoStmt>(instructionGroup.begin()->first) ||
+       (node && node->instructionPtr.front()->synchronous));
+  if (scopeBoundary && !arrayPhaseModes_.empty()) {
+    ssPrint << "\n#pragma omp taskwait\n";
+    arrayPhaseModes_.clear();
+  }
+  if (node && !scopeBoundary) ssPrint << arrayPhasePrefix(node);
   ssPrint << pragmaStart;
 
   for (auto instrPair : instructionGroup)
     ssPrint << modifiedStringForInstruction(instructionsOrderManager,
                                             instrPair.first);
   ssPrint << pragmaEnd;
+  if (scopeBoundary && !arrayPhaseModes_.empty()) {
+    ssPrint << "\n#pragma omp taskwait\n";
+    arrayPhaseModes_.clear();
+  }
 
   if (isWrite) {
     for (auto instrPair : instructionGroup) {
@@ -307,6 +388,7 @@ OutputHandler::createPragmaTaskString(const StmtOrder &instructionsOrderManager,
     return "";
   }
   ssPrint << createDependsString(node);
+  ssPrint << arrayPhaseDepends(node);
   ssPrint << createFirstPrivateString(node, hasFunctionCall);
   return ssPrint.str();
 }
@@ -334,18 +416,22 @@ OutputHandler::createFirstPrivateString(const std::shared_ptr<Node> &node,
       }
     }
   }
-  if (!firstPrivateSet.empty() || hasFunctionCall) {
+  std::set<std::string> phaseCaptures;
+  for (const auto *instruction : node->instructionPtr)
+    phaseCaptures.insert(instruction->arrayCaptures.begin(), instruction->arrayCaptures.end());
+  for (const auto *ref : firstPrivateSet) {
+    const auto *variable = dyn_cast<VarDecl>(ref->getDecl());
+    if (variable && variable->isLocalVarDeclOrParm())
+      phaseCaptures.insert(variable->getNameAsString());
+  }
+  if (hasFunctionCall) phaseCaptures.insert("__apac_depth_local");
+  if (!phaseCaptures.empty()) {
     ssPrint << " firstprivate(";
-    if (hasFunctionCall) {
-      ssPrint << " __apac_depth_local";
-      if (!firstPrivateSet.empty())
-        ssPrint << ",";
-    }
-
-    for (auto it = firstPrivateSet.begin(); it != firstPrivateSet.end(); ++it) {
-      if (it != firstPrivateSet.begin())
-        ssPrint << ",";
-      ssPrint << (*it)->getDecl()->getNameAsString();
+    bool first = true;
+    for (const auto &name : phaseCaptures) {
+      if (!first) ssPrint << ",";
+      first = false;
+      ssPrint << name;
     }
     ssPrint << ") ";
   }
@@ -446,4 +532,64 @@ OutputHandler::createTaskwaitIndexes(const std::shared_ptr<Node> &node) const {
     ssPrint << ")\n";
   }
   return ssPrint.str();
+}
+namespace {
+std::pair<std::string, bool> phaseKind(const Instruction &instruction) {
+  auto mode = instruction.arrayAccesses.front().mode;
+  auto precision = instruction.arrayAccesses.front().precision;
+  bool write = false;
+  for (const auto &access : instruction.arrayAccesses) {
+    write |= access.write;
+    if (access.mode != mode || access.precision != precision) mode = ArrayAccessMode::Whole;
+  }
+  std::string key = mode == ArrayAccessMode::Whole ? "whole" :
+                    mode == ArrayAccessMode::Element ? "element:" + precision : "partition:" + precision;
+  return {key, write};
+}
+}
+std::string OutputHandler::arrayPhasePrefix(const std::shared_ptr<Node> &node) {
+  if (!node || node->instructionPtr.front()->arrayAccesses.empty()) return "";
+  const auto &instruction = *node->instructionPtr.front();
+  std::stringstream prefix;
+  std::set<std::string> ready;
+  for (const auto &name : instruction.arrayAddressInputs) {
+    for (const auto &alias : node->inDep)
+      if (alias->varAsString() == name) ready.insert(name);
+    for (const auto &alias : node->inOutDep)
+      if (alias->varAsString() == name) ready.insert(name);
+  }
+  if (instruction.arrayAddressNeedsWait) prefix << "\n#pragma omp taskwait\n";
+  else if (!ready.empty()) {
+    prefix << "\n#pragma omp taskwait depend(in: ";
+    bool first = true;
+    for (const auto &name : ready) {
+      if (!first) prefix << ",";
+      first = false; prefix << name;
+    }
+    prefix << ")\n";
+  }
+  auto kind = phaseKind(instruction).first;
+  auto previous = arrayPhaseModes_.find(instruction.arrayPhaseToken);
+  if (previous != arrayPhaseModes_.end() && previous->second != kind)
+    prefix << "\n#pragma omp task depend(inout: " << instruction.arrayPhaseToken
+           << ")\n{}\n";
+  arrayPhaseModes_[instruction.arrayPhaseToken] = kind;
+  return prefix.str();
+}
+std::string OutputHandler::arrayPhaseDepends(const std::shared_ptr<Node> &node) const {
+  if (!node || node->instructionPtr.front()->arrayAccesses.empty()) return "";
+  const auto &instruction = *node->instructionPtr.front();
+  auto kind = phaseKind(instruction);
+  std::stringstream clauses;
+  bool whole = kind.first == "whole";
+  clauses << " depend(" << (whole && kind.second ? "inout" : "in") << ": "
+          << instruction.arrayPhaseToken << ") ";
+  if (!whole) {
+    std::map<std::string, bool> representatives;
+    for (const auto &access : instruction.arrayAccesses)
+      representatives[access.representative] |= access.write;
+    for (const auto &entry : representatives)
+      clauses << " depend(" << (entry.second ? "inout" : "in") << ": " << entry.first << ") ";
+  }
+  return clauses.str();
 }

@@ -4,6 +4,8 @@
 
 #include "AliasTable.hpp"
 #include "Instruction.hpp"
+#include "ArrayPhases.hpp"
+#include <map>
 #include "InstructionsOrderManager.hpp"
 #include "ParamWriteAnalyzer.hpp"
 #include "common.hpp"
@@ -100,6 +102,10 @@ public:
     return traverseSimpleElements(c);
   }
 
+  // An explicit taskwait also starts a new partition layout/epoch.
+  bool TraverseOMPTaskwaitDirective(OMPTaskwaitDirective *s) {
+    return traverseSynchronous(s);
+  }
   bool TraverseForStmt(ForStmt *f);
   bool TraverseSwitchStmt(SwitchStmt *s) { return traverseSynchronous(s); }
   bool TraverseWhileStmt(WhileStmt *s) { return traverseSynchronous(s); }
@@ -111,6 +117,7 @@ public:
   const auto &getTaskGraphs() { return functionsInstructionsVector; }
   std::vector<std::vector<Instruction>> functionsInstructionsVector;
 
+  const auto &getArrayPhaseTokens() const { return arrayPhaseTokens_; }
   const AliasTable &getAliasTable() const { return aliasTable; }
   inline void dumpInstructions() const {
     for (const auto &function : functionsInstructionsVector)
@@ -121,6 +128,8 @@ public:
 private:
   // An alias-sensitive loop invalidates the pre-loop alias table. Keep its
   // tail sequential; after a proven alias-preserving loop, task creation resumes.
+  std::string arrayPhaseToken_;
+  std::map<FunctionDecl *, std::string> arrayPhaseTokens_;
   bool sequentialTail_ = false;
   bool traverseSynchronous(Stmt *s);
   bool preservesAliases(const Stmt *statement) const;
@@ -154,6 +163,7 @@ private:
       currentOrderManager->addInstructionToManager(s);
     Instruction instr(s, getStmtAsString(s, TheRewriter.getLangOpts()));
     handleStmt(*s, instr);
+    analyzeArrayPhases(instr, aliasTable, paramAnalyzer_, arrayPhaseToken_);
     functionsInstructionsVector.back().push_back(instr);
     return true;
   }

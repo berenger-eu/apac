@@ -4,6 +4,7 @@
 #include "clang/Basic/SourceManager.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 #include <sstream>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -19,14 +20,16 @@ void handleFunctionTaskGroup(Rewriter &TheRewriter, FunctionDecl *f,
                              std::stringstream &SSprintAfter);
 void handleFunctions(
     Rewriter &TheRewriter, std::vector<FunctionDecl *> &functions,
-    std::vector<std::pair<ReturnStmt *, FunctionDecl *>> &returnStmts);
+    std::vector<std::pair<ReturnStmt *, FunctionDecl *>> &returnStmts,
+    const std::map<FunctionDecl *, std::string> &phaseTokens);
 inline void
 modifyCode(Rewriter &TheRewriter, SourceLocation &beginCodeLoc,
            std::vector<FunctionDecl *> &functions,
-           std::vector<std::pair<ReturnStmt *, FunctionDecl *>> &returnStmts) {
+           std::vector<std::pair<ReturnStmt *, FunctionDecl *>> &returnStmts,
+           const std::map<FunctionDecl *, std::string> &phaseTokens) {
   FunctionDecl *beginCodeFunction = nullptr;
   if (!functions.empty())
     beginCodeFunction = functions.front();
   addInitApacPart(TheRewriter, beginCodeLoc, beginCodeFunction);
-  handleFunctions(TheRewriter, functions, returnStmts);
+  handleFunctions(TheRewriter, functions, returnStmts, phaseTokens);
 }

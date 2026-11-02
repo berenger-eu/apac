@@ -34,7 +34,7 @@ if python3 "$repoRoot/scripts/regression.py" --build-dir "$buildDir"; then
     ((countPassed++))
 fi
 
-for regression in taskgraph-regression.py snapshot-runner-regression.py; do
+for regression in taskgraph-regression.py array-phase-regression.py snapshot-runner-regression.py; do
     ((countTotal++))
     if python3 "$repoRoot/scripts/$regression"; then
         ((countPassed++))

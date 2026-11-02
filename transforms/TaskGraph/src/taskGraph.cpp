@@ -56,7 +56,8 @@ public:
     }
     outputHandler.GenerateDotGraph(graphs, "taskGraphOpt.dot");
     outputHandler.modifyFile(orderManager);
-    modifyCode(TheRewriter, codeBeginLoc, functions, returnStmts);
+    modifyCode(TheRewriter, codeBeginLoc, functions, returnStmts,
+               VisitorTaskGraph.getArrayPhaseTokens());
   }
 
 private:

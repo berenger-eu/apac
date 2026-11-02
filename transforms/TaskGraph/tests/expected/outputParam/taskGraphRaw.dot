@@ -1,7 +1,9 @@
 digraph G {
 subgraph cluster_f0 {
     invisibleNodeScope_0 [style=invis];
-    0 [label="*p = val * 2;"];
+    0 [label="*p = val * 2;
+phase: element:int
+(p)[0] RW"];
 }
 subgraph cluster_f1 {
     invisibleNodeScope_1 [style=invis];

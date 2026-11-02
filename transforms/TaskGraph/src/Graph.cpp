@@ -85,6 +85,26 @@ void handleInstructionDeps(
     std::unordered_map<std::shared_ptr<aliasArg>, std::shared_ptr<Node>>
         &dataUsedInWrite,
     const AliasTable &aliasTable) {
+  if (!node->instructionPtr.front()->arrayAccesses.empty()) {
+    for (const auto &dep : deps) {
+      auto key = dep.first;
+      auto writer = dataUsedInWrite.find(key);
+      if (dep.second.isRead && writer != dataUsedInWrite.end() && writer->second != node)
+        writer->second->addReadLink(writer->second, node, key);
+      if (dep.second.isWrite) {
+        auto readers = dataUsedInRead.find(key);
+        if (readers != dataUsedInRead.end())
+          for (auto previous : readers->second)
+            if (previous != node) previous->addWriteLink(previous, node, key);
+        if (writer != dataUsedInWrite.end() && writer->second != node)
+          writer->second->addWriteLink(writer->second, node, key);
+        dataUsedInRead.erase(key);
+        dataUsedInWrite[key] = node;
+      }
+      if (dep.second.isRead) dataUsedInRead[key].insert(node);
+    }
+    return;
+  }
   // Parent elements are read only (if considered write, it would ignore
   // current precision level) Example, a[1]=4;a[2]=1; if a is considered
   // write, then a[1] and a[2] can't be parallelized If considered read,
@@ -227,7 +247,7 @@ void transitiveReduction(Graph &graph) {
 
 namespace {
 bool containsSynchronization(const Instruction &instruction) {
-  if (instruction.synchronous)
+  if (instruction.synchronous || !instruction.arrayAccesses.empty())
     return true;
   for (const auto &child : instruction.scopedInstructions)
     if (containsSynchronization(child))
@@ -268,6 +288,7 @@ void nodesFusion(Graph &graph) {
     while (
         // Only one next node, and only one previous node for the next node
         node->next.size() == 1 && nextNode->prev.size() == 1 &&
+        !node->instructionPtr.front()->noFusion &&
         // The same graph (or subgraph), so same scope
         nextNode->graphId == node->graphId &&
         fusionRegions.at(nextNode.get()) == fusionRegions.at(node.get()) &&

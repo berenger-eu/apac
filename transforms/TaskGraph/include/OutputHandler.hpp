@@ -28,6 +28,9 @@ public:
   }
 
 private:
+  std::map<std::string, std::string> arrayPhaseModes_;
+  std::string arrayPhasePrefix(const std::shared_ptr<Node> &);
+  std::string arrayPhaseDepends(const std::shared_ptr<Node> &) const;
   void subGenerateDotGraph(const Graph &graph, std::ofstream &file);
   void generateLinks(const Graph &inGraph, std::ofstream &file);
   std::string modifyGroup(const StmtOrder &instructionsOrderManager,

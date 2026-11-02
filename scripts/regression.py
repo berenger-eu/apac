@@ -176,9 +176,11 @@ int main() {
   constexpr int values[] = {a, b};
   constexpr const int &ref = a;
   static_assert(ref == 5 && values[1] == 9);
+  int initialized[] = {3, 4};
+  int empty[2] = {};
   int array[a + b];
   array[13] = 42;
-  return array[13] != 42;
+  return array[13] != 42 || initialized[1] != 4 || empty[1] != 0;
 }
 """)
     checks.append('DeclarationSplitter: constexpr values, grouped declarations, arrays and references')

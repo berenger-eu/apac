@@ -74,7 +74,7 @@ int main() {
 #pragma omp task default(shared)                                               \
     depend(inout : a.get()[d][0][1], a.get()[e][0][1])                         \
     depend(in : apacMemeBloc__a_0, a, d, e)                                    \
-    firstprivate(__apac_depth_local, e, d)
+    firstprivate(__apac_depth_local, d, e)
       {
         __apac_depth = __apac_depth_local + 1;
         a[d][0][1] = e;

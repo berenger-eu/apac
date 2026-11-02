@@ -7,6 +7,7 @@ int __apac_depth = 0;
 const static int __apac_depth_max = parallel_depth;
 
 long sum_reduce(int *data, int start, int end) {
+  char __apac_array_phase_0;
   int __apac_depth_local = __apac_depth;
   int __apac_depth_ok = (__apac_depth_local < __apac_depth_max);
   if (__apac_depth_ok) {
@@ -21,8 +22,9 @@ long sum_reduce(int *data, int start, int end) {
 
     long left;
 
-#pragma omp task default(shared) depend(in : start, mid)                       \
-    firstprivate(__apac_depth_local)
+#pragma omp taskwait depend(in : data)
+#pragma omp task default(shared) depend(in : start, mid, left, data)           \
+    depend(in : __apac_array_phase_0) firstprivate(__apac_depth_local, data)
     {
       __apac_depth = __apac_depth_local + 1;
       left = sum_reduce(data, start, mid);
@@ -30,8 +32,9 @@ long sum_reduce(int *data, int start, int end) {
 
     long right;
 
-#pragma omp task default(shared) depend(in : end, mid)                         \
-    firstprivate(__apac_depth_local)
+#pragma omp taskwait depend(in : data)
+#pragma omp task default(shared) depend(in : end, mid, data, right)            \
+    depend(in : __apac_array_phase_0) firstprivate(__apac_depth_local, data)
     {
       __apac_depth = __apac_depth_local + 1;
       right = sum_reduce(data, mid, end);
@@ -45,6 +48,7 @@ long sum_reduce(int *data, int start, int end) {
 }
 
 int main() {
+  char __apac_array_phase_1;
   int __apac_depth_local = __apac_depth;
   int __apac_depth_ok = (__apac_depth_local < __apac_depth_max);
   if (__apac_depth_ok) {
@@ -54,13 +58,15 @@ int main() {
 
       int *data;
 
-#pragma omp task default(shared) depend(inout : data)
-      { data = new int[100]; }
+#pragma omp taskwait
+#pragma omp taskwait
+      data = new int[100];
 
       long r1;
 
+#pragma omp taskwait depend(in : data)
 #pragma omp task default(shared) depend(inout : r1) depend(in : data)          \
-    firstprivate(__apac_depth_local)
+    depend(in : __apac_array_phase_1) firstprivate(__apac_depth_local, data)
       {
         __apac_depth = __apac_depth_local + 1;
         r1 = sum_reduce(data, 0, 50);
@@ -68,8 +74,9 @@ int main() {
 
       long r2;
 
+#pragma omp taskwait depend(in : data)
 #pragma omp task default(shared) depend(inout : r2) depend(in : data)          \
-    firstprivate(__apac_depth_local)
+    depend(in : __apac_array_phase_1) firstprivate(__apac_depth_local, data)
       {
         __apac_depth = __apac_depth_local + 1;
         r2 = sum_reduce(data, 50, 100);

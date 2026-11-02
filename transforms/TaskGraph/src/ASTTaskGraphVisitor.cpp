@@ -561,8 +561,14 @@ bool ASTTaskGraphVisitor::TraverseFunctionDecl(FunctionDecl *f) {
   if (functionsConditions(f)) {
     functionsInstructionsVector.push_back(std::vector<Instruction>());
     bool previous = sequentialTail_;
+    auto previousToken = arrayPhaseToken_;
+    auto functionIndex = functionsInstructionsVector.size() - 1;
+    arrayPhaseToken_ = "__apac_array_phase_" + std::to_string(functionIndex);
     sequentialTail_ = false;
     bool result = RecursiveASTVisitor::TraverseFunctionDecl(f);
+    if (finishArrayPhases(functionsInstructionsVector[functionIndex]))
+      arrayPhaseTokens_[f] = arrayPhaseToken_;
+    arrayPhaseToken_ = previousToken;
     sequentialTail_ = previous;
     return result;
   }
