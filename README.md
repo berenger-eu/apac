@@ -301,27 +301,26 @@ bash test.sh
 
 ## Benchmarks
 
-Run the benchmark suite:
+Eight original kernels cover Fibonacci, quicksort, merge sort, N-Queens, dot
+product, blocked matrix multiplication, N-body and Jacobi. No code is taken
+from BOTS. Every sample verifies its result outside the measured interval.
 
 ```bash
-python3 benchmarks/benchmark.py -n 3 -t 4
+python3 benchmarks/benchmark.py prepare --build-dir build --output-dir /tmp/apac-benchmarks
 ```
 
-This compares sequential and APAC-parallelised versions on selected benchmarks.
+Transfer the prepared directory to a compute node, then compile and run there:
 
-Current benchmark examples include:
+```bash
+cd /path/to/apac-benchmarks
+python3 run.py run --output-dir . --profile standard --threads 1 2 4 8 --repeat 7
+```
 
-| Benchmark       | Purpose                                                    |
-| --------------- | ---------------------------------------------------------- |
-| `readOnlyParam` | Direct validation target for read-only parameter analysis. |
-| `dotProduct`    | Read-only numerical kernel.                                |
-| `callChain`     | Structurally different read-only call pattern.             |
-
-Typical speedups with 4 threads are around:
-
-* `readOnlyParam`: ~2.6×
-* `dotProduct`: ~2.7×
-* `callChain`: ~3.3×
+Only Python 3 and GCC/OpenMP are needed on the compute node. The runner compares
+the sequential original, APAC with one thread, and APAC with more threads, and
+exports raw CSV samples and a JSON report with machine/build metadata.
+See [the benchmark guide](benchmarks/README.md) for granularity, input profiles,
+validation and timing details.
 
 ---
 
