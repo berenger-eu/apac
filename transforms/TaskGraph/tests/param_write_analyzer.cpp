@@ -9,6 +9,8 @@ int main() {
   auto ast = clang::tooling::buildASTFromCodeWithArgs(R"cpp(
     void write(int *p) { *p = 1; }
     int read(int *p) { return *p; }
+    int readConstRef(const int &n) { return n; }
+    void writeRef(int &n) { n = 9; }
     void alias(int *p) { int *q = p; *q = 1; }
     void aliasAssign(int *p) { int *q; q = p; *q = 1; }
     void arithmetic(int *p) { write(p + 1); }
@@ -38,6 +40,7 @@ int main() {
   if (!ast || ast->getDiagnostics().hasErrorOccurred())
     return 1;
   std::map<std::string, bool> expected = {
+      {"readConstRef", true}, {"writeRef", false},
       {"write", false},         {"read", true},          {"alias", false},
       {"aliasAssign", false},   {"arithmetic", false},   {"address", false},
       {"indirect", false},      {"variadic", false},     {"escape", false},

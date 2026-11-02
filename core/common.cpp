@@ -276,27 +276,18 @@ const ArraySubscriptExpr *getSingleArraySubscriptExprInsideExpr(const Expr *e) {
   return returnValue;
 }
 bool isFullConstType(const QualType &qType) {
-  const Type *typeTemp;
-  bool workDone = false;
-  bool returnValue = true;
-  QualType qTypeTemp = qType;
-  // We remove the reference if there is one, since it's supposed to be const
-  if (isReferenceQualType(qType)) {
-    qTypeTemp = qType.getNonReferenceType();
+  QualType type = qType.getNonReferenceType();
+  // Const records can expose mutable state (including reference_wrapper's
+  // referent). Let the parameter analysis decide their effects conservatively.
+  while (!type.isNull()) {
+    if (type->isRecordType() || !type.isConstQualified())
+      return false;
+    type = type->getPointeeType();
   }
-  // We check all types until we reach the last one, we stop if we find a
-  // non-const type
-  do {
-    typeTemp = qTypeTemp.getTypePtrOrNull();
-    if (qTypeTemp.isConstQualified()) {
-      qTypeTemp = qTypeTemp->getPointeeType();
-    } else {
-      workDone = true;
-      returnValue = false;
-    }
-  } while (typeTemp && !workDone);
-  return returnValue;
+  // A const scalar terminates the chain: never query qualifiers on a null type.
+  return true;
 }
+
 int getPtrDepth(QualType qt, const ASTContext &aContext) {
   int returnValue = 0;
   if (isReferenceQualType(qt)) {

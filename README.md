@@ -279,8 +279,14 @@ assembly, TLS/attributed variables and calls without visible bodies retain a
 sequential function tail.
 Fusion cannot move tasks across a synchronization boundary, including one nested
 in an `if`. Parallelizing loop bodies still requires loop-carried dependency analysis.
-Calls conservatively depend on file-scope globals accessed by their bodies and
-transitive direct callees; this may serialize calls that only read a global.
+Explicit accesses to globals contribute ordinary read/write dependencies, just
+like accesses to locals. Pointers, references and global arguments use the same
+alias/parameter analysis as local storage. Calls do not inherit dependencies for
+globals accessed inside their callees, including transitive calls. Dependencies
+therefore do not provide a global execution order across unrelated task contexts.
+The program must protect shared accesses where needed (mutexes, atomics, etc.);
+APAC does not insert these protections automatically. Values copied from a global
+into a local retain the normal dependencies on that local.
 
 Individual transformation test suites can also be run directly, for example:
 

@@ -32,12 +32,17 @@ int main() {
 
     int a;
 
+#pragma omp task default(shared) firstprivate(__apac_depth_local)
+    {
+      __apac_depth = __apac_depth_local + 1;
+      a = increment(1);
+    }
+
     int b;
 
 #pragma omp task default(shared) firstprivate(__apac_depth_local)
     {
       __apac_depth = __apac_depth_local + 1;
-      a = increment(1);
       b = increment(2);
     }
 

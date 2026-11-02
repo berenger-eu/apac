@@ -35,7 +35,7 @@ int main() {
 }
 '''
 cases = {name: (ROOT / 'transforms/TaskGraph/tests/autotests' / (name + '.cpp')).read_text()
-         for name in ('forLoopBody', 'whileLoopBody', 'globalVariable',
+         for name in ('forLoopBody', 'whileLoopBody',
                       'multipleWritesSameVar', 'outputParam')}
 cases['loopControlFlow'] = r'''
 int work(int x) { return x * 3; }
@@ -72,31 +72,99 @@ int main() {
   return result;
 }
 '''
-cases['transitiveGlobalEffects'] = r'''
+# Protected helpers are kept sequential. Independent calls return their
+# input rather than an ordering-dependent snapshot of shared state.
+cases['protectedHiddenGlobals'] = r'''
+#include <mutex>
 int state;
-int update(int n) { state += n; return state; }
-int indirect(int n) { return update(n); }
+std::mutex stateMutex;
+int update_protected_apacSeq(int n) {
+  std::lock_guard<std::mutex> lock(stateMutex);
+  state += n;
+  return n;
+}
+int read_protected_apacSeq() {
+  std::lock_guard<std::mutex> lock(stateMutex);
+  return state;
+}
+int indirect(int n) { return update_protected_apacSeq(n); }
 int main() {
   int a; a = indirect(1);
   int b; b = indirect(2);
-  int result; result = a + b + state;
+  int result; result = a + b + read_protected_apacSeq();
   return result;
 }
 '''
-cases['qualifiedGlobalEffects'] = r'''
-namespace Data { int counter; }
-int update(int n) { Data::counter += n; return Data::counter; }
+cases['explicitGlobalArguments'] = r'''
+int counter = 1;
+int consume(int n) { return n * 2; }
+int produce() { return 9; }
+int main() {
+  int before; before = consume(counter);
+  counter = produce();
+  int result; result = before + counter;
+  return result;
+}
+'''
+cases['qualifiedGlobalArguments'] = r'''
+namespace Data { int counter = 1; }
+int consume(int n) { return n * 2; }
+int produce() { return 9; }
 int main() {
   int counter; counter = 99;
-  int a; a = update(1);
-  int b; b = update(2);
-  int result; result = a + b + Data::counter + counter;
+  int before; before = consume(Data::counter);
+  Data::counter = produce();
+  int result; result = before + Data::counter + counter;
+  return result;
+}
+'''
+cases['anonymousGlobalArguments'] = cases['qualifiedGlobalArguments'].replace(
+    'namespace Data { int counter = 1; }', 'namespace Data { namespace { int counter = 1; } }')
+cases['globalReferenceArgument'] = r'''
+int counter = 1;
+int consume(const int &n) { return n * 2; }
+void replace(int &n) { n = 9; }
+int main() {
+  int before; before = consume(counter);
+  replace(counter);
+  int result; result = before + counter;
+  return result;
+}
+'''
+cases['globalPointerAlias'] = r'''
+int counter = 1;
+int main() {
+  int *p; p = &counter;
+  int before; before = *p;
+  *p = 9;
+  int result; result = before + counter;
   return result;
 }
 '''
 
-cases['anonymousGlobalEffects'] = cases['qualifiedGlobalEffects'].replace(
-    'namespace Data { int counter; }', 'namespace Data { namespace { int counter; } }')
+cases['globalPointerArgument'] = r'''
+int counter = 1;
+int consume(const int *p) { return *p * 2; }
+void replace(int *p) { *p = 9; }
+int main() {
+  int before; before = consume(&counter);
+  replace(&counter);
+  int result; result = before + counter;
+  return result;
+}
+'''
+cases['globalReferenceAlias'] = r'''
+#include <functional>
+int counter = 1;
+int main() {
+  std::reference_wrapper<int> ref(counter);
+  ref = counter;
+  int before; before = ref;
+  ref++;
+  int result; result = before + counter;
+  return result;
+}
+'''
 cases['wrappedArrayLocators'] = r'''
 #include <functional>
 int main() {
@@ -228,8 +296,58 @@ int main() {
 '''
 fallback_cases.add('implicitCleanupAliasMutation')
 
+def check_global_contract(root):
+    folder = root / 'global-contract'
+    folder.mkdir()
+    source = folder / 'input.cpp'
+    source.write_text("int state;\nvoid mutate() { state++; state++; }\n"
+                      "void indirect() { mutate(); }\n"
+                      "int main() { mutate(); indirect(); return 0; }\n")
+    run([BUILD / 'taskGraph', source, '--', '-std=c++17'], folder)
+    graph = (folder / 'taskGraphRaw.dot').read_text()
+    clusters = re.findall(r'subgraph cluster_f\d+ \{\n(.*?)\n\}', graph, re.S)
+    assert len(clusters) == 3, graph
+    nodes = lambda cluster: set(re.findall(r'^\s+(\d+) \[label=', cluster, re.M))
+    edges = re.findall(r'^\s+(\d+) -> (\d+)\[label="([^"]*)"', graph, re.M)
+    caller = nodes(clusters[-1])
+    assert len(caller) == 2, graph
+    assert not any(a in caller and b in caller for a, b, _ in edges), graph
+    callee = nodes(clusters[0])
+    assert any(a in callee and b in callee and '::state' in label
+               for a, b, label in edges), graph
+    # Explicit accesses must behave identically for local and global storage.
+    bodies = {
+        'value': 'int before; before = consume(value); value = produce(); '
+                 'int result; result = before + value; return result;',
+        'pointer': 'int *p; p = &value; int before; before = *p; *p = 9; '
+                   'int result; result = before + value; return result;',
+        'reference_alias': 'std::reference_wrapper<int> ref(value); ref = value; '
+                           'int before; before = ref; ref++; '
+                           'int result; result = before + value; return result;',
+        'reference_argument': 'int before; before = consumeRef(value); replace(value); '
+                              'int result; result = before + value; return result;',
+        'pointer_argument': 'int before; before = consumePtr(&value); replacePtr(&value); '
+                            'int result; result = before + value; return result;',
+    }
+    helpers = ('#include <functional>\nint consume(int n) { return n * 2; } int produce() { return 9; } '
+               'int consumeRef(const int &n) { return n * 2; } '
+               'void replace(int &n) { n = 9; } '
+               'int consumePtr(const int *p) { return *p * 2; } '
+               'void replacePtr(int *p) { *p = 9; }\n')
+    for name, body in bodies.items():
+        graphs = []
+        for storage in ('local', 'global'):
+            prefix = 'int value = 1;\n' if storage == 'global' else ''
+            local = 'int value = 1; ' if storage == 'local' else ''
+            source.write_text(prefix + helpers + 'int main() { ' + local + body + ' }\n')
+            run([BUILD / 'taskGraph', source, '--', '-std=c++17'], folder)
+            graphs.append((folder / 'taskGraphRaw.dot').read_text().replace('::value', 'value'))
+        assert graphs[0] == graphs[1], (name, *graphs)
+    print('PASS: global contract: explicit accesses and aliases match locals; no hidden effects')
+
 with tempfile.TemporaryDirectory(prefix='apac-taskgraph-regression-') as temporary:
     root = Path(temporary)
+    check_global_contract(root)
     for name, source in cases.items():
         folder = root / name
         folder.mkdir()

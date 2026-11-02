@@ -445,38 +445,9 @@ void ASTTaskGraphVisitor::handleCallExpr(const CallExpr &c,
       handleStmt(*arg, curInstr, true);
     return;
   }
-  // A call also accesses the globals used by its body and callees. Treat
-  // these conservatively as read/write until we have a precise effect summary.
-  // The visited set terminates recursive and mutually recursive call graphs.
-  std::unordered_set<const FunctionDecl *> visited;
-  std::vector<const Stmt *> pending;
-  auto enqueueBody = [&](const FunctionDecl *function) {
-    if (function && visited.insert(function->getCanonicalDecl()).second)
-      if (const auto *body = function->getBody())
-        pending.push_back(body);
-  };
-  enqueueBody(callee);
-  while (!pending.empty()) {
-    const Stmt *statement = pending.back();
-    pending.pop_back();
-    if (const auto *ref = dyn_cast<DeclRefExpr>(statement)) {
-      if (const auto *global = dyn_cast<VarDecl>(ref->getDecl())) {
-        QualType type = global->getType();
-        bool immutableScalar = type.isConstQualified() && !type.isVolatileQualified() &&
-                               (type->isArithmeticType() || type->isEnumeralType());
-        if (global->isFileVarDecl() && !immutableScalar) {
-          auto alias = aliasTable.getOrAddAliasArg(global, getAliasType(global));
-          addDependencyRead(curInstr, alias);
-          addDependencyWrite(curInstr, alias);
-        }
-      }
-    }
-    if (const auto *call = dyn_cast<CallExpr>(statement))
-      enqueueBody(call->getDirectCallee());
-    for (const auto *child : statement->children())
-      if (child)
-        pending.push_back(child);
-  }
+  // Only explicit arguments contribute dependencies here. Globals accessed
+  // inside the callee are not propagated to the caller; their synchronization
+  // belongs to the program. Global arguments use the ordinary alias analysis.
   const FunctionDecl &f = *callee;
   // Variadic arguments can also carry addresses of mutable data.
   for (unsigned i = f.getNumParams(); i < c.getNumArgs(); ++i)
