@@ -182,6 +182,11 @@ void OutputHandler::isPragmaValid(const StmtOrder &instructionsOrderManager,
 
     auto instrPair = instructionGroup.begin();
     auto instr = instrPair->first;
+    auto node = instructionsOrderManager.getNode(instr);
+    if (node && node->instructionPtr.front()->synchronous) {
+      addPragma.setTaskFalse();
+      return; // An unconditional taskwait precedes the preserved statement.
+    }
     // Instruction is a declaration, so no task can be created
     if (isa<DeclStmt>(instr)) {
       addPragma.setTaskFalse();
@@ -259,6 +264,9 @@ std::string OutputHandler::createPragmaTaskWait(
   std::string dependString = createDependsString(node);
   */
   std::string dependString;
+  auto node = instructionsOrderManager.getNode(instr);
+  if (node && node->instructionPtr.front()->synchronous)
+    return ssPrint.str();
   if (isa<IfStmt>(instr)) {
     auto ifSt = cast<IfStmt>(instr);
     dependString = createDependsString(instructionsOrderManager.getNode(ifSt));
@@ -273,7 +281,7 @@ std::string OutputHandler::createPragmaTaskWait(
     }
   }
   if (!dependString.empty())
-    ssPrint << "depend (inout:" << dependString << ")";
+    ssPrint << "depend (inout: " << dependString << ")";
   return ssPrint.str();
 }
 std::string
@@ -355,20 +363,20 @@ OutputHandler::createDependsString(const std::shared_ptr<Node> &node) const {
   // always the first one)
 
   if (inOutSet.size() > 0) {
-    ssPrint << " depend (inout:";
+    ssPrint << " depend (inout: ";
     for (auto it = inOutSet.begin(); it != inOutSet.end(); ++it) {
       if (it != inOutSet.begin())
         ssPrint << ",";
-      ssPrint << (*it)->varAsString();
+      ssPrint << (*it)->dependencyAsString();
     }
     ssPrint << ") ";
   }
   if (inSet.size() > 0) {
-    ssPrint << " depend (in:";
+    ssPrint << " depend (in: ";
     for (auto it = inSet.begin(); it != inSet.end(); ++it) {
       if (it != inSet.begin())
         ssPrint << ",";
-      ssPrint << (*it)->varAsString();
+      ssPrint << (*it)->dependencyAsString();
     }
     ssPrint << ") ";
   }
@@ -428,7 +436,7 @@ OutputHandler::createTaskwaitIndexes(const std::shared_ptr<Node> &node) const {
     }
   }
   if (!firstPrivateSet.empty()) {
-    ssPrint << "#pragma omp taskwait depend (in: ";
+    ssPrint << "#pragma omp taskwait depend (in:  ";
     for (auto &firstPrivate : firstPrivateSet) {
       if (firstPrivate != *firstPrivateSet.begin())
         ssPrint << ",";

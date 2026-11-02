@@ -3,7 +3,7 @@
 int counter = 0;
 
 const int nb_cores = omp_get_max_threads();
-const int parallel_depth = ffs(nb_cores);
+const int parallel_depth = ffs(nb_cores); // log2(nb_cores);
 int __apac_depth = 0;
 #pragma omp threadprivate(__apac_depth)
 const static int __apac_depth_max = parallel_depth;
@@ -30,25 +30,18 @@ int main() {
   int __apac_depth_ok = (__apac_depth_local < __apac_depth_max);
   if (__apac_depth_ok) {
 
-#pragma omp taskgroup
+    int a;
+
+    int b;
+
+#pragma omp task default(shared) firstprivate(__apac_depth_local)
     {
-
-      int a;
-
-#pragma omp task default(shared) firstprivate(__apac_depth_local)
-      {
-        __apac_depth = __apac_depth_local + 1;
-        a = increment(1);
-      }
-
-      int b;
-
-#pragma omp task default(shared) firstprivate(__apac_depth_local)
-      {
-        __apac_depth = __apac_depth_local + 1;
-        b = increment(2);
-      }
+      __apac_depth = __apac_depth_local + 1;
+      a = increment(1);
+      b = increment(2);
     }
+
+#pragma omp taskwait
     return a + b + counter;
   } else {
     return main_apacSeq();

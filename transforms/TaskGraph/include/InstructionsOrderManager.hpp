@@ -40,7 +40,7 @@ struct StmtOrder {
   // The key is the group number, the value is the corresponding node
   NodesGroupMap nodesGroup;
   StmtOrder() : isLooped(false) {}
-  inline void addInstructionToManager(const Stmt *key) {
+  inline void addInstructionToManager(const Stmt *key, bool synchronous = false) {
     instructionLinks.insert({key, groupCounter});
     std::set<std::pair<const Stmt *, std::shared_ptr<StmtOrder>>,
              SmallerBeginLocation>
@@ -48,14 +48,8 @@ struct StmtOrder {
     instructionGroups.insert({groupCounter, temp});
     // Looped stmts are treated differently
     std::shared_ptr<StmtOrder> tempOrder;
-    if (isa<ForStmt>(key)) {
-      tempOrder = std::make_shared<StmtOrder>();
-      tempOrder->isLooped = true;
-    }
-    // All of the other non loops instructions adding a new scope (CompoundStmt
-    // might be better to use, but it might lead to other issues with other
-    // elements)
-    else if (isa<IfStmt>(key) || isa<CompoundStmt>(key)) {
+    // Loops are preserved as synchronous statements, without a task sub-order.
+    if (!synchronous && (isa<IfStmt>(key) || isa<CompoundStmt>(key))) {
       tempOrder = std::make_shared<StmtOrder>();
     }
     instructionGroups.at(groupCounter++).insert({{key, tempOrder}});

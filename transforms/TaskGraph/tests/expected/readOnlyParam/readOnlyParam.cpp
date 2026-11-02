@@ -11,35 +11,33 @@ long sum_reduce(int *data, int start, int end) {
   int __apac_depth_ok = (__apac_depth_local < __apac_depth_max);
   if (__apac_depth_ok) {
 
-#pragma omp taskgroup
-    {
+    if (end - start <= 1) {
+    }
 
-      if (end - start <= 1) {
-      }
-
-      int mid;
+    int mid;
 
 #pragma omp task default(shared) depend(inout : mid)
-      { mid = start + (end - start) / 2; }
+    { mid = start + (end - start) / 2; }
 
-      long left;
+    long left;
 
 #pragma omp task default(shared) depend(in : start, mid)                       \
     firstprivate(__apac_depth_local)
-      {
-        __apac_depth = __apac_depth_local + 1;
-        left = sum_reduce(data, start, mid);
-      }
+    {
+      __apac_depth = __apac_depth_local + 1;
+      left = sum_reduce(data, start, mid);
+    }
 
-      long right;
+    long right;
 
 #pragma omp task default(shared) depend(in : end, mid)                         \
     firstprivate(__apac_depth_local)
-      {
-        __apac_depth = __apac_depth_local + 1;
-        right = sum_reduce(data, mid, end);
-      }
+    {
+      __apac_depth = __apac_depth_local + 1;
+      right = sum_reduce(data, mid, end);
     }
+
+#pragma omp taskwait
     return left + right;
   } else {
     return sum_reduce_apacSeq(data, start, end);

@@ -32,6 +32,8 @@ struct Instruction {
   // Mostly used when an instruction requires a taskwait (delete,
   // complexInstructions)
   bool noFusion = false;
+  // Execute in the encountering thread after waiting for earlier tasks.
+  bool synchronous = false;
 
   unsigned int scopedInstructionsNumber; // Also takes in account number of
                                          // instructions in ComplexInstructions

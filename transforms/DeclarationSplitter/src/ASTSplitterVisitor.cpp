@@ -64,7 +64,9 @@ bool ASTSplitterVisitor::VisitDeclStmt(DeclStmt *declSt) {
 void ASTSplitterVisitor::stringVarDecl(VarDecl *v,
                                        std::stringstream &SSprintDecl,
                                        std::stringstream &SSprintInit) {
-  if (!isValidSeparation(v)) {
+  // A constexpr initializer is required for constant evaluation and cannot be
+  // moved into a later assignment (including constexpr references).
+  if (v->isConstexpr() || !isValidSeparation(v)) {
     SSprintDecl << getCompleteVarDeclStr(v);
   } else if (isReferenceQualType(v->getType())) {
     const QualType &qType =

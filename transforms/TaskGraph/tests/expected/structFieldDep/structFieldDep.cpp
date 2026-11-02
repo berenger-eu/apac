@@ -40,21 +40,19 @@ int main() {
   int __apac_depth_ok = (__apac_depth_local < __apac_depth_max);
   if (__apac_depth_ok) {
 
-#pragma omp taskgroup
-    {
+    Point s;
 
-      Point s;
-
-      int result;
+    int result;
 
 #pragma omp task default(shared) firstprivate(__apac_depth_local)
-      {
-        __apac_depth = __apac_depth_local + 1;
-        s.x = computeX(3);
-        s.y = computeY(7);
-        result = s.x + s.y;
-      }
+    {
+      __apac_depth = __apac_depth_local + 1;
+      s.x = computeX(3);
+      s.y = computeY(7);
+      result = s.x + s.y;
     }
+
+#pragma omp taskwait
     return result;
   } else {
     return main_apacSeq();

@@ -263,6 +263,21 @@ cd ..
 bash scripts/run-tests.sh
 ```
 
+DeclarationSplitter and TaskGraph snapshots check tool exit codes, normalized
+source, and compiler ASTs. TaskGraph also compiles every snapshot with OpenMP
+enabled and requires both DOT graphs. Failed diagnostics are retained under
+`transforms/<Transformation>/tests/results/`; these two suites have no exclusions.
+The global runner additionally checks transformed programs at `-O0` and `-O2`
+with 1, 2, and 4 OpenMP threads, and verifies that broken tools, invalid C++, and
+missing graphs cannot produce successful snapshot tests.
+
+TaskGraph currently preserves loops (`for`, `while`, `do`, range-for) as
+synchronous statements after waiting for earlier tasks. The remainder of that
+function also stays sequential, because a loop can change pointer aliases.
+Parallelizing loop bodies requires explicit loop-carried dependency analysis.
+Calls conservatively depend on file-scope globals accessed by their bodies and
+transitive direct callees; this may serialize calls that only read a global.
+
 Individual transformation test suites can also be run directly, for example:
 
 ```bash

@@ -44,6 +44,14 @@ public:
   }
 
   bool TraverseFunctionDecl(FunctionDecl *f);
+  bool dataTraverseStmtPre(Stmt *s) {
+    if (sequentialTail_ && !isa<CompoundStmt>(s) && !isa<DeclStmt>(s) &&
+        !isa<ReturnStmt>(s)) {
+      traverseSynchronous(s);
+      return false;
+    }
+    return true;
+  }
   // Calls respective handle method
 
   inline bool TraverseCXXMemberCallExpr(CXXMemberCallExpr *c) {
@@ -62,6 +70,8 @@ public:
     return traverseSimpleElements(bop);
   }
   inline bool TraverseCXXDeleteExpr(CXXDeleteExpr *d) {
+    if (sequentialTail_)
+      return traverseSynchronous(d);
     if (isInHeaders(TheRewriter.getSourceMgr(), d->getBeginLoc()))
       return true;
     if (!ignoreStmtPragma)
@@ -88,6 +98,11 @@ public:
   }
 
   bool TraverseForStmt(ForStmt *f);
+  bool TraverseWhileStmt(WhileStmt *s) { return traverseSynchronous(s); }
+  bool TraverseDoStmt(DoStmt *s) { return traverseSynchronous(s); }
+  bool TraverseCXXForRangeStmt(CXXForRangeStmt *s) {
+    return traverseSynchronous(s);
+  }
   bool TraverseIfStmt(IfStmt *i);
   const auto &getTaskGraphs() { return functionsInstructionsVector; }
   std::vector<std::vector<Instruction>> functionsInstructionsVector;
@@ -100,6 +115,11 @@ public:
   }
 
 private:
+  // Until loop-carried aliases/dependencies are modeled, keep the loop and
+  // the remainder of this function sequential. In particular, do not use an
+  // alias table computed before a loop that may rebind a pointer.
+  bool sequentialTail_ = false;
+  bool traverseSynchronous(Stmt *s);
   // Add all read dependencies of an expression to the instruction
   void addDependenciesRead(Instruction &instr, const Expr *e);
 
@@ -122,6 +142,8 @@ private:
     }
   }
   inline bool traverseSimpleElements(Stmt *s) {
+    if (sequentialTail_)
+      return traverseSynchronous(s);
     if (isInHeaders(TheRewriter.getSourceMgr(), s->getBeginLoc()))
       return true;
     if (!ignoreStmtPragma)

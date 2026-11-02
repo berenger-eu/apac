@@ -34,6 +34,13 @@ if python3 "$repoRoot/scripts/regression.py" --build-dir "$buildDir"; then
     ((countPassed++))
 fi
 
+for regression in taskgraph-regression.py snapshot-runner-regression.py; do
+    ((countTotal++))
+    if python3 "$repoRoot/scripts/$regression"; then
+        ((countPassed++))
+    fi
+done
+
 echo -e "${BLUE}${BOLD}Test suite passed : $countPassed/$countTotal ${NC}"
 if [ $countPassed != $countTotal ]; then
     exit 1

@@ -24,18 +24,24 @@ int main() {
   int __apac_depth_ok = (__apac_depth_local < __apac_depth_max);
   if (__apac_depth_ok) {
 
-#pragma omp taskgroup
-    {
-      int sum;
-      sum = 0;
-      int i;
-      i = 0;
-      for (; i < 5; i++) {
-        int tmp;
-        tmp = work(i);
-        sum = sum + tmp;
-      }
-    }
+    int sum;
+
+#pragma omp task default(shared)
+    { sum = 0; }
+
+    int i;
+
+#pragma omp task default(shared)
+    { i = 0; }
+
+#pragma omp taskwait
+    for (; i < 5; i++) {
+      int tmp;
+      tmp = work(i);
+      sum = sum + tmp;
+    };
+
+#pragma omp taskwait
     return sum;
   } else {
     return main_apacSeq();

@@ -72,6 +72,29 @@ void handleFunctionTaskGroup(Rewriter &TheRewriter, FunctionDecl *f,
   SSprintAfter.clear();
 
   if (f->hasBody()) {
+    // Standalone TaskGraph inputs may not have GotoRet's outer __result
+    // declaration. A taskgroup scope would hide locals used by the return.
+    // In that case keep the function scope and wait for its child tasks.
+    if (returnStmt && returnStmt->getRetValue()) {
+      bool needsFunctionScope = false;
+      auto children = f->getBody()->children();
+      const Stmt *first = children.empty() ? nullptr : *children.begin();
+      for (const auto *ref : getAllDeclRefExprInsideExpr(returnStmt->getRetValue())) {
+        const auto *var = dyn_cast<VarDecl>(ref->getDecl());
+        if (!var || !var->isLocalVarDecl() || var->getDeclContext() != f)
+          continue;
+        bool outerResult = false;
+        if (const auto *decl = dyn_cast_or_null<DeclStmt>(first))
+          outerResult = decl->isSingleDecl() && decl->getSingleDecl() == var &&
+                        var->getNameAsString().find("__result") != std::string::npos;
+        needsFunctionScope |= !outerResult;
+      }
+      if (needsFunctionScope) {
+        TheRewriter.InsertText(returnStmt->getBeginLoc(), "\n#pragma omp taskwait\n");
+        SSprintAfter << curAfter;
+        return;
+      }
+    }
     if (returnStmt == nullptr)
       SSprintAfter << "}\n";
     else

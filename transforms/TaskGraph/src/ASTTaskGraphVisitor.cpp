@@ -445,6 +445,35 @@ void ASTTaskGraphVisitor::handleCallExpr(const CallExpr &c,
       handleStmt(*arg, curInstr, true);
     return;
   }
+  // A call also accesses the globals used by its body and callees. Treat
+  // these conservatively as read/write until we have a precise effect summary.
+  // The visited set terminates recursive and mutually recursive call graphs.
+  std::unordered_set<const FunctionDecl *> visited;
+  std::vector<const Stmt *> pending;
+  auto enqueueBody = [&](const FunctionDecl *function) {
+    if (function && visited.insert(function->getCanonicalDecl()).second)
+      if (const auto *body = function->getBody())
+        pending.push_back(body);
+  };
+  enqueueBody(callee);
+  while (!pending.empty()) {
+    const Stmt *statement = pending.back();
+    pending.pop_back();
+    if (const auto *ref = dyn_cast<DeclRefExpr>(statement)) {
+      if (const auto *global = dyn_cast<VarDecl>(ref->getDecl())) {
+        if (global->isFileVarDecl()) {
+          auto alias = aliasTable.getOrAddAliasArg(global, getAliasType(global));
+          addDependencyRead(curInstr, alias);
+          addDependencyWrite(curInstr, alias);
+        }
+      }
+    }
+    if (const auto *call = dyn_cast<CallExpr>(statement))
+      enqueueBody(call->getDirectCallee());
+    for (const auto *child : statement->children())
+      if (child)
+        pending.push_back(child);
+  }
   const FunctionDecl &f = *callee;
   // Variadic arguments can also carry addresses of mutable data.
   for (unsigned i = f.getNumParams(); i < c.getNumArgs(); ++i)
@@ -557,60 +586,36 @@ void ASTTaskGraphVisitor::handleStmt(const Stmt &st, Instruction &instr,
 bool ASTTaskGraphVisitor::TraverseFunctionDecl(FunctionDecl *f) {
   if (functionsConditions(f)) {
     functionsInstructionsVector.push_back(std::vector<Instruction>());
-    return RecursiveASTVisitor::TraverseFunctionDecl(f);
+    bool previous = sequentialTail_;
+    sequentialTail_ = false;
+    bool result = RecursiveASTVisitor::TraverseFunctionDecl(f);
+    sequentialTail_ = previous;
+    return result;
   }
   return true;
 }
 
-bool ASTTaskGraphVisitor::TraverseForStmt(ForStmt *f) {
-  if (isInHeaders(TheRewriter.getSourceMgr(), f->getBeginLoc()))
+bool ASTTaskGraphVisitor::traverseSynchronous(Stmt *s) {
+  if (isInHeaders(TheRewriter.getSourceMgr(), s->getBeginLoc()))
     return true;
-  bool res = true;
+  sequentialTail_ = true;
+  currentOrderManager->addInstructionToManager(s, true);
+  Instruction instr(s, getStmtAsStringFull(s, TheRewriter.getLangOpts()));
+  instr.noFusion = true;
+  instr.synchronous = true;
+  functionsInstructionsVector.back().push_back(instr);
+  // Preserve control flow as a whole: the header, break/continue and nested
+  // declarations must not be rewritten as independent OpenMP tasks.
+  return true;
+}
 
-  bool oldValIgnore = ignoreStmtPragma;
-  StmtOrder *outerInstrOrder = currentOrderManager;
-  if (!ignoreStmtPragma)
-    currentOrderManager->addInstructionToManager(f);
-  if (currentOrderManager->getSubStmtOrder(f) != nullptr)
-    currentOrderManager = (outerInstrOrder->getSubStmtOrder(f)).get();
-  llvm::errs() << ((outerInstrOrder->getSubStmtOrder(f)).get() == nullptr)
-               << "End ForStmt\n";
-  Instruction compInstr(f, getStmtAsString(f, TheRewriter.getLangOpts()), true,
-                        0);
-  compInstr.noFusion = true;
-  functionsInstructionsVector.push_back(std::vector<Instruction>());
-  ignoreStmtPragma = true;
-  if (!(RecursiveASTVisitor::TraverseStmt(f->getCond()) &&
-        RecursiveASTVisitor::TraverseStmt(f->getInc()) &&
-        RecursiveASTVisitor::TraverseStmt(f->getInit()))) {
-    ignoreStmtPragma = oldValIgnore;
-    return false;
-  }
-  ignoreStmtPragma = false;
-  if (!RecursiveASTVisitor::TraverseStmt(f->getBody())) {
-    ignoreStmtPragma = oldValIgnore;
-    return false;
-  }
-  ignoreStmtPragma = oldValIgnore;
-  currentOrderManager = outerInstrOrder;
-
-  compInstr.scopedInstructions = functionsInstructionsVector.back();
-  for (auto &instr : compInstr.scopedInstructions) {
-    for (auto &dep : instr.dependencies) {
-      compInstr.dependencies.insert(dep);
-    }
-    if (instr.complexInstruction) {
-      compInstr.scopedInstructionsNumber += instr.scopedInstructions.size();
-    }
-    compInstr.scopedInstructionsNumber++;
-  }
-  functionsInstructionsVector.pop_back();
-  functionsInstructionsVector.back().push_back(compInstr);
-
-  return res;
+bool ASTTaskGraphVisitor::TraverseForStmt(ForStmt *f) {
+  return traverseSynchronous(f);
 }
 // TODO: refacto
 bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt *i) {
+  if (sequentialTail_)
+    return traverseSynchronous(i);
   if (isInHeaders(TheRewriter.getSourceMgr(), i->getBeginLoc()))
     return true;
   bool res = true;

@@ -3,13 +3,35 @@ int aliasArg::curId = 0;
 
 std::string aliasArg::varAsString() const {
   std::stringstream ssRes;
-  ssRes << declaration.getNameAsString();
+  // Globals must remain unambiguous at call sites, including namespaces
+  // and local variables that shadow a global name.
+  if (declaration.isFileVarDecl()) {
+    std::string qualified;
+    PrintingPolicy policy(declaration.getASTContext().getLangOpts());
+    policy.SuppressUnwrittenScope = true; // Anonymous namespaces are not spellable.
+    llvm::raw_string_ostream stream(qualified);
+    declaration.printQualifiedName(stream, policy);
+    ssRes << "::" << stream.str();
+  } else {
+    ssRes << declaration.getNameAsString();
+  }
   if (!hasUnknownIndex)
     for (const auto &index : indexes)
       ssRes << "[" << index << "]";
   else
     ssRes << indexString;
   return ssRes.str();
+}
+
+std::string aliasArg::dependencyAsString() const {
+  std::string locator = varAsString();
+  if (!indexes.empty() && !declaration.getType()->isReferenceType() &&
+      isReferenceQualType(declaration.getType())) {
+    // OpenMP array locators require an actual pointer/array base. Unlike
+    // ordinary C++ indexing, they do not convert reference_wrapper implicitly.
+    locator.insert(locator.find('['), ".get()");
+  }
+  return locator;
 }
 
 std::string aliasArg::dumpAsStr() const {

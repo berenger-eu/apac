@@ -57,6 +57,7 @@ struct aliasArg {
       }
   }
   std::string varAsString() const;
+  std::string dependencyAsString() const;
   std::string dumpAsStr() const;
   inline void dump() const { llvm::errs() << dumpAsStr(); }
   // Get the key of the aliasArg (used for the map when there are unknown

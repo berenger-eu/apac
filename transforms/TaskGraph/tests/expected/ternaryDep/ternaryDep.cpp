@@ -24,37 +24,35 @@ int main() {
   int __apac_depth_ok = (__apac_depth_local < __apac_depth_max);
   if (__apac_depth_ok) {
 
-#pragma omp taskgroup
-    {
-
-      int a;
+    int a;
 
 #pragma omp task default(shared) depend(inout : a)
-      { a = 5; }
+    { a = 5; }
 
-      int b;
+    int b;
 
 #pragma omp task default(shared) depend(inout : b)                             \
     firstprivate(__apac_depth_local)
-      {
-        __apac_depth = __apac_depth_local + 1;
-        b = heavy(3);
-      }
+    {
+      __apac_depth = __apac_depth_local + 1;
+      b = heavy(3);
+    }
 
-      int c;
+    int c;
 
 #pragma omp task default(shared) depend(inout : c)                             \
     firstprivate(__apac_depth_local)
-      {
-        __apac_depth = __apac_depth_local + 1;
-        c = heavy(7);
-      }
+    {
+      __apac_depth = __apac_depth_local + 1;
+      c = heavy(7);
+    }
 
-      int result;
+    int result;
 
 #pragma omp task default(shared) depend(in : a, b, c)
-      { result = a > 4 ? b : c; }
-    }
+    { result = a > 4 ? b : c; }
+
+#pragma omp taskwait
     return result;
   } else {
     return main_apacSeq();
