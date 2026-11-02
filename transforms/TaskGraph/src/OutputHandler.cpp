@@ -269,7 +269,8 @@ std::string OutputHandler::createPragmaTaskWait(
     return ssPrint.str();
   if (isa<IfStmt>(instr)) {
     auto ifSt = cast<IfStmt>(instr);
-    dependString = createDependsString(instructionsOrderManager.getNode(ifSt));
+    // createDependsString already includes the depend(...) clauses.
+    return ssPrint.str() + createDependsString(instructionsOrderManager.getNode(ifSt));
   } else if (isa<CXXDeleteExpr>(instr)) {
     auto deleteExpr = cast<CXXDeleteExpr>(instr);
     if (isa<DeclRefExpr>(deleteExpr->getArgument()->IgnoreImpCasts())) {

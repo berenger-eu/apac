@@ -225,7 +225,33 @@ void transitiveReduction(Graph &graph) {
   }
 }
 
+namespace {
+bool containsSynchronization(const Instruction &instruction) {
+  if (instruction.synchronous)
+    return true;
+  for (const auto &child : instruction.scopedInstructions)
+    if (containsSynchronization(child))
+      return true;
+  return false;
+}
+} // namespace
+
 void nodesFusion(Graph &graph) {
+  // Fusion moves earlier instructions to the last instruction's location.
+  // Even unrelated graph nodes must not move across a synchronous statement
+  // (including a loop nested in an if), which observes completed earlier tasks.
+  std::unordered_map<const Node *, unsigned> fusionRegions;
+  unsigned region = 0;
+  for (const auto &node : graph.nodes) {
+    bool boundary = false;
+    for (const auto *instruction : node->instructionPtr)
+      boundary |= containsSynchronization(*instruction);
+    if (boundary)
+      ++region;
+    fusionRegions.emplace(node.get(), region);
+    if (boundary)
+      ++region;
+  }
   std::stack<std::shared_ptr<Node>> toRemove;
   for (long unsigned int i = 0; i < graph.nodes.size(); i++) {
     auto node = graph.nodes[i];
@@ -244,6 +270,7 @@ void nodesFusion(Graph &graph) {
         node->next.size() == 1 && nextNode->prev.size() == 1 &&
         // The same graph (or subgraph), so same scope
         nextNode->graphId == node->graphId &&
+        fusionRegions.at(nextNode.get()) == fusionRegions.at(node.get()) &&
         // The next node is not a complex instruction or a node that should not
         // be fused
         !((nextNode->instructionPtr.size() == 1 &&

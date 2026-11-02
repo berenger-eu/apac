@@ -271,10 +271,14 @@ The global runner additionally checks transformed programs at `-O0` and `-O2`
 with 1, 2, and 4 OpenMP threads, and verifies that broken tools, invalid C++, and
 missing graphs cannot produce successful snapshot tests.
 
-TaskGraph currently preserves loops (`for`, `while`, `do`, range-for) as
-synchronous statements after waiting for earlier tasks. The remainder of that
-function also stays sequential, because a loop can change pointer aliases.
-Parallelizing loop bodies requires explicit loop-carried dependency analysis.
+TaskGraph preserves loops (`for`, `while`, `do`, range-for) as synchronous
+statements after waiting for earlier tasks. Tasks resume after loops proven to
+preserve aliases: currently scalar operations and direct calls whose visible
+bodies also satisfy this restriction. Pointer/reference/object operations, inline
+assembly, TLS/attributed variables and calls without visible bodies retain a
+sequential function tail.
+Fusion cannot move tasks across a synchronization boundary, including one nested
+in an `if`. Parallelizing loop bodies still requires loop-carried dependency analysis.
 Calls conservatively depend on file-scope globals accessed by their bodies and
 transitive direct callees; this may serialize calls that only read a global.
 

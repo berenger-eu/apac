@@ -27,6 +27,9 @@ public:
   void setParamWriteAnalyzer(const ParamWriteAnalyzer *analyzer) {
     paramAnalyzer_ = analyzer;
   }
+  // Variable initializers outside function statements (including TLS globals)
+  // are initialization code, not places where OpenMP tasks can be emitted.
+  inline bool TraverseVarDecl(VarDecl *) { return true; }
   // Traverse methods lets us stop visiting nodes that we don't need
   inline bool TraverseDeclStmt(DeclStmt *d) {
     if (!elementsConditions(d))
@@ -98,6 +101,7 @@ public:
   }
 
   bool TraverseForStmt(ForStmt *f);
+  bool TraverseSwitchStmt(SwitchStmt *s) { return traverseSynchronous(s); }
   bool TraverseWhileStmt(WhileStmt *s) { return traverseSynchronous(s); }
   bool TraverseDoStmt(DoStmt *s) { return traverseSynchronous(s); }
   bool TraverseCXXForRangeStmt(CXXForRangeStmt *s) {
@@ -115,11 +119,11 @@ public:
   }
 
 private:
-  // Until loop-carried aliases/dependencies are modeled, keep the loop and
-  // the remainder of this function sequential. In particular, do not use an
-  // alias table computed before a loop that may rebind a pointer.
+  // An alias-sensitive loop invalidates the pre-loop alias table. Keep its
+  // tail sequential; after a proven alias-preserving loop, task creation resumes.
   bool sequentialTail_ = false;
   bool traverseSynchronous(Stmt *s);
+  bool preservesAliases(const Stmt *statement) const;
   // Add all read dependencies of an expression to the instruction
   void addDependenciesRead(Instruction &instr, const Expr *e);
 

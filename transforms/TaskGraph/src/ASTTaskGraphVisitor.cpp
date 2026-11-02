@@ -461,7 +461,10 @@ void ASTTaskGraphVisitor::handleCallExpr(const CallExpr &c,
     pending.pop_back();
     if (const auto *ref = dyn_cast<DeclRefExpr>(statement)) {
       if (const auto *global = dyn_cast<VarDecl>(ref->getDecl())) {
-        if (global->isFileVarDecl()) {
+        QualType type = global->getType();
+        bool immutableScalar = type.isConstQualified() && !type.isVolatileQualified() &&
+                               (type->isArithmeticType() || type->isEnumeralType());
+        if (global->isFileVarDecl() && !immutableScalar) {
           auto alias = aliasTable.getOrAddAliasArg(global, getAliasType(global));
           addDependencyRead(curInstr, alias);
           addDependencyWrite(curInstr, alias);
@@ -595,10 +598,64 @@ bool ASTTaskGraphVisitor::TraverseFunctionDecl(FunctionDecl *f) {
   return true;
 }
 
+bool ASTTaskGraphVisitor::preservesAliases(const Stmt *root) const {
+  // This deliberately proves only a scalar subset. Pointer/reference/object
+  // operations, inline assembly and calls without a visible body may change
+  // aliases; do not resume tasking using stale alias information in those cases.
+  auto scalarType = [](QualType type) {
+    return type->isArithmeticType() || type->isEnumeralType() ||
+           type->isVoidType() || type->isFunctionType();
+  };
+  auto scalarVariable = [&](const VarDecl *variable) {
+    // TLS initialization and cleanup attributes may invoke code implicitly,
+    // even when the declared value has a scalar type.
+    return scalarType(variable->getType()) &&
+           variable->getTLSKind() == VarDecl::TLS_None && !variable->hasAttrs();
+  };
+  std::vector<const Stmt *> pending{root};
+  std::unordered_set<const FunctionDecl *> visited;
+  while (!pending.empty()) {
+    const Stmt *statement = pending.back();
+    pending.pop_back();
+    if (isa<AsmStmt>(statement) || isa<CXXConstructExpr>(statement))
+      return false;
+    if (const auto *expr = dyn_cast<Expr>(statement)) {
+      const auto *cast = dyn_cast<ImplicitCastExpr>(expr);
+      // Direct calls contain a function-to-pointer decay even when no mutable
+      // pointer is involved. Indirect calls are rejected below.
+      bool directFunctionDecay =
+          cast && cast->getCastKind() == CK_FunctionToPointerDecay;
+      if (!directFunctionDecay && !scalarType(expr->getType()))
+        return false;
+    }
+    if (const auto *ref = dyn_cast<DeclRefExpr>(statement))
+      if (const auto *variable = dyn_cast<VarDecl>(ref->getDecl()))
+        if (!scalarVariable(variable))
+          return false;
+    if (const auto *declarations = dyn_cast<DeclStmt>(statement))
+      for (const auto *declaration : declarations->decls())
+        if (const auto *variable = dyn_cast<VarDecl>(declaration))
+          if (!scalarVariable(variable))
+            return false;
+    if (const auto *call = dyn_cast<CallExpr>(statement)) {
+      const auto *callee = call->getDirectCallee();
+      if (!callee || !callee->getBody())
+        return false;
+      if (visited.insert(callee->getCanonicalDecl()).second)
+        pending.push_back(callee->getBody());
+    }
+    for (const auto *child : statement->children())
+      if (child)
+        pending.push_back(child);
+  }
+  return true;
+}
+
 bool ASTTaskGraphVisitor::traverseSynchronous(Stmt *s) {
   if (isInHeaders(TheRewriter.getSourceMgr(), s->getBeginLoc()))
     return true;
-  sequentialTail_ = true;
+  // Calls to this helper after an uncertain loop must never clear the fallback.
+  sequentialTail_ = sequentialTail_ || !preservesAliases(s);
   currentOrderManager->addInstructionToManager(s, true);
   Instruction instr(s, getStmtAsStringFull(s, TheRewriter.getLangOpts()));
   instr.noFusion = true;
@@ -614,7 +671,9 @@ bool ASTTaskGraphVisitor::TraverseForStmt(ForStmt *f) {
 }
 // TODO: refacto
 bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt *i) {
-  if (sequentialTail_)
+  if (sequentialTail_ ||
+      (i->getThen() && !isa<CompoundStmt>(i->getThen())) ||
+      (i->getElse() && !isa<CompoundStmt>(i->getElse())))
     return traverseSynchronous(i);
   if (isInHeaders(TheRewriter.getSourceMgr(), i->getBeginLoc()))
     return true;
