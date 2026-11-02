@@ -84,3 +84,6 @@ Run `python3 scripts/array-phase-regression.py` to compare sequential and transf
 execution at `-O0`/`-O2` with 1, 2 and 4 OpenMP workers. The suite also checks the
 whole-read transition, structural independence of element tasks, aliases,
 rebinding, partition epochs, wrapper locators and the full compilation pipeline.
+
+For recursive algorithms, runtime sizes, complete-buffer comparisons and UBSan,
+see [Integration validation](validation.md).

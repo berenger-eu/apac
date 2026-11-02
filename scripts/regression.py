@@ -178,12 +178,15 @@ int main() {
   static_assert(ref == 5 && values[1] == 9);
   int initialized[] = {3, 4};
   int empty[2] = {};
+  int (*callback)(int) = square;
+  int (*row)[2] = &empty;
   int array[a + b];
   array[13] = 42;
-  return array[13] != 42 || initialized[1] != 4 || empty[1] != 0;
+  return array[13] != 42 || initialized[1] != 4 || empty[1] != 0
+         || callback(3) != 9 || (*row)[1] != 0;
 }
 """)
-    checks.append('DeclarationSplitter: constexpr values, grouped declarations, arrays and references')
+    checks.append('DeclarationSplitter: constexpr values, grouped declarations, arrays, references and complex declarators')
 
     # Failed parsing must leave an in-place input intact.
     invalid = folder / 'invalid.cpp'

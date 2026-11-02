@@ -53,7 +53,9 @@ cd transforms/TaskGraph/tests && bash test.sh
 Tests compare the actual APAC output against reference files in `tests/expected/`.
 A test is considered passing when the AST, text, and task-graph outputs all match.
 
-Known failures are listed in each `test.sh` with `knownFailures=(...)` but not counted against the exit code, following TDD conventions.
+The complete suite also compares sequential and transformed execution. See
+[Integration validation](docs/validation.md) for the recursive/array validation
+matrix, UBSan configuration, and commands to reproduce individual cases.
 
 ## Coding Standards
 

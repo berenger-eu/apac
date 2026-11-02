@@ -296,7 +296,10 @@ void ASTTaskGraphVisitor::handleBinaryAssignment(const BinaryOperator &bop,
   // setLeftVars.insert(v);
   computeAliasesForRHS(bop.getLHS(), aliasesLeft, curInstr);
   // aliasTable.getModifiedVariables(setLeftVars,depth);
-  if (isPointerQualType(bop.getLHS()->getType())) {
+  // A function pointer has mutable pointer storage, but its target is code,
+  // not a data object whose aliases belong in the pointee table.
+  if (isPointerQualType(bop.getLHS()->getType()) &&
+      !bop.getLHS()->getType()->isFunctionPointerType()) {
     handlePointersBinaryAssignment(bop, curInstr, mainVariable, declOrArrayExpr,
                                    aliasesLeft);
   }
@@ -506,6 +509,10 @@ void ASTTaskGraphVisitor::handleStmt(const Stmt &st, Instruction &instr,
 
     auto curExp = (cast<Expr>(st).IgnoreParenImpCasts());
     if (isa<DeclRefExpr>(curExp)) {
+      // Function symbols (including &function in callback assignments) do not
+      // denote mutable variable storage and cannot be represented by aliasArg.
+      if (!isa<VarDecl>(cast<DeclRefExpr>(curExp)->getDecl()))
+        return;
       // const VarDecl *v =
       // cast<VarDecl>(cast<DeclRefExpr>(curExp)->getDecl());
       auto alias = aliasTable.getOrAddAliasArg(curExp);

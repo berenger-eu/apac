@@ -164,7 +164,7 @@ std::string OutputHandler::modifiedStringForInstruction(
   bool isSecond = false;
   for (auto instrSubGroups : instructionsOrderManager.instructionGroups) {
     if (isSecond && instr->getElse() != nullptr)
-      ssPrint << "} else {";
+      ssPrint << "} else {\n";
     ssPrint << modifyGroup(instructionsOrderManager, instrSubGroups.second,
                            false);
     isSecond = true;

@@ -48,12 +48,16 @@ std::string getVarDeclDeclDefStr(VarDecl *v) {
   return SSresult.str();
 }
 std::string getVarDeclDeclStr(VarDecl *v) {
-  std::stringstream SSresult;
-  // type varName
-  SSresult << v->getType().getAsString() << " " << v->getNameAsString()
-           << ";\n";
-  return SSresult.str();
+  std::string result;
+  llvm::raw_string_ostream output(result);
+  PrintingPolicy policy(v->getASTContext().getLangOpts());
+  // The variable name belongs inside complex declarators: void (*f)(int),
+  // int (*row)[4], etc. Appending it to the printed type produces invalid C++.
+  v->getType().print(output, policy, v->getNameAsString());
+  output << ";\n";
+  return output.str();
 }
+
 std::string getStmtAsString(const Stmt *statement, const LangOptions &langOpt,
                             bool noSemi) {
   if (!statement)
