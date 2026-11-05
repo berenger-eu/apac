@@ -66,23 +66,14 @@ public:
   }
 
 private:
-  // To look through nodes for recursive calls, we need to remember the last
-  // instruction To place the depth incrementation before the recursive call
+  // Visit function-body children once; handleStmt collects individual calls.
   inline void traverseTree(Stmt *st) {
     if (st == nullptr)
       return;
     for (auto child : st->children())
       handleStmt(child);
   }
-  // To look for recursive calls in the given statement, true when there is one
-  // or more
-  bool lookForRecCall(Stmt *st);
-  // To handle the given statement, by default, it looks for recursive calls in
-  // it and its children
-  // Then adds it to the list of statements with recursive calls
-  // For specific cases (ifs, fors, etc), the handling varies so that the
-  // incrementation is done before the correct Statement (which can be before
-  // the if, in the if, in the else, etc)
+  // Collect recursive call expressions in postorder.
   void handleStmt(Stmt *st);
   std::vector<FunctionDecl *> functionsToModify;
   std::vector<Stmt *> recursiveCallsStatements;

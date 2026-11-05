@@ -4,14 +4,16 @@ import argparse
 import csv
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 
 ROOT=Path(__file__).resolve().parents[1]
-NAMES=('fibonacci','quicksort','mergesort','nqueens','dotproduct','matmul','nbody','jacobi')
+NAMES=('fibonacci','quicksort','mergesort','nqueens','matmul','nbody','jacobi')
 
 
 def main():
@@ -26,24 +28,43 @@ def main():
         return p.stdout
     try:
         bundle=work/'prepared'
-        run([sys.executable,ROOT/'benchmarks/benchmark.py','prepare','--output-dir',bundle,'--build-dir',args.build_dir.resolve()])
+        archive=work/'apac-benchmarks.tar.gz'
+        run([sys.executable,ROOT/'benchmarks/benchmark.py','prepare','--output-dir',bundle,
+             '--build-dir',args.build_dir.resolve(),'--archive',archive])
         # Use only the copied script and relative manifest paths. Running this
         # step does not need APAC or this checkout's sources on the target host.
-        portable=work/'transported'; shutil.copytree(bundle,portable)
-        run([sys.executable,portable/'run.py','run','--output-dir',portable,'--profile','smoke',
+        with tarfile.open(archive, 'r:gz') as packaged:
+            packaged.extractall(work/'transported', filter='data')
+        portable=work/'transported'/bundle.name
+        for name in NAMES:
+            for filename in ('kernel.cpp','APACkernel.cpp'):
+                assert (portable/name/filename).read_bytes()==(bundle/name/filename).read_bytes()
+        print('PASS: archive contains the original and generated sources for all seven benchmarks',flush=True)
+        for name,callee in (('matmul','multiply_tile'),('nbody','body_acceleration'),('jacobi','relax_rows')):
+            source=(portable/name/'kernel.cpp').read_text()
+            transformed=(portable/name/'APACkernel.cpp').read_text()
+            assert 'for (' in source and callee in source,(name,source)
+            assert 'benchmark_kernel' not in source and '_apacSeq' not in source,(name,source)
+            assert '__apac_depth_guard __apac_loop_depth' in transformed,(name,transformed)
+            assert re.search(r'__apac_loop_depth[^}]*'+callee,transformed),(name,transformed)
+        print('PASS: readable standalone kernels generate dependent call tasks in loops',flush=True)
+        run([sys.executable,portable/'run.py','run','--output-dir',portable,'--cases',*NAMES,'--profile','smoke',
              '--threads','1','2','4','--repeat','1','--warmups','0',
              '--cxxflags=-O1 -fsanitize=undefined -fno-sanitize-recover=all'],
-             env={**os.environ,'APAC_BUILD_DIR':'/nonexistent-build','OMP_WAIT_POLICY':'PASSIVE'})
+             env={**os.environ,'APAC_BUILD_DIR':'/nonexistent-build','OMP_WAIT_POLICY':'PASSIVE','APAC_DEPTH_MAX':'8'})
         results=list((portable/'results').iterdir())
         assert len(results)==1
         report=json.loads((results[0]/'report.json').read_text())
+        assert report['metadata']['environment']['APAC_DEPTH_MAX']=='8'
         assert report['complete'] is True
-        assert len(report['samples'])==44 and len(report['summary'])==44
+        assert len(report['samples'])==40 and len(report['summary'])==40
         assert set(report['bundle']['benchmarks'])==set(NAMES)
+        assert 'nqueens' not in report['bundle']['default_cases']
+        assert 'dotproduct' not in report['bundle']['benchmarks']
         with (results[0]/'samples.csv').open() as stream:
-            assert len(list(csv.DictReader(stream)))==44
+            assert len(list(csv.DictReader(stream)))==40
         assert all(row['verified'] and row['team_threads']==row['threads'] for row in report['samples'])
-        print('PASS: eight portable benchmarks, four sort distributions, 44 verified samples with UBSan',flush=True)
+        print('PASS: seven portable benchmarks, four sort distributions, 40 verified samples with UBSan',flush=True)
         # Exercise empty/singleton buffers, odd splits, smallest grids and both
         # ping-pong parities. Timings here have no performance assertion.
         inputs={
@@ -51,7 +72,6 @@ def main():
             'quicksort':[(n,1,1,17,p) for n in (0,1,2,31) for p in range(4)],
             'mergesort':[(n,1,1,17,p) for n in (0,1,2,31) for p in range(4)],
             'nqueens':[(n,1,1,17,0) for n in (0,1,2,4,9)],
-            'dotproduct':[(n,1,1,17,0) for n in (0,1,2,31)],
             'matmul':[(n,1,1,17,0) for n in (0,1,2,7)],
             'nbody':[(n,1,steps,17,0) for n in (1,2,7) for steps in (1,2,3)],
             'jacobi':[(n,1,steps,17,0) for n in (2,3,7) for steps in (1,2,3)],
@@ -74,12 +94,13 @@ def main():
         # original kernel and require the independent sort oracle to reject it.
         run([results[0]/'bin'/'fibonacci-sequential','-1','1','1','17','0'],expect=2)
         bad=work/'bad.cpp'
-        source=(portable/'quicksort'/'kernel.cpp').read_text().replace('quick_sort(keys, n, grain);',
-            'quick_sort(keys, n, grain); if(n>0) keys[0]=2147483647;')
-        assert 'keys[0]=2147483647;' in source
+        source=(portable/'quicksort'/'kernel.cpp').read_text()
         sys.path.insert(0,str(portable))
         import run as runner
-        bad.write_text(source+'\n'+runner.ENTRY)
+        adapter=report['bundle']['benchmarks']['quicksort']['adapter']
+        adapter=adapter.replace('return 0;','if(n>0) keys[0]=2147483647; return 0;')
+        assert 'keys[0]=2147483647;' in adapter
+        bad.write_text(source+'\n'+runner.ENTRY.replace('BENCHMARK_CALL',adapter))
         harness=work/'driver.cpp'; harness.write_text('#include "support.hpp"\n#include "driver.hpp"\n')
         run(['g++','-std=c++17','-O1','-fopenmp','-DBENCH_KIND=1','-I',portable/'quicksort',bad,harness,'-o',work/'bad'])
         run([work/'bad','31','4','1','17','0'],expect=2)

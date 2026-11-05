@@ -194,8 +194,13 @@ std::string OutputHandler::modifiedStringForInstruction(
       if (!isa<CompoundStmt>(instr))
         ssPrint << "}\n";
     }
-  } else
-    ssPrint << getStmtAsStringFull(instr, TheRewriter.getLangOpts()) << "\n";
+  } else {
+    auto node = instructionsOrderManager.getNode(instr);
+    if (node && !node->instructionPtr.front()->loopTaskReplacement.empty())
+      ssPrint << node->instructionPtr.front()->loopTaskReplacement;
+    else
+      ssPrint << getStmtAsStringFull(instr, TheRewriter.getLangOpts()) << "\n";
+  }
   return ssPrint.str();
 }
 std::string
@@ -482,7 +487,7 @@ void OutputHandler::createPragmaString(
                                             addPragma.hasFunctionCall)
                   << "\n{\n";
     if (addPragma.hasFunctionCall)
-      ssPragmaStart << "__apac_depth = __apac_depth_local + 1;\n";
+      ssPragmaStart << "__apac_depth_guard __apac_task_depth(__apac_depth_local + 1);\n";
   } else if (addPragma.isTaskWaitValid)
     ssPragmaStart << createPragmaTaskWait(instructionsOrderManager,
                                           instructionGroup)

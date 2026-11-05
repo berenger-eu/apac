@@ -1,24 +1,25 @@
-#include "support.hpp"
-void gemm_tile(const double *a, const double *b, double *c, int stride,
-               int rows, int cols, int grain) {
-  if (rows > grain) {
-    int m;
-    m = rows / 2;
-    gemm_tile(&a[0], &b[0], &c[0], stride, m, cols, grain);
-    gemm_tile(&a[m * stride], &b[0], &c[m * stride], stride, rows - m, cols,
-              grain);
-  } else if (cols > grain) {
-    int m;
-    m = cols / 2;
-    gemm_tile(&a[0], &b[0], &c[0], stride, rows, m, grain);
-    gemm_tile(&a[0], &b[m], &c[m], stride, rows, cols - m, grain);
-  } else {
-    gemm_leaf_apacSeq(a, b, c, stride, rows, cols);
-  }
+#include <algorithm>
+
+// Update C(i,j) with the product of tiles A(i,k) and B(k,j).
+void multiply_tile(const double *a, const double *b, double *c, int size,
+                   int tile_size, int first_row, int first_column,
+                   int first_inner) {
+  int rows = std::min(tile_size, size - first_row);
+  int columns = std::min(tile_size, size - first_column);
+  int inner = std::min(tile_size, size - first_inner);
+  for (int i = 0; i < rows; ++i)
+    for (int k = 0; k < inner; ++k)
+      for (int j = 0; j < columns; ++j)
+        c[i * size + j] += a[i * size + k] * b[k * size + j];
 }
-unsigned long long benchmark_kernel(int n, int grain, int steps, int *keys,
-                                    int *aux, double *x, double *y, double *z,
-                                    double *tmp) {
-  gemm_tile(x, y, z, n, n, n, grain);
-  return 0;
+void multiply_matrices(const double *a, const double *b, double *c, int size,
+                       int tile_size) {
+  for (int i = 0; i < size; i += tile_size) {
+    for (int j = 0; j < size; j += tile_size) {
+      for (int k = 0; k < size; k += tile_size) {
+        multiply_tile(&a[i * size + k], &b[k * size + j], &c[i * size + j],
+                      size, tile_size, i, j, k);
+      }
+    }
+  }
 }

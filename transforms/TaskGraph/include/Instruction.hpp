@@ -43,6 +43,8 @@ struct Instruction {
   bool noFusion = false;
   // Execute in the encountering thread after waiting for earlier tasks.
   bool synchronous = false;
+  // A validated call loop is generated as one barrier-delimited region.
+  std::string loopTaskReplacement;
   std::string arrayPhaseToken;
   std::vector<ArrayPhaseAccess> arrayAccesses;
   std::set<std::string> arrayAddressInputs;

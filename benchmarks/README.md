@@ -1,9 +1,22 @@
 # APAC classic benchmarks
 
-Eight original implementations are provided in `kernels/`. No benchmark source
-is copied from BOTS. Every measured execution must pass an untimed result check.
+Six benchmarks run by default: Fibonacci, quicksort, mergesort, GEMM, N-body and
+Jacobi. N-Queens remains available explicitly as a sequential-search control.
+Every measured execution must pass an untimed independent result check.
+
+Each `kernels/*.cpp` is an ordinary sequential implementation with descriptive
+parameters and its complete computational helpers. It contains neither OpenMP
+pragmas, APAC-specific names, nor timing-harness arguments. The runner generates
+the opaque timing adapter and records the `--ignore` list selecting sequential
+computational leaves in the manifest. Those choices are outside the algorithm.
+
+The modified Marek/BOTS SparseLU and Moldyn sources and old generated OpenMP
+versions are preserved under `reference/apac-marek/`, with their original license,
+provenance and review findings. They are reference/porting inputs, not measured
+kernels of the current suite. See [the review](reference/apac-marek/README.md).
+
 In a prepared bundle the originals are in `<name>/kernel.cpp` and the generated
-sources in `<name>/APACkernel.cpp`; paths such as `kernels/` and `scripts/` below
+sources in `<name>/APACkernel.cpp`; paths such as `kernels/`, `reference/` and `scripts/` below
 refer to the development checkout.
 
 The previous `readOnlyParam`, `dotProduct` and `callChain` examples are historical
@@ -11,16 +24,26 @@ inputs and are not run by this suite.
 
 | Name | Workload | Size | Meaning of `grain` | Oracle |
 | --- | --- | --- | --- | --- |
-| `fibonacci` | Naive recursive Fibonacci | index, 0–46 | switch to the sequential recursive leaf at `n <= grain` | iterative Fibonacci |
+| `fibonacci` | Naive recursive Fibonacci | index, 0–46 | unused; APAC runtime depth controls tasking | iterative Fibonacci |
 | `quicksort` | Three-way quicksort, middle pivot | number of integers | maximum insertion-sort leaf length | full comparison with `std::sort` |
 | `mergesort` | Recursive merge sort with a separate scratch buffer | number of integers | maximum insertion-sort leaf length | full comparison with `std::sort` |
-| `nqueens` | Bitmask search with recursive enumeration of branches | board dimension, 0–15 | search depth before switching to a sequential subtree | known counts of all solutions |
-| `dotproduct` | Recursive reduction of two initialized vectors | vector length | maximum sequential leaf length | long-double linear reduction |
-| `matmul` | Recursive rectangular tiles, sequential `i,k,j` leaves | square matrix dimension, up to 4096 | maximum leaf rows and columns | full `i,j,k` long-double reference |
-| `nbody` | Direct all-pairs 3D gravity with softening and semi-implicit Euler | particles, 1–32768 | targets per leaf | separate long-double AoS simulation, reversed interaction order |
-| `jacobi` | Five-point 2D stencil, fixed boundaries and two buffers | square grid dimension, 2–8192 | output rows per leaf | long-double stencil, different loop order |
+| `nqueens` | Natural backtracking with a loop over candidate columns (explicit control case) | board dimension, 0–15 | unused | known counts of all solutions |
+| `matmul` | Three nested tile loops, each call accumulates one `(i,j,k)` tile | square matrix dimension, up to 4096 | tile size in all three dimensions | full `i,j,k` long-double reference |
+| `nbody` | Direct all-pairs 3D gravity with velocity-Verlet integration | particles, 1–32768 | unused; one acceleration call per body | long-double AoS Verlet simulation, momentum and center-of-mass invariants |
+| `jacobi` | Five-point 2D stencil, fixed boundaries and two buffers | square grid dimension, 2–8192 | output rows per block | long-double stencil, different loop order |
 
 N-body uses equal masses `1/N`, softening squared `0.001`, and timestep `0.001`.
+The N-body input computes accelerations, advances positions and half-step
+velocities, recomputes accelerations and completes the velocity update. Positions
+and velocities remain in their own arrays. No artificial subdivision of the
+particle vector is introduced to create parallelism.
+
+N-Queens now uses its natural candidate loop instead of recursive enumeration
+invented to spawn tasks. APAC currently cannot parallelize that scalar recursive
+reduction; it is a single-search-task control, excluded from default measurements.
+Use `--cases nqueens` explicitly to include it. Dot product was removed because
+its former subdivision was imposed solely to manufacture independent tasks.
+
 `steps` controls N-body and Jacobi timesteps; other kernels ignore it. All arrays
 are initialized deterministically from a seed. Quicksort runs four distributions
 by default: random, sorted, reverse, and many duplicates. Buffer sentinels detect
@@ -33,7 +56,8 @@ From the repository root, after building APAC:
 
 ```sh
 python3 benchmarks/benchmark.py prepare \
-  --build-dir build --output-dir /tmp/apac-benchmarks
+  --build-dir build --output-dir /tmp/apac-benchmarks \
+  --archive /tmp/apac-benchmarks.tar.gz
 ```
 
 The output directory must be empty. Preparation runs the APAC pipeline on each
@@ -42,7 +66,20 @@ headers, DOT graphs and transformation log. The manifest records hashes of
 sources and APAC, plus the Git revision/dirty status. A failed preparation is
 marked incomplete and cannot be used for measurements.
 
-Transfer the entire directory to the compute machine. It contains `run.py` and
+The optional `--archive` creates a gzip-compressed tar archive containing the
+bundle directory, including both sequential and generated sources. The archive
+must be outside the output directory and must not already exist. It is created
+only after all selected kernels have been prepared successfully. Neither
+preparation nor archiving runs the performance measurements.
+
+Transfer the archive to the compute machine and extract it:
+
+```sh
+tar -xzf apac-benchmarks.tar.gz
+cd apac-benchmarks
+```
+
+Alternatively, transfer the entire prepared directory. It contains `run.py` and
 all sources needed there; **APAC and LLVM are not required on the compute node**.
 Compilation with the target machine's GCC/OpenMP happens during `run`.
 
@@ -72,7 +109,7 @@ A single case can be adjusted independently:
 python3 run.py run --output-dir . --cases matmul \
   --size 1024 --grain 32 --threads 1 8 16 --repeat 7
 python3 run.py run --output-dir . --cases nbody \
-  --size 4096 --grain 64 --steps 16 --threads 1 8 16 --repeat 7
+  --size 4096 --steps 16 --threads 1 8 16 --repeat 7
 python3 run.py run --output-dir . --cases quicksort \
   --size 4000000 --grain 32 --pattern duplicates --seed 42
 ```
@@ -106,12 +143,43 @@ creates the OpenMP team, enters one task-generating thread, and waits for all
 kernel tasks. Kernel and harness are separate translation units with an opaque
 entry call (GCC `noipa`) to keep computation inside the measured interval.
 
-Sequential loops in leaves named `*_apacSeq` are intentionally kept sequential.
-The recursive drivers are transformed. This gives both versions the same
-algorithmic leaf work and a controllable source granularity. APAC's existing
-runtime depth cutoff still applies; changing the thread count may change where
-its sequential fallback starts. These are measurements of the current compiler,
+The sequential inputs contain ordinary function calls. GEMM enumerates `(i,j,k)`
+tile updates: updates of one output tile have the same representative and must
+execute in k order; different output tiles can execute concurrently. N-body
+computes each body's acceleration and performs drift/kick passes on particle
+vectors. Jacobi updates row blocks with a completion between timesteps.
+Fibonacci, quicksort and mergesort retain their naturally recursive algorithms.
+
+The runner selects computational leaves with APAC's `--ignore` option, preserving
+the same leaf implementation in both executables. The adapter is generated after
+transformation, so it consumes no artificial recursive task-depth level.
+APAC's runtime depth cutoff still applies to transformed function calls.
+Its default is `1 + ceil(log2(omp_get_max_threads()))`, computed with integer
+arithmetic. It increases monotonically, including at non-power-of-two thread
+counts (18 gives 6; 36 and 48 give 7). Task-local guards restore the executing
+thread's depth when a task completes.
+
+For a fixed-depth experiment, set the environment before starting the runner:
+
+```sh
+APAC_DEPTH_MAX=8 python3 run.py run --output-dir . --profile standard \
+  --threads 1 2 4 8 16 18 24 32 36 --repeat 7
+```
+
+`APAC_DEPTH_MAX=0` forces the sequential fallback; positive values override the
+automatic depth. Invalid values fail explicitly. The runner records `APAC_*`
+settings in `report.json`, alongside the OpenMP and Slurm environment.
+These are measurements of the current compiler,
 not an optimized hand-written OpenMP implementation.
+
+The first supported call-loop subset accepts integer induction/control locals,
+void direct calls with scalar arithmetic values and explicit `&buffer[index]` partition
+arguments, and nested loops/blocks. Indices, pointer values and scalar arguments
+are captured at task creation. There is one join at the end of the entire nest,
+not a wait after every iteration. Loop boundaries also wait for preceding tasks.
+Unsupported control flow, references, rebindings, mixed array modes and reads of
+task outputs in loop control retain the synchronous fallback. This is a current
+compiler limitation, not a recommendation to replace loops with recursion.
 
 Buffer arguments use the documented APAC partition convention. For example,
 `&positions[0]` can represent the entire shared read-only position buffer while
@@ -155,8 +223,8 @@ the code.
 python3 scripts/benchmark-regression.py
 ```
 
-This is included in `scripts/run-tests.sh`. It prepares all kernels, copies the
-bundle, compiles/runs the transferred version without APAC using UBSan, exercises
+This is included in `scripts/run-tests.sh`. It prepares all seven kernels, extracts the
+archive, compiles/runs the transferred version without APAC using UBSan, exercises
 empty/singleton inputs, odd splits and both buffer parities, and checks that a
 corrupted result and a changed/incomplete bundle are rejected. It has no timing
 or speedup assertion.

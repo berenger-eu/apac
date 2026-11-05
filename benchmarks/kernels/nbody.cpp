@@ -1,24 +1,67 @@
-#include "support.hpp"
-void nbody_range(const double *p, const double *v, double *out, double *outv,
-                 int n, int first, int count, int grain) {
-  if (count > grain) {
-    int m;
-    m = count / 2;
-    nbody_range(&p[0], &v[0], &out[0], &outv[0], n, first, m, grain);
-    nbody_range(&p[0], &v[0], &out[3 * m], &outv[3 * m], n, first + m,
-                count - m, grain);
-  } else {
-    nbody_leaf_apacSeq(p, v, out, outv, n, first, count);
+#include <cmath>
+#include <utility>
+
+// Direct gravitational N-body with equal masses, G=1 and softened distances.
+// Each vector has three consecutive coordinates in its array.
+void body_acceleration(const double *positions, double *acceleration,
+                       int bodies, int target) {
+  double ax = 0, ay = 0, az = 0;
+  double mass = 1.0 / bodies;
+  double softening_squared = 0.001;
+  for (int source = 0; source < bodies; ++source) {
+    if (source == target)
+      continue;
+    double dx = positions[3 * source] - positions[3 * target];
+    double dy = positions[3 * source + 1] - positions[3 * target + 1];
+    double dz = positions[3 * source + 2] - positions[3 * target + 2];
+    double distance_squared = dx * dx + dy * dy + dz * dz + softening_squared;
+    double factor = mass / (distance_squared * std::sqrt(distance_squared));
+    ax += dx * factor;
+    ay += dy * factor;
+    az += dz * factor;
+  }
+  acceleration[0] = ax;
+  acceleration[1] = ay;
+  acceleration[2] = az;
+}
+void compute_accelerations(const double *positions, double *accelerations,
+                           int bodies) {
+  for (int body = 0; body < bodies; ++body) {
+    body_acceleration(&positions[0], &accelerations[3 * body], bodies, body);
   }
 }
-unsigned long long benchmark_kernel(int n, int grain, int steps, int *keys,
-                                    int *aux, double *x, double *y, double *z,
-                                    double *tmp) {
-  for (int step = 0; step < steps; ++step) {
-    if (step % 2 == 0)
-      nbody_range(x, y, z, tmp, n, 0, n, grain);
-    else
-      nbody_range(z, tmp, x, y, n, 0, n, grain);
+void drift_body(double *position, double *velocity, const double *acceleration,
+                double timestep) {
+  for (int axis = 0; axis < 3; ++axis) {
+    velocity[axis] += 0.5 * timestep * acceleration[axis];
+    position[axis] += timestep * velocity[axis];
   }
-  return 0;
+}
+void drift_particles(double *positions, double *velocities,
+                     const double *accelerations, int bodies, double timestep) {
+  for (int body = 0; body < bodies; ++body) {
+    drift_body(&positions[3 * body], &velocities[3 * body],
+               &accelerations[3 * body], timestep);
+  }
+}
+void kick_body(double *velocity, const double *acceleration, double timestep) {
+  for (int axis = 0; axis < 3; ++axis)
+    velocity[axis] += 0.5 * timestep * acceleration[axis];
+}
+void kick_particles(double *velocities, const double *accelerations, int bodies,
+                    double timestep) {
+  for (int body = 0; body < bodies; ++body) {
+    kick_body(&velocities[3 * body], &accelerations[3 * body], timestep);
+  }
+}
+void simulate_particles(double *positions, double *velocities,
+                        double *accelerations, double *next_accelerations,
+                        int bodies, int steps, double timestep) {
+  compute_accelerations(positions, accelerations, bodies);
+  for (int step = 0; step < steps; ++step) {
+    drift_particles(positions, velocities, accelerations, bodies, timestep);
+    compute_accelerations(positions, next_accelerations, bodies);
+    kick_particles(velocities, next_accelerations, bodies, timestep);
+    std::swap(accelerations, next_accelerations);
+  }
 }

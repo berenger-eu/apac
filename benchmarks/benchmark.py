@@ -14,16 +14,38 @@ import shutil
 import statistics
 import subprocess
 import sys
+import tarfile
 import time
 
 ROOT = Path(__file__).resolve().parent
-NAMES = ('fibonacci','quicksort','mergesort','nqueens','dotproduct','matmul','nbody','jacobi')
-# size, grain, steps; grain is a leaf size, except Fibonacci's n cutoff and
-# N-Queens' search depth cutoff. No benchmark input is borrowed from BOTS.
+NAMES = ('fibonacci','quicksort','mergesort','nqueens','matmul','nbody','jacobi')
+DEFAULT_CASES = tuple(name for name in NAMES if name != 'nqueens')
+KINDS = dict(zip(NAMES, (0,1,2,3,5,6,7)))
+# Sequential computational leaves are selected outside the human-readable input.
+IGNORED = {
+    'fibonacci': (),
+    'quicksort': ('insertion_sort','partition'),
+    'mergesort': ('insertion_sort','merge'),
+    'nqueens': ('search_queens',),
+    'matmul': ('multiply_tile',),
+    'nbody': ('body_acceleration','drift_body','kick_body'),
+    'jacobi': ('relax_rows',),
+}
+ADAPTERS = {
+    'fibonacci': 'return fibonacci(n);',
+    'quicksort': 'quick_sort(keys,n,grain); return 0;',
+    'mergesort': 'merge_sort(keys,aux,n,grain); return 0;',
+    'nqueens': 'return nqueens(n);',
+    'matmul': 'multiply_matrices(x,y,z,n,grain); return 0;',
+    'nbody': 'simulate_particles(x,y,z,tmp,n,steps,0.001); return 0;',
+    'jacobi': 'jacobi(x,y,n,steps,grain); return 0;',
+}
+# size, grain, steps. Grain is unused by Fibonacci, N-Queens and direct N-body.
+# Runnable kernels are independent implementations; imported references are separate.
 PROFILES = {
-    'smoke': ((20,8,1),(257,16,1),(257,16,1),(8,3,1),(257,16,1),(13,4,1),(17,4,3),(13,3,3)),
-    'small': ((30,15,1),(65536,32,1),(65536,32,1),(11,4,1),(262144,1024,1),(128,16,1),(256,32,4),(256,16,20)),
-    'standard': ((40,20,1),(1048576,32,1),(1048576,32,1),(13,5,1),(8388608,4096,1),(512,32,1),(2048,64,8),(1024,32,100)),
+    'smoke': ((20,1,1),(257,16,1),(257,16,1),(8,1,1),(13,4,1),(17,1,3),(13,3,3)),
+    'small': ((30,1,1),(65536,32,1),(65536,32,1),(11,1,1),(128,16,1),(256,1,4),(256,16,20)),
+    'standard': ((40,1,1),(1048576,32,1),(1048576,32,1),(13,1,1),(512,32,1),(2048,1,8),(1024,32,100)),
 }
 PATTERNS = ('random','sorted','reverse','duplicates')
 
@@ -35,7 +57,7 @@ ENTRY = r'''
 #endif
 extern "C" BENCH_ENTRY_ATTR unsigned long long bench_entry(int n,int grain,int steps,
     int *keys,int *aux,double *x,double *y,double *z,double *tmp) {
-  return benchmark_kernel(n,grain,steps,keys,aux,x,y,z,tmp);
+  BENCHMARK_CALL
 }
 '''
 
@@ -66,8 +88,8 @@ def command(argv, *, cwd=None, env=None, timeout=300, log=None):
     return result.stdout
 
 
-def selected(args, available):
-    names = args.cases or list(available)
+def selected(args, available, defaults=None):
+    names = args.cases or defaults or list(available)
     missing = set(names)-set(available)
     if missing:
         raise ValueError('benchmarks not available: '+', '.join(sorted(missing)))
@@ -76,6 +98,12 @@ def selected(args, available):
 
 def prepare(args):
     root = args.output_dir.resolve()
+    archive = args.archive.resolve() if args.archive else None
+    if archive is not None:
+        if archive == root or root in archive.parents:
+            raise ValueError('--archive must be outside the output directory')
+        if archive.exists():
+            raise ValueError(f'archive already exists: {archive}')
     if root.exists() and any(root.iterdir()):
         raise ValueError(f'prepare requires an empty output directory: {root}')
     root.mkdir(parents=True, exist_ok=True)
@@ -84,7 +112,7 @@ def prepare(args):
     if not apac.is_file():
         raise ValueError(f'APAC executable missing: {apac}')
     manifest = {'schema':1, 'complete':False, 'created_utc':datetime.now(timezone.utc).isoformat(),
-                'benchmarks':{}, 'profiles':PROFILES, 'patterns':PATTERNS,
+                'benchmarks':{}, 'default_cases':[], 'case_order':NAMES, 'profiles':PROFILES, 'patterns':PATTERNS,
                 'apac_sha256':sha256(apac), 'runner_sha256':sha256(Path(__file__))}
     try:
         manifest['git_commit'] = command(['git','rev-parse','HEAD'],cwd=ROOT).strip()
@@ -99,7 +127,7 @@ def prepare(args):
         source = folder/'kernel.cpp'
         shutil.copyfile(ROOT/'kernels'/(name+'.cpp'),source)
         before = sha256(source)
-        command([apac,source,'--','-std=c++17'],cwd=folder,timeout=args.timeout,log=folder/'transform.log')
+        command([apac,source,'--ignore='+','.join(IGNORED[name]),'--','-std=c++17'],cwd=folder,timeout=args.timeout,log=folder/'transform.log')
         if sha256(source)!=before:
             raise RuntimeError(f'APAC changed the original source: {source}')
         generated = folder/'APACkernel.cpp'
@@ -107,16 +135,24 @@ def prepare(args):
             raise RuntimeError(f'APAC did not generate tasks for {name}; inspect {folder}')
         files = [source,generated,folder/'support.hpp',folder/'driver.hpp']
         files += sorted(folder.glob('_apac*.hpp'))
-        manifest['benchmarks'][name] = {'kind':NAMES.index(name),
+        manifest['benchmarks'][name] = {'kind':KINDS[name], 'adapter':ADAPTERS[name],
+            'role':'sequential-search control' if name=='nqueens' else 'benchmark',
+            'ignored_functions':IGNORED[name],
             'source':'kernel.cpp','transformed':'APACkernel.cpp',
             'files':{path.name:sha256(path) for path in files}}
         save_json(root/'manifest.json',manifest)
-        print('PREPARED '+name,flush=True)
+        print('PREPARED '+name+(' [sequential-search control]' if name=='nqueens' else ''),flush=True)
     shutil.copyfile(Path(__file__).resolve(),root/'run.py')
     shutil.copyfile(ROOT/'README.md',root/'README.md')
+    manifest['default_cases']=[name for name in DEFAULT_CASES if name in manifest['benchmarks']]
     manifest['complete']=True
     save_json(root/'manifest.json',manifest)
     print('Portable benchmark bundle: '+str(root),flush=True)
+    if archive is not None:
+        archive.parent.mkdir(parents=True, exist_ok=True)
+        with tarfile.open(archive, 'x:gz') as bundle:
+            bundle.add(root, arcname=root.name)
+        print('Portable benchmark archive: '+str(archive),flush=True)
 
 
 def statistics_for(samples, workloads, threads):
@@ -144,7 +180,7 @@ def run(args):
     manifest = json.loads((root/'manifest.json').read_text())
     if manifest.get('schema')!=1 or manifest.get('complete') is not True:
         raise ValueError('unsupported or incomplete benchmark bundle')
-    names = selected(args, manifest['benchmarks'])
+    names = selected(args, manifest['benchmarks'], manifest.get('default_cases'))
     if any(value is not None for value in (args.size,args.grain,args.steps)) and len(names)!=1:
         raise ValueError('--size/--grain/--steps require exactly one --cases benchmark')
     threads = list(dict.fromkeys([1]+args.threads))
@@ -164,7 +200,7 @@ def run(args):
         'compiler':command([args.compiler,'--version']).splitlines()[0],
         'compiler_path':shutil.which(args.compiler),
         'flags':['-std=c++17','-fopenmp',*flags], 'linked_libraries':{},
-        'environment':{key:value for key,value in env.items() if key.startswith(('OMP_','GOMP_'))
+        'environment':{key:value for key,value in env.items() if key.startswith(('OMP_','GOMP_','APAC_'))
                        or key in ('SLURM_JOB_ID','SLURM_CPUS_PER_TASK','SLURM_CPUS_ON_NODE')},
         'runner_sha256':sha256(Path(__file__)),'profile':args.profile,'threads':threads,'warmups':args.warmups,'repeat':args.repeat,
         'measurement':'kernel + task synchronization; excludes setup, oracle and OpenMP team creation'}
@@ -189,7 +225,7 @@ def run(args):
                         raise RuntimeError(f'prepared source changed: {folder/filename}; prepare a new bundle')
                 for variant,key in [('sequential','source'),('apac','transformed')]:
                     source=binaries/(name+'-'+variant+'.cpp')
-                    source.write_text((folder/info[key]).read_text()+'\n'+ENTRY)
+                    source.write_text((folder/info[key]).read_text()+'\n'+ENTRY.replace('BENCHMARK_CALL',info.get('adapter','return benchmark_kernel(n,grain,steps,keys,aux,x,y,z,tmp);')))
                     harness=binaries/(name+'-'+variant+'-driver.cpp')
                     harness.write_text('#include "support.hpp"\n#include "driver.hpp"\n')
                     command([args.compiler,'-std=c++17','-fopenmp',*flags,'-I',folder,
@@ -198,7 +234,8 @@ def run(args):
                             timeout=args.timeout,log=binaries/(name+'-'+variant+'-compile.log'))
                     if shutil.which('ldd'):
                         metadata['linked_libraries'][name+'-'+variant]=command(['ldd',binaries/(name+'-'+variant)])
-                size,grain,steps=manifest['profiles'][args.profile][info['kind']]
+                profile_index=manifest['case_order'].index(name) if 'case_order' in manifest else info['kind']
+                size,grain,steps=manifest['profiles'][args.profile][profile_index]
                 size=args.size if args.size is not None else size
                 grain=args.grain if args.grain is not None else grain
                 steps=args.steps if args.steps is not None else steps
@@ -262,6 +299,7 @@ def main():
         item.add_argument('--cases',nargs='+',choices=NAMES)
         item.add_argument('--timeout',type=int,default=300)
         if action in ('prepare','all'):
+            item.add_argument('--archive',type=Path,help='create a .tar.gz bundle outside --output-dir')
             item.add_argument('--build-dir',type=Path,default=Path(os.environ.get('APAC_BUILD_DIR',ROOT.parent/'build')))
         if action in ('run','all'):
             item.add_argument('--profile',choices=PROFILES,default='small')

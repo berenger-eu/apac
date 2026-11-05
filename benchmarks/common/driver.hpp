@@ -94,8 +94,6 @@ int main(int argc, char **argv) {
     int seed = bench::argument(argv[4], 0, 1000000);
     int pattern = bench::argument(argv[5], 0, 3);
     std::size_t count = 0;
-    if (BENCH_KIND == 4)
-      count = n;
     if (BENCH_KIND == 5 || BENCH_KIND == 7)
       count = std::size_t(n) * n;
     if (BENCH_KIND == 6)
@@ -106,9 +104,7 @@ int main(int argc, char **argv) {
     std::vector<int> aux(keys.size(), -2147483647);
     std::vector<int> sorted;
     auto x = bench::buffer(count), y = bench::buffer(count);
-    auto z = bench::buffer(BENCH_KIND == 4                      ? 1
-                           : BENCH_KIND == 5 || BENCH_KIND == 6 ? count
-                                                                : 0);
+    auto z = bench::buffer(BENCH_KIND == 5 || BENCH_KIND == 6 ? count : 0);
     auto temp = bench::buffer(BENCH_KIND == 6 ? count : 0);
     if (BENCH_KIND == 1 || BENCH_KIND == 2) {
       for (int i = 0; i < n; ++i) {
@@ -123,9 +119,9 @@ int main(int argc, char **argv) {
       }
       sorted.assign(keys.begin() + 1, keys.end() - 1);
     }
-    if (BENCH_KIND == 4 || BENCH_KIND == 5) {
+    if (BENCH_KIND == 5) {
       for (std::size_t i = 0; i < count; ++i) {
-        double scale = BENCH_KIND == 5 ? 0.0625 : 1.0;
+        double scale = 0.0625;
         x[i + 1] = (int(bench::random_value(i, seed) % 17) - 8) * scale;
         y[i + 1] = (int(bench::random_value(i, seed + 1) % 17) - 8) * scale;
       }
@@ -202,21 +198,14 @@ int main(int argc, char **argv) {
       for (int value : sorted)
         bench::hash(std::uint32_t(value));
     }
-    if (BENCH_KIND == 4 || BENCH_KIND == 5) {
+    if (BENCH_KIND == 5) {
       for (std::size_t i = 0; i < count; ++i) {
-        double scale = BENCH_KIND == 5 ? 0.0625 : 1.0;
+        double scale = 0.0625;
         bench::close(x[i + 1],
                      (int(bench::random_value(i, seed) % 17) - 8) * scale);
         bench::close(y[i + 1],
                      (int(bench::random_value(i, seed + 1) % 17) - 8) * scale);
       }
-    }
-    if (BENCH_KIND == 4) {
-      long double expected = 0;
-      for (int i = 0; i < n; ++i)
-        expected += (long double)x[i + 1] * y[i + 1];
-      bench::close(z[1], expected);
-      bench::hash_double(z[1]);
     }
     if (BENCH_KIND == 5) {
       for (int i = 0; i < n; ++i)
@@ -230,19 +219,25 @@ int main(int argc, char **argv) {
     }
     if (BENCH_KIND == 6) {
       using Triple = std::array<long double, 3>;
-      std::vector<Triple> p(n), v(n), nextp(n), nextv(n);
+      std::vector<Triple> p(n), v(n), acceleration(n), next_acceleration(n);
+      Triple initial_position = {}, initial_velocity = {};
       for (int i = 0; i < n; ++i)
         for (int d = 0; d < 3; ++d) {
-          // Recreate inputs independently of the buffers mutated by the kernel.
           p[i][d] = (bench::random_value(3 * i + d, seed) % 10000) / 10000.0;
           v[i][d] =
               (int(bench::random_value(3 * i + d, seed + 1) % 2001) - 1000) *
               1e-6;
+          initial_position[d] += p[i][d];
+          initial_velocity[d] += v[i][d];
         }
-      for (int step = 0; step < steps; ++step) {
+      // Independent long-double AoS oracle, reversed interaction order. The
+      // kernel uses kick-drift-kick; the reference updates positions directly.
+      auto forces = [&](std::vector<Triple> &result) {
         for (int i = 0; i < n; ++i) {
-          Triple acceleration = {0, 0, 0};
+          result[i] = {};
           for (int j = n - 1; j >= 0; --j) {
+            if (j == i)
+              continue;
             Triple delta;
             long double radius = 0.001L;
             for (int d = 0; d < 3; ++d) {
@@ -251,25 +246,39 @@ int main(int argc, char **argv) {
             }
             long double weight = 1.0L / (n * radius * std::sqrt(radius));
             for (int d = 0; d < 3; ++d)
-              acceleration[d] += delta[d] * weight;
-          }
-          for (int d = 0; d < 3; ++d) {
-            nextv[i][d] = v[i][d] + 0.001L * acceleration[d];
-            nextp[i][d] = p[i][d] + 0.001L * nextv[i][d];
+              result[i][d] += delta[d] * weight;
           }
         }
-        p.swap(nextp);
-        v.swap(nextv);
+      };
+      forces(acceleration);
+      const long double dt = 0.001L;
+      for (int step = 0; step < steps; ++step) {
+        for (int i = 0; i < n; ++i)
+          for (int d = 0; d < 3; ++d)
+            p[i][d] += dt * v[i][d] + 0.5L * dt * dt * acceleration[i][d];
+        forces(next_acceleration);
+        for (int i = 0; i < n; ++i)
+          for (int d = 0; d < 3; ++d)
+            v[i][d] +=
+                0.5L * dt * (acceleration[i][d] + next_acceleration[i][d]);
+        acceleration.swap(next_acceleration);
       }
-      const auto &out = steps % 2 ? z : x;
-      const auto &outv = steps % 2 ? temp : y;
+      Triple final_position = {}, final_velocity = {};
       for (int i = 0; i < n; ++i)
         for (int d = 0; d < 3; ++d) {
-          bench::close(out[1 + 3 * i + d], p[i][d]);
-          bench::close(outv[1 + 3 * i + d], v[i][d]);
-          bench::hash_double(out[1 + 3 * i + d]);
-          bench::hash_double(outv[1 + 3 * i + d]);
+          bench::close(x[1 + 3 * i + d], p[i][d]);
+          bench::close(y[1 + 3 * i + d], v[i][d]);
+          final_position[d] += x[1 + 3 * i + d];
+          final_velocity[d] += y[1 + 3 * i + d];
+          bench::hash_double(x[1 + 3 * i + d]);
+          bench::hash_double(y[1 + 3 * i + d]);
         }
+      // Independent physical invariants for this isolated equal-mass system.
+      for (int d = 0; d < 3; ++d) {
+        bench::close(double(final_velocity[d]), initial_velocity[d]);
+        bench::close(double(final_position[d]),
+                     initial_position[d] + dt * steps * initial_velocity[d]);
+      }
     }
     if (BENCH_KIND == 7) {
       std::vector<long double> ref(count), next(count);
