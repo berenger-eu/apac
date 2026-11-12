@@ -1,3 +1,5 @@
+#include "clang/Tooling/Tooling.h"
+#include "clang/Tooling/ArgumentsAdjusters.h"
 #include "common.hpp"
 
 std::string getCompleteVarDeclStr(VarDecl *v) {
@@ -370,4 +372,8 @@ std::vector<int> getArraySubscriptsIndexesValues(const clang::Expr *e) {
     }
   }
   return vectArraySubscriptExpr;
+}
+void enableOpenMPParsing(clang::tooling::ClangTool &tool) {
+  tool.appendArgumentsAdjuster(clang::tooling::getInsertArgumentAdjuster(
+      "-fopenmp", clang::tooling::ArgumentInsertPosition::END));
 }

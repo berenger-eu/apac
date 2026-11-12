@@ -226,6 +226,8 @@ def main():
             current=folder/'input.cpp'; current.write_text(source)
             for tool in ('duplicateFunctions','taskGraph'):
                 output=run([build/tool,current,'--','-std=c++17'],folder)
+                if name=='dynamicPartitions' and tool=='duplicateFunctions':
+                    assert len(re.findall(r'#pragma omp taskwait\s*\n',output))==2, (name,'lost explicit taskwait during cloning')
                 current=folder/(tool+'.cpp'); current.write_text(output)
             assert '__apac_array_phase_' in output and '#pragma omp task ' in output,(name,'no tasks generated')
             if name.startswith('recursive'):

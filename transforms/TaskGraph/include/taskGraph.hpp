@@ -30,5 +30,6 @@ public:
       const std::string &functionsValue = std::string(),
       const std::string &ignoreValue = std::string(),
 
-      const std::vector<std::string> &filesOutput = std::vector<std::string>());
+      const std::vector<std::string> &filesOutput = std::vector<std::string>(),
+      bool staticCost = false);
 };

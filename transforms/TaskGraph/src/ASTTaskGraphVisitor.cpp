@@ -653,7 +653,7 @@ bool ASTTaskGraphVisitor::traverseSynchronous(Stmt *s) {
 bool ASTTaskGraphVisitor::TraverseForStmt(ForStmt *f) {
   if (!sequentialTail_ && !isInHeaders(TheRewriter.getSourceMgr(), f->getBeginLoc())) {
     std::string replacement;
-    if (lowerPartitionCallLoop(f, aliasTable, paramAnalyzer_, replacement)) {
+    if (lowerPartitionCallLoop(f, aliasTable, paramAnalyzer_, replacement, costModel_)) {
       currentOrderManager->addInstructionToManager(f, true);
       Instruction instruction(f, getStmtAsStringFull(f, TheRewriter.getLangOpts()));
       instruction.synchronous = true;

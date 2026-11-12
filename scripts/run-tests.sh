@@ -34,7 +34,7 @@ if python3 "$repoRoot/scripts/regression.py" --build-dir "$buildDir"; then
     ((countPassed++))
 fi
 
-for regression in taskgraph-regression.py depth-regression.py call-loop-regression.py array-phase-regression.py validation-regression.py benchmark-regression.py snapshot-runner-regression.py; do
+for regression in unstack-expression-regression.py taskgraph-regression.py taskwait-regression.py static-cost-regression.py depth-regression.py call-loop-regression.py array-phase-regression.py validation-regression.py benchmark-regression.py snapshot-runner-regression.py; do
     ((countTotal++))
     if python3 "$repoRoot/scripts/$regression"; then
         ((countPassed++))

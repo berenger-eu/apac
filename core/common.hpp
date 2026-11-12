@@ -13,6 +13,12 @@
 #include "clang/Basic/SourceManager.h"
 using namespace clang;
 
+namespace clang { namespace tooling { class ClangTool; } }
+
+// Parse existing OpenMP directives in every pipeline stage. Otherwise AST
+// pretty-printing silently discards taskwait and changes synchronization.
+void enableOpenMPParsing(clang::tooling::ClangTool &tool);
+
 // Contains functions used by multiple transformations
 
 // Returns the given Stmt as a String

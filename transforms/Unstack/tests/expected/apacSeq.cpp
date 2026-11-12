@@ -9,7 +9,7 @@ void func_apacSeq(long long n) {
 }
 int main() {
   long n;
-  int __tempVar_1 = f(5);
-  f(__tempVar_1);
+  auto __tempVar_0 = f(5);
+  f(static_cast<decltype(__tempVar_0)>(__tempVar_0));
   return 0;
 }

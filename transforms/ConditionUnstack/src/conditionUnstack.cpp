@@ -63,5 +63,6 @@ bool ConditionUnstackHandler::run(
     filesOutputExt.push(file);
   }
   clang::tooling::ClangTool tool(options->getCompilations(), filesInput);
+  enableOpenMPParsing(tool);
   return tool.run(newFrontendActionFactory<MyFrontendAction>().get());
 }

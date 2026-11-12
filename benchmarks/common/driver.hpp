@@ -7,7 +7,11 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <fstream>
 #include <limits>
+#ifdef __linux__
+#include <sched.h>
+#endif
 #include <omp.h>
 #include <stdexcept>
 #include <string>
@@ -21,6 +25,42 @@
 extern "C" unsigned long long bench_entry(int, int, int, int *, int *, double *,
                                           double *, double *, double *);
 namespace bench {
+struct ThreadAffinity {
+  int cpu = -1, place = -1;
+  std::vector<int> cpus;
+};
+void capture_affinity(ThreadAffinity &value) {
+  value.place = omp_get_place_num();
+#ifdef __linux__
+  value.cpu = sched_getcpu();
+  cpu_set_t mask;
+  if (sched_getaffinity(0, sizeof(mask), &mask) == 0)
+    for (int cpu = 0; cpu < CPU_SETSIZE; ++cpu)
+      if (CPU_ISSET(cpu, &mask))
+        value.cpus.push_back(cpu);
+#endif
+}
+void print_affinity(const std::vector<ThreadAffinity> &values, int team) {
+  std::printf(",\"thread_affinity\":[");
+  for (int thread = 0; thread < team; ++thread) {
+    const auto &value = values[thread];
+    int socket = -1;
+    if (value.cpu >= 0) {
+      std::ifstream topology("/sys/devices/system/cpu/cpu" +
+                             std::to_string(value.cpu) +
+                             "/topology/physical_package_id");
+      if (!(topology >> socket))
+        socket = -1;
+    }
+    std::printf(
+        "%s{\"thread\":%d,\"cpu\":%d,\"place\":%d,\"socket\":%d,\"cpus\":[",
+        thread ? "," : "", thread, value.cpu, value.place, socket);
+    for (std::size_t i = 0; i < value.cpus.size(); ++i)
+      std::printf("%s%d", i ? "," : "", value.cpus[i]);
+    std::printf("]}");
+  }
+  std::printf("]");
+}
 constexpr double guard = -987654321.25;
 std::uint32_t random_value(std::uint32_t i, std::uint32_t seed) {
   std::uint32_t x = i + 0x9e3779b9U * (seed + 1U);
@@ -142,9 +182,11 @@ int main(int argc, char **argv) {
     double seconds = 0;
     unsigned long long scalar = 0;
     int team = 1;
+    std::vector<bench::ThreadAffinity> affinity(omp_get_max_threads());
 #if BENCH_PARALLEL
 #pragma omp parallel
     {
+      bench::capture_affinity(affinity[omp_get_thread_num()]);
 #pragma omp barrier
 #pragma omp single
       {
@@ -160,6 +202,7 @@ int main(int argc, char **argv) {
       }
     }
 #else
+    bench::capture_affinity(affinity[0]);
     double start = omp_get_wtime();
     scalar =
         bench_entry(n, grain, steps, keys.data() + 1, aux.data() + 1,
@@ -300,9 +343,11 @@ int main(int argc, char **argv) {
     }
     std::printf(
         "{\"seconds\":%.17g,\"verified\":true,\"scalar\":\"%llu\",\"checksum\":"
-        "\"%016llx\",\"team_threads\":%d,\"max_abs_error\":%.17g}\n",
+        "\"%016llx\",\"team_threads\":%d,\"max_abs_error\":%.17g",
         seconds, scalar, (unsigned long long)bench::digest, team,
         bench::max_error);
+    bench::print_affinity(affinity, team);
+    std::printf("}\n");
     return 0;
   } catch (const std::exception &error) {
     std::fprintf(stderr, "benchmark: %s\n", error.what());

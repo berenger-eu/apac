@@ -1,8 +1,9 @@
 #include "codeModification.hpp"
 #include "DepthRuntime.hpp"
+#include "StaticCost.hpp"
 
 void addInitApacPart(Rewriter &TheRewriter, const SourceLocation &beginCodeLoc,
-                     FunctionDecl *firstFunction) {
+                     FunctionDecl *firstFunction, const StaticCostModel *costs) {
   std::string includeText = apacDepthIncludes();
   bool printedHeader = false;
   if (firstFunction != nullptr) {
@@ -12,6 +13,7 @@ void addInitApacPart(Rewriter &TheRewriter, const SourceLocation &beginCodeLoc,
       SSprint << includeText;
     }
     SSprint << apacDepthRuntime();
+    if (costs) SSprint << costs->definitions();
     TheRewriter.InsertTextBefore(firstFunction->getBeginLoc(), SSprint.str());
   }
   if (!printedHeader) {
@@ -22,7 +24,7 @@ void addInitApacPart(Rewriter &TheRewriter, const SourceLocation &beginCodeLoc,
 void handleFunctions(
     Rewriter &TheRewriter, std::vector<FunctionDecl *> &functions,
     std::vector<std::pair<ReturnStmt *, FunctionDecl *>> &returnStmts,
-    const std::map<FunctionDecl *, std::string> &phaseTokens) {
+    const std::map<FunctionDecl *, std::string> &phaseTokens, const StaticCostModel *costs) {
   std::unordered_map<FunctionDecl *, ReturnStmt *> returnMap;
   for (auto &r : returnStmts) {
     returnMap[r.second] = r.first;
@@ -33,7 +35,7 @@ void handleFunctions(
     auto phase = phaseTokens.find(f);
     if (phase != phaseTokens.end())
       SSprintBefore << "char " << phase->second << ";\n";
-    addFunctionDepth(TheRewriter, SSprintBefore, SSprintAfter, f);
+    addFunctionDepth(TheRewriter, SSprintBefore, SSprintAfter, f, costs);
     handleFunctionTaskGroup(TheRewriter, f,
                             returnMap.count(f) ? returnMap.at(f) : nullptr,
                             SSprintBefore, SSprintAfter);
@@ -44,15 +46,18 @@ void handleFunctions(
 }
 
 void addFunctionDepth(Rewriter &TheRewriter, std::stringstream &SSprintBefore,
-                      std::stringstream &SSprintAfter, FunctionDecl *f) {
+                      std::stringstream &SSprintAfter, FunctionDecl *f, const StaticCostModel *costs) {
   // Stringstream before :  ... if(__apac_depth_ok) {
   // Stringstream after :  } else { return f_apacSeq(...); }
   SSprintBefore << "int __apac_depth_local = __apac_depth;\n";
 
-  SSprintBefore
-      << "int __apac_depth_ok = (__apac_depth_local < __apac_depth_max);\n"
-      << "if(__apac_depth_ok) {\n";
+  SSprintBefore << "int __apac_depth_ok = (__apac_depth_local < __apac_depth_max);\n";
+  if (costs)
+    SSprintBefore << "if(__apac_depth_ok && (__apac_cost_threshold == 0 || "
+                  << costs->entryCost(f) << " >= __apac_cost_threshold)) {\n";
+  else SSprintBefore << "if(__apac_depth_ok) {\n";
   SSprintAfter << "}\nelse {\n";
+  if (costs) SSprintAfter << "__apac_depth_guard __apac_sequential_depth(__apac_depth_max);\n";
   if (!f->getReturnType()->isVoidType())
     SSprintAfter << "return ";
   SSprintAfter << f->getNameAsString() + "_apacSeq(";

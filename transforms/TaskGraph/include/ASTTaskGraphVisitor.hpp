@@ -26,6 +26,7 @@ public:
       : APACRecursiveASTVisitor(R, mainRef, functionsRef, functionsToIgnoreRef),
         orderManager(orderManager), currentOrderManager(&orderManager),
         aliasTable(R), ignoreStmtPragma(false), paramAnalyzer_(nullptr){};
+  void setStaticCostModel(const StaticCostModel *model) { costModel_ = model; }
   void setParamWriteAnalyzer(const ParamWriteAnalyzer *analyzer) {
     paramAnalyzer_ = analyzer;
   }
@@ -194,6 +195,7 @@ private:
   AliasTable aliasTable;
   bool ignoreStmtPragma;
   const ParamWriteAnalyzer *paramAnalyzer_;
+  const StaticCostModel *costModel_ = nullptr;
 };
 inline bool isEmptyInstruction(const Instruction &instr) {
   return instr.dependencies.size() == 0;

@@ -1,4 +1,5 @@
 #include "ArrayPhases.hpp"
+#include "StaticCost.hpp"
 #include "clang/AST/DeclCXX.h"
 #include <functional>
 
@@ -61,7 +62,7 @@ std::string joined(const std::set<std::string> &items) {
 
 bool lowerPartitionCallLoop(ForStmt *loop, AliasTable &aliases,
                             const ParamWriteAnalyzer *parameters,
-                            std::string &replacement) {
+                            std::string &replacement, const StaticCostModel *costs) {
   std::set<const VarDecl *> controls;
   unsigned calls = 0;
   // The pipeline can hoist induction-variable declarations outside the loop.
@@ -199,6 +200,9 @@ bool lowerPartitionCallLoop(ForStmt *loop, AliasTable &aliases,
     for (const auto &write : writes)
       reads.erase(write);
     captures.insert("__apac_depth_local");
+    if (costs)
+      out += "\nif(__apac_cost_threshold == 0 || " + costs->callCost(call) +
+             " >= __apac_cost_threshold) {\n";
     out += "\n#pragma omp task default(shared) firstprivate(" +
            joined(captures) + ")";
     if (!reads.empty())
@@ -209,15 +213,24 @@ bool lowerPartitionCallLoop(ForStmt *loop, AliasTable &aliases,
         "\n{\n__apac_depth_guard __apac_loop_depth(__apac_depth_local + 1);\n";
     out += getStmtAsStringFull(call, callee->getASTContext().getLangOpts());
     out += "\n}\n";
+    if (costs) {
+      // Inline writes have no task dependency record. Complete prior siblings
+      // before evaluating/executing the sequential call; future siblings are
+      // then created after its writes. This intentionally favors coarse work.
+      out += "} else {\n#pragma omp taskwait\n"
+             "__apac_depth_guard __apac_sequential_depth(__apac_depth_max);\n";
+      out += costs->sequentialCall(call);
+      out += "}\n";
+    }
     ++calls;
     return true;
   };
   std::string body;
   if (!render(loop, body) || calls == 0)
     return false;
-  // No per-iteration wait: all calls in the nest are sibling tasks and may
-  // overlap when their representatives permit it. Join once before leaving
-  // the region, protecting control-local lifetimes and the following code.
+  // Deferred calls are siblings and join before leaving the region. With the
+  // cost option, a direct sequential call additionally joins prior siblings.
+  // Both paths protect control-local lifetimes and the following code.
   replacement = body + "\n#pragma omp taskwait\n";
   return true;
 }
