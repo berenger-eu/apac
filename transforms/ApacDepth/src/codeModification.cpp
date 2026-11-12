@@ -1,19 +1,20 @@
 #include "codeModification.hpp"
+#include "DepthRuntime.hpp"
 
 void addInitApacPart(Rewriter &TheRewriter, const SourceLocation &beginCodeLoc,
                      FunctionDecl *firstFunction) {
+  bool printedHeader = false;
   if (firstFunction != nullptr) {
-    std::stringstream SSprint;
-
-    SSprint << "const int nb_cores = omp_get_max_threads();\n"
-            << "const int parallel_depth = ffs(nb_cores);// log2(nb_cores);\n"
-            << "int __apac_depth = 0;\n"
-            << "#pragma omp threadprivate(__apac_depth)\n"
-            << "const static int __apac_depth_max = parallel_depth;\n\n";
-    TheRewriter.InsertTextBefore(firstFunction->getBeginLoc(), SSprint.str());
+    std::stringstream generated;
+    if (firstFunction->getBeginLoc() == beginCodeLoc) {
+      generated << apacDepthIncludes();
+      printedHeader = true;
+    }
+    generated << apacDepthRuntime();
+    TheRewriter.InsertTextBefore(firstFunction->getBeginLoc(), generated.str());
   }
-  TheRewriter.InsertTextBefore(beginCodeLoc,
-                               "#include <omp.h>\n#include <cstring>\n");
+  if (!printedHeader)
+    TheRewriter.InsertTextBefore(beginCodeLoc, apacDepthIncludes());
 }
 
 void addFunctionDepth(Rewriter &TheRewriter,
@@ -41,9 +42,13 @@ void addFunctionDepth(Rewriter &TheRewriter,
 
 void incrementFunctionDepth(Rewriter &TheRewriter,
                             std::vector<Stmt *> placesToPlaceIncrement) {
-  for (auto &st : placesToPlaceIncrement) {
-    std::stringstream SSprint;
-    SSprint << "__apac_depth = __apac_depth_local + 1;\n";
-    TheRewriter.InsertTextBefore(st->getBeginLoc(), SSprint.str());
+  for (auto *call : placesToPlaceIncrement) {
+    // Calls are visited in postorder, so nested replacements are preserved.
+    auto text = TheRewriter.getRewrittenText(call->getSourceRange());
+    TheRewriter.ReplaceText(
+        call->getSourceRange(),
+        "([&]() -> decltype(auto) { __apac_depth_guard __apac_call_depth("
+        "__apac_depth_local + 1); return " +
+            text + "; }())");
   }
 }

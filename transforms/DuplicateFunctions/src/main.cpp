@@ -21,6 +21,11 @@ int main(int argc, const char **argv) {
       CommonOptionsParser::create(argc, argv, ToolingSampleCategory,
                                   llvm::cl::OneOrMore);
 
+  if (!option) {
+    llvm::errs() << llvm::toString(option.takeError()) << "\n";
+    return 1;
+  }
+
   auto files = option->getSourcePathList();
 
   // ClangTool::run accepts a FrontendActionFactory, which is then used to

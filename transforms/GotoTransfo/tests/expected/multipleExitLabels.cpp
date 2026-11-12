@@ -33,4 +33,13 @@ __exit1:;
   return *__result;
 }
 
-int main() { return sign(-3) + (int)absVal(-2.5); }
+int main() {
+  wrapper_t<int> __result;
+  {
+
+    __result = build_wrapper<int>(sign(-3) + (int)absVal(-2.5));
+    goto __exit2;
+  }
+__exit2:;
+  return *__result;
+}

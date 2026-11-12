@@ -1,10 +1,10 @@
 int main() {
   int i = 0;
-  {
+  while (true) {
     bool evalI = (i % 2 == 1);
-    while (evalI) {
-      i++;
-    }
+    if (!(evalI))
+      break;
+    { i++; }
   }
 
   return 0;

@@ -1,11 +1,11 @@
 #include "unstack.hpp"
+#include <queue>
 
 static llvm::cl::OptionCategory ToolingSampleCategory("Tooling Sample");
 
 using namespace clang;
 using namespace clang::driver;
 using namespace clang::tooling;
-using namespace unstack;
 namespace unstack {
 std::string mainName;
 std::vector<std::string> functions, functionsToIgnore;
@@ -16,20 +16,15 @@ std::queue<std::string> filesOutputExt;
 class MyASTConsumer : public ASTConsumer {
 public:
   MyASTConsumer(Rewriter &R)
-      : VisitorUnstack(R, mainName, functions, functionsToIgnore),
-        transformer(R) {}
+      : VisitorUnstack(R, mainName, functions, functionsToIgnore) {}
 
   // Parse all the file
   virtual void HandleTranslationUnit(ASTContext &Ctx) {
     VisitorUnstack.TraverseAST(Ctx);
-    auto functions = VisitorUnstack.getCallsToUnstack();
-    transformer.transformFunctionsCalls(functions);
-    transformer.modifyCalls();
   }
 
 private:
   ASTUnstackVisitor VisitorUnstack;
-  UnstackTransformer transformer;
 };
 
 class MyFrontendAction : public ASTFrontendAction {
@@ -69,5 +64,6 @@ bool UnstackHandler::run(
     filesOutputExt.push(file);
   }
   clang::tooling::ClangTool tool(options->getCompilations(), filesInput);
+  enableOpenMPParsing(tool);
   return tool.run(newFrontendActionFactory<MyFrontendAction>().get());
 }

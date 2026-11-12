@@ -17,7 +17,14 @@ __exit0:;
 }
 
 int main() {
-  f();
-  g();
-  return 0;
+  wrapper_t<int> __result;
+  {
+
+    f();
+    g();
+    __result = build_wrapper<int>(0);
+    goto __exit1;
+  }
+__exit1:;
+  return *__result;
 }

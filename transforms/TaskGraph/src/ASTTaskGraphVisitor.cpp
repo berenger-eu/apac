@@ -100,7 +100,12 @@ void ASTTaskGraphVisitor::computeAliasesForRHS(
   else if (isa<CallExpr>(rhs)) {
     const CallExpr *c = cast<CallExpr>(rhs);
     const FunctionDecl *f = c->getDirectCallee();
-    for (unsigned int i = 0; i < c->getNumArgs(); i++) {
+    if (!f) {
+      handleCallExpr(*c, instr);
+      return;
+    }
+    for (unsigned int i = 0; i < std::min(c->getNumArgs(), f->getNumParams());
+         i++) {
       const ParmVarDecl *curParam = f->getParamDecl(i);
       if ((isPointerQualType(curParam->getType()) ||
            isReferenceQualType(curParam->getType())) &&
@@ -110,7 +115,8 @@ void ASTTaskGraphVisitor::computeAliasesForRHS(
         computeAliasesForRHS(arg, subAliases, instr);
         for (auto &alias : subAliases)
           aliases.insert(alias);
-        if (isa<VarDecl>(getSingleDeclRefExprInsideExpr(arg)->getDecl())) {
+        const auto *argDecl = getSingleDeclRefExprInsideExpr(arg);
+        if (argDecl && isa<VarDecl>(argDecl->getDecl())) {
           const VarDecl *v =
               cast<VarDecl>(getSingleDeclRefExprInsideExpr(arg)->getDecl());
           if (getPtrDepthAccess(*v, *arg) == -1) {
@@ -166,10 +172,15 @@ void ASTTaskGraphVisitor::handleCXXOperatorCallExpr(
           std::vector<const Expr *> arguments;
           for (auto arg : rightCall->arguments())
             arguments.push_back(arg);
-          getLowestType(
-              arguments, types,
-              callExprVect.front()->getDirectCallee()->getASTContext());
-          for (long unsigned int i = 0; i < arguments.size(); i++) {
+          if (!functionCalled) {
+            handleCallExpr(*rightCall, instr);
+            return;
+          }
+          getLowestType(arguments, types, functionCalled->getASTContext());
+          for (long unsigned int i = 0;
+               i < std::min(arguments.size(),
+                            size_t(functionCalled->getNumParams()));
+               i++) {
             // TODO: Handle Pointers
             if ((calQType == types[i]) &&
                 (isReferenceQualType(
@@ -285,7 +296,10 @@ void ASTTaskGraphVisitor::handleBinaryAssignment(const BinaryOperator &bop,
   // setLeftVars.insert(v);
   computeAliasesForRHS(bop.getLHS(), aliasesLeft, curInstr);
   // aliasTable.getModifiedVariables(setLeftVars,depth);
-  if (isPointerQualType(bop.getLHS()->getType())) {
+  // A function pointer has mutable pointer storage, but its target is code,
+  // not a data object whose aliases belong in the pointee table.
+  if (isPointerQualType(bop.getLHS()->getType()) &&
+      !bop.getLHS()->getType()->isFunctionPointerType()) {
     handlePointersBinaryAssignment(bop, curInstr, mainVariable, declOrArrayExpr,
                                    aliasesLeft);
   }
@@ -343,9 +357,13 @@ void ASTTaskGraphVisitor::handlePointersBinaryAssignment(
       auto curCall = callStack.top();
       auto rightFunction = curCall->getDirectCallee();
       callStack.pop();
-      for (unsigned int i = 0; i < rightCall->getNumArgs(); i++) {
+      if (!rightFunction)
+        continue;
+      for (unsigned int i = 0;
+           i < std::min(curCall->getNumArgs(), rightFunction->getNumParams());
+           i++) {
         if (isPointerQualType(rightFunction->getParamDecl(i)->getType())) {
-          const Expr *arg = rightCall->getArg(i);
+          const Expr *arg = curCall->getArg(i);
           if (isa<CallExpr>(arg->IgnoreParenImpCasts()))
             callStack.push(cast<CallExpr>(arg->IgnoreParenImpCasts()));
           else {
@@ -423,9 +441,22 @@ void ASTTaskGraphVisitor::handleMemberCallExpr(const CXXMemberCallExpr &c,
 void ASTTaskGraphVisitor::handleCallExpr(const CallExpr &c,
                                          Instruction &curInstr, bool isWrite) {
   // TODO: Methods and read/write on object/data ?
-  const FunctionDecl &f = *(c.getDirectCallee());
-  // We look though each parameter of the function
-  for (unsigned int i = 0; i < f.getNumParams(); i++) {
+  const auto *callee = c.getDirectCallee();
+  if (!callee) {
+    handleStmt(*c.getCallee(), curInstr);
+    for (const auto *arg : c.arguments())
+      handleStmt(*arg, curInstr, true);
+    return;
+  }
+  // Only explicit arguments contribute dependencies here. Globals accessed
+  // inside the callee are not propagated to the caller; their synchronization
+  // belongs to the program. Global arguments use the ordinary alias analysis.
+  const FunctionDecl &f = *callee;
+  // Variadic arguments can also carry addresses of mutable data.
+  for (unsigned i = f.getNumParams(); i < c.getNumArgs(); ++i)
+    handleStmt(*c.getArg(i), curInstr, true);
+  for (unsigned int i = 0; i < std::min(f.getNumParams(), c.getNumArgs());
+       i++) {
     // The parameter
     const ParmVarDecl &p = *(f.getParamDecl(i));
     // The corresponding argument
@@ -478,6 +509,10 @@ void ASTTaskGraphVisitor::handleStmt(const Stmt &st, Instruction &instr,
 
     auto curExp = (cast<Expr>(st).IgnoreParenImpCasts());
     if (isa<DeclRefExpr>(curExp)) {
+      // Function symbols (including &function in callback assignments) do not
+      // denote mutable variable storage and cannot be represented by aliasArg.
+      if (!isa<VarDecl>(cast<DeclRefExpr>(curExp)->getDecl()))
+        return;
       // const VarDecl *v =
       // cast<VarDecl>(cast<DeclRefExpr>(curExp)->getDecl());
       auto alias = aliasTable.getOrAddAliasArg(curExp);
@@ -532,60 +567,110 @@ void ASTTaskGraphVisitor::handleStmt(const Stmt &st, Instruction &instr,
 bool ASTTaskGraphVisitor::TraverseFunctionDecl(FunctionDecl *f) {
   if (functionsConditions(f)) {
     functionsInstructionsVector.push_back(std::vector<Instruction>());
-    return RecursiveASTVisitor::TraverseFunctionDecl(f);
+    bool previous = sequentialTail_;
+    auto previousToken = arrayPhaseToken_;
+    auto functionIndex = functionsInstructionsVector.size() - 1;
+    arrayPhaseToken_ = "__apac_array_phase_" + std::to_string(functionIndex);
+    sequentialTail_ = false;
+    bool result = RecursiveASTVisitor::TraverseFunctionDecl(f);
+    if (finishArrayPhases(functionsInstructionsVector[functionIndex]))
+      arrayPhaseTokens_[f] = arrayPhaseToken_;
+    arrayPhaseToken_ = previousToken;
+    sequentialTail_ = previous;
+    return result;
   }
   return true;
 }
 
-bool ASTTaskGraphVisitor::TraverseForStmt(ForStmt *f) {
-  if (isInHeaders(TheRewriter.getSourceMgr(), f->getBeginLoc()))
+bool ASTTaskGraphVisitor::preservesAliases(const Stmt *root) const {
+  // This deliberately proves only a scalar subset. Pointer/reference/object
+  // operations, inline assembly and calls without a visible body may change
+  // aliases; do not resume tasking using stale alias information in those cases.
+  auto scalarType = [](QualType type) {
+    return type->isArithmeticType() || type->isEnumeralType() ||
+           type->isVoidType() || type->isFunctionType();
+  };
+  auto scalarVariable = [&](const VarDecl *variable) {
+    // TLS initialization and cleanup attributes may invoke code implicitly,
+    // even when the declared value has a scalar type.
+    return scalarType(variable->getType()) &&
+           variable->getTLSKind() == VarDecl::TLS_None && !variable->hasAttrs();
+  };
+  std::vector<const Stmt *> pending{root};
+  std::unordered_set<const FunctionDecl *> visited;
+  while (!pending.empty()) {
+    const Stmt *statement = pending.back();
+    pending.pop_back();
+    if (isa<AsmStmt>(statement) || isa<CXXConstructExpr>(statement))
+      return false;
+    if (const auto *expr = dyn_cast<Expr>(statement)) {
+      const auto *cast = dyn_cast<ImplicitCastExpr>(expr);
+      // Direct calls contain a function-to-pointer decay even when no mutable
+      // pointer is involved. Indirect calls are rejected below.
+      bool directFunctionDecay =
+          cast && cast->getCastKind() == CK_FunctionToPointerDecay;
+      if (!directFunctionDecay && !scalarType(expr->getType()))
+        return false;
+    }
+    if (const auto *ref = dyn_cast<DeclRefExpr>(statement))
+      if (const auto *variable = dyn_cast<VarDecl>(ref->getDecl()))
+        if (!scalarVariable(variable))
+          return false;
+    if (const auto *declarations = dyn_cast<DeclStmt>(statement))
+      for (const auto *declaration : declarations->decls())
+        if (const auto *variable = dyn_cast<VarDecl>(declaration))
+          if (!scalarVariable(variable))
+            return false;
+    if (const auto *call = dyn_cast<CallExpr>(statement)) {
+      const auto *callee = call->getDirectCallee();
+      if (!callee || !callee->getBody())
+        return false;
+      if (visited.insert(callee->getCanonicalDecl()).second)
+        pending.push_back(callee->getBody());
+    }
+    for (const auto *child : statement->children())
+      if (child)
+        pending.push_back(child);
+  }
+  return true;
+}
+
+bool ASTTaskGraphVisitor::traverseSynchronous(Stmt *s) {
+  if (isInHeaders(TheRewriter.getSourceMgr(), s->getBeginLoc()))
     return true;
-  bool res = true;
+  // Calls to this helper after an uncertain loop must never clear the fallback.
+  sequentialTail_ = sequentialTail_ || !preservesAliases(s);
+  currentOrderManager->addInstructionToManager(s, true);
+  Instruction instr(s, getStmtAsStringFull(s, TheRewriter.getLangOpts()));
+  instr.noFusion = true;
+  instr.synchronous = true;
+  functionsInstructionsVector.back().push_back(instr);
+  // Preserve control flow as a whole: the header, break/continue and nested
+  // declarations must not be rewritten as independent OpenMP tasks.
+  return true;
+}
 
-  bool oldValIgnore = ignoreStmtPragma;
-  StmtOrder *outerInstrOrder = currentOrderManager;
-  if (!ignoreStmtPragma)
-    currentOrderManager->addInstructionToManager(f);
-  if (currentOrderManager->getSubStmtOrder(f) != nullptr)
-    currentOrderManager = (outerInstrOrder->getSubStmtOrder(f)).get();
-  llvm::errs() << ((outerInstrOrder->getSubStmtOrder(f)).get() == nullptr)
-               << "End ForStmt\n";
-  Instruction compInstr(f, getStmtAsString(f, TheRewriter.getLangOpts()), true,
-                        0);
-  compInstr.noFusion = true;
-  functionsInstructionsVector.push_back(std::vector<Instruction>());
-  ignoreStmtPragma = true;
-  if (!(RecursiveASTVisitor::TraverseStmt(f->getCond()) &&
-        RecursiveASTVisitor::TraverseStmt(f->getInc()) &&
-        RecursiveASTVisitor::TraverseStmt(f->getInit()))) {
-    ignoreStmtPragma = oldValIgnore;
-    return false;
-  }
-  ignoreStmtPragma = false;
-  if (!RecursiveASTVisitor::TraverseStmt(f->getBody())) {
-    ignoreStmtPragma = oldValIgnore;
-    return false;
-  }
-  ignoreStmtPragma = oldValIgnore;
-  currentOrderManager = outerInstrOrder;
-
-  compInstr.scopedInstructions = functionsInstructionsVector.back();
-  for (auto &instr : compInstr.scopedInstructions) {
-    for (auto &dep : instr.dependencies) {
-      compInstr.dependencies.insert(dep);
+bool ASTTaskGraphVisitor::TraverseForStmt(ForStmt *f) {
+  if (!sequentialTail_ && !isInHeaders(TheRewriter.getSourceMgr(), f->getBeginLoc())) {
+    std::string replacement;
+    if (lowerPartitionCallLoop(f, aliasTable, paramAnalyzer_, replacement, costModel_)) {
+      currentOrderManager->addInstructionToManager(f, true);
+      Instruction instruction(f, getStmtAsStringFull(f, TheRewriter.getLangOpts()));
+      instruction.synchronous = true;
+      instruction.noFusion = true;
+      instruction.loopTaskReplacement = replacement;
+      functionsInstructionsVector.back().push_back(instruction);
+      return true;
     }
-    if (instr.complexInstruction) {
-      compInstr.scopedInstructionsNumber += instr.scopedInstructions.size();
-    }
-    compInstr.scopedInstructionsNumber++;
   }
-  functionsInstructionsVector.pop_back();
-  functionsInstructionsVector.back().push_back(compInstr);
-
-  return res;
+  return traverseSynchronous(f);
 }
 // TODO: refacto
 bool ASTTaskGraphVisitor::TraverseIfStmt(IfStmt *i) {
+  if (sequentialTail_ ||
+      (i->getThen() && !isa<CompoundStmt>(i->getThen())) ||
+      (i->getElse() && !isa<CompoundStmt>(i->getElse())))
+    return traverseSynchronous(i);
   if (isInHeaders(TheRewriter.getSourceMgr(), i->getBeginLoc()))
     return true;
   bool res = true;

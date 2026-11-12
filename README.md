@@ -21,6 +21,8 @@
 
 Given a plain C++ source file, APAC analyses data dependencies between statements and rewrites the source with `#pragma omp task depend(...)` directives so that the output can exploit multiple processor cores without requiring manual annotations.
 
+Array and pointer dependency conventions are described in [Array dependencies and phases](docs/array-phases.md).
+
 APAC is built on **LLVM/Clang 18** and implements its analysis as a pipeline of composable transformation passes.
 
 ---
@@ -202,16 +204,28 @@ The full APAC pipeline applies the main passes in order.
 | `DuplicateFunctions`   | `duplicateFunctions`   | Create sequential fallback copies with the `_apacSeq` suffix.    |
 | `ConditionUnstack`     | `conditionUnstack`     | Extract declarations from `if` and `while` conditions.           |
 | `MultipleDeclSplitter` | `multipleDeclSplitter` | Split multi-variable declaration lines.                          |
+| `Unstack`              | `unstack`              | Extract eligible calls from nested expressions and returns.     |
 | `DeclarationSplitter`  | `declarationSplitter`  | Separate declarations from initialisations.                      |
 | `GotoTransfo`          | `gotoRet`              | Replace `return` statements with a single-exit `goto` structure. |
 | `TaskGraph`            | `taskGraph`            | Insert OpenMP tasks and dependency pragmas.                      |
 | `MainParallel`         | `mainParallel`         | Wrap `main` in an OpenMP parallel region.                        |
 | `ApacDepth`            | `apacDepth`            | Add recursion depth control to bound task creation.              |
 
+`Unstack` runs before declaration splitting and return lowering. For example,
+`return f(x) + g(x);` becomes two temporary initializations followed by the
+addition, allowing TaskGraph to schedule the calls independently. Scalar
+prvalues retain their value category at use sites. Reference-returning calls
+stay inside their consumers, avoiding reference_wrapper lowering of generated
+reference temporaries. Control headers and lazy/unevaluated operands are kept intact.
+Class prvalues, overloaded operators, volatile accesses and expressions requiring
+cleanup remain full expressions, preserving copy elision and destruction timing.
+Argument lists with residual reads are kept together to avoid interleaving
+argument evaluations. Self-referential initializers, switch bodies and functions
+with existing gotos are retained to preserve declaration scope and legal jumps. Sequential fallback copies are never rewritten.
+
 Additional available passes:
 
 * `constify`
-* `unstack`
 * `stackheap`
 
 ---
@@ -221,6 +235,10 @@ Additional available passes:
 ### Input
 
 APAC accepts plain C++ input files. No OpenMP annotations are required.
+All stages of the APAC pipeline enable OpenMP parsing, so an existing explicit
+`#pragma omp taskwait` is retained when functions are duplicated or rewritten,
+even without adding `-fopenmp` to APAC's input flags. `_OPENMP` is consequently
+defined consistently throughout the pipeline.
 
 The complete `apac` pipeline automatically applies the normalisation passes required by later analyses, including declaration splitting and multiple declaration splitting.
 
@@ -263,6 +281,31 @@ cd ..
 bash scripts/run-tests.sh
 ```
 
+DeclarationSplitter and TaskGraph snapshots check tool exit codes, normalized
+source, and compiler ASTs. TaskGraph also compiles every snapshot with OpenMP
+enabled and requires both DOT graphs. Failed diagnostics are retained under
+`transforms/<Transformation>/tests/results/`; these two suites have no exclusions.
+The global runner additionally checks transformed programs at `-O0` and `-O2`
+with 1, 2, and 4 OpenMP threads, and verifies that broken tools, invalid C++, and
+missing graphs cannot produce successful snapshot tests.
+
+TaskGraph preserves loops (`for`, `while`, `do`, range-for) as synchronous
+statements after waiting for earlier tasks. Tasks resume after loops proven to
+preserve aliases: currently scalar operations and direct calls whose visible
+bodies also satisfy this restriction. Pointer/reference/object operations, inline
+assembly, TLS/attributed variables and calls without visible bodies retain a
+sequential function tail.
+Fusion cannot move tasks across a synchronization boundary, including one nested
+in an `if`. Parallelizing loop bodies still requires loop-carried dependency analysis.
+Explicit accesses to globals contribute ordinary read/write dependencies, just
+like accesses to locals. Pointers, references and global arguments use the same
+alias/parameter analysis as local storage. Calls do not inherit dependencies for
+globals accessed inside their callees, including transitive calls. Dependencies
+therefore do not provide a global execution order across unrelated task contexts.
+The program must protect shared accesses where needed (mutexes, atomics, etc.);
+APAC does not insert these protections automatically. Values copied from a global
+into a local retain the normal dependencies on that local.
+
 Individual transformation test suites can also be run directly, for example:
 
 ```bash
@@ -272,29 +315,78 @@ bash test.sh
 
 ---
 
-## Benchmarks
+## Optional static task cost
 
-Run the benchmark suite:
+Enable the coarse work model while transforming a source file:
 
 ```bash
-python3 benchmarks/benchmark.py -n 3 -t 4
+build/apac input.cpp --static-cost -- -std=c++17
+APAC_COST_THRESHOLD=1000 OMP_NUM_THREADS=8 ./program
 ```
 
-This compares sequential and APAC-parallelised versions on selected benchmarks.
+The threshold is a score in abstract work units, not a time in nanoseconds.
+Without `--static-cost`, generated code keeps its existing behavior. With the
+option, an unset or zero threshold disables the cost cutoff. A positive threshold
+selects the sequential clone when the estimated work is below the threshold;
+the depth cutoff still applies independently.
 
-Current benchmark examples include:
+The model adds operations and callee costs and multiplies loop bodies by an
+estimated iteration count. Recursive paths use `max(1,n) * local_work(n)`; terminal paths keep their local
+work without the recursive multiplier. The selected branch controls whether a
+recursive edge is reached (unknown branches remain conservative).
+For a mutually recursive group, APAC removes internal calls from the cost graph,
+sums each member's local work once and multiplies by `max(1,n)`. For example,
+`f1 -> f2 -> f1` produces `n * (local_f1 + local_f2)`, with no recursive calls
+between estimators. Quicksort remains roughly quadratic in this heuristic.
+For self-recursion with at least two call sites of the form `f(n-k)` (positive
+constant decrements up to 63, at most 16 sites and no recursive calls in loops),
+APAC instead estimates the branching tree with a bounded dynamic program.
+For `f(n-1) + f(n-2)`, this keeps Fibonacci's exponential growth in the score.
+The table has at most 128 entries and saturates; it never executes application
+code or recursively calls another estimator. Terminal paths remain unscaled.
+Other recursions retain the simple size multiplier.
 
-| Benchmark       | Purpose                                                    |
-| --------------- | ---------------------------------------------------------- |
-| `readOnlyParam` | Direct validation target for read-only parameter analysis. |
-| `dotProduct`    | Read-only numerical kernel.                                |
-| `callChain`     | Structurally different read-only call pattern.             |
+Currently `n` is a by-value integer parameter: a parameter named `n`, `size`,
+`count` or `bodies` is preferred, otherwise the first eligible integer is used.
+The model supports global free functions and does not inspect pointed-to data or
+container contents. Unsupported expressions, external calls and exhausted model
+budgets yield an unknown score, which preserves tasking. Arithmetic saturates
+rather than wrapping. The model is a granularity heuristic, not a complexity
+proof; its evaluation is bounded to 64 local model evaluations per estimate.
 
-Typical speedups with 4 threads are around:
+At function entry the cutoff selects the sequential clone and suppresses its
+child tasks. A caller may already have created that function's task. In supported
+call loops, a runtime branch creates a task only for a sufficiently large call.
+The small-call branch first waits for prior child tasks, then calls the sequential
+clone directly, with a scoped guard keeping transitive calls sequential too.
+It creates no call task or dependency descriptor. This conservative wait can
+serialize independent pending calls. Outside these supported loops, function
+entry still chooses the sequential clone after the caller's task has started;
+that boundary task remains, but its descendants are suppressed.
 
-* `readOnlyParam`: ~2.6×
-* `dotProduct`: ~2.7×
-* `callChain`: ~3.3×
+## Benchmarks
+
+Six kernels run by default: Fibonacci, quicksort, merge sort, blocked matrix
+multiplication, N-body and Jacobi. N-Queens is an additional sequential control
+case. Every sample verifies its result outside the measured interval.
+
+```bash
+python3 benchmarks/benchmark.py prepare --build-dir build --output-dir /tmp/apac-benchmarks
+```
+
+Transfer the prepared directory to a compute node, then compile and run there:
+
+```bash
+cd /path/to/apac-benchmarks
+python3 run.py run --output-dir . --profile standard --threads 1 2 4 8 --repeat 7
+```
+
+Only Python 3 and GCC/OpenMP are needed on the compute node. The runner compares
+the sequential original and three APAC variants (unlimited, default depth, static
+cost), each with one and multiple threads. `--cost-threshold` sets the cost
+cutoffs (defaults: 100000, 1000000, 100000000, 1000000000). It exports raw CSV samples and a JSON report with machine/build metadata.
+See [the benchmark guide](benchmarks/README.md) for granularity, input profiles,
+validation and timing details.
 
 ---
 

@@ -22,4 +22,12 @@ point createPoint() {
 __exit0:;
   return *__result;
 }
-int main() { return 0; }
+int main() {
+  wrapper_t<int> __result;
+  {
+    __result = build_wrapper<int>(0);
+    goto __exit1;
+  }
+__exit1:;
+  return *__result;
+}

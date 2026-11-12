@@ -9,7 +9,7 @@ difference=false
 countPassed=0
 countTotal=0
 countKnownFailed=0
-knownFailures=("lambdaReturn" "returnInDoWhile")
+knownFailures=()
 
 curPath="$(realpath $(dirname "$0"))"
 gotoRet=$(command -v gotoRet 2>/dev/null || echo "$curPath/../../../build/gotoRet")
@@ -48,8 +48,8 @@ for file in $testsPath/*.cpp; do
                         differenceInText=true
                         echo -e "${RED}Different Text : $fileName${NC}"
                     fi
-                    clang-check-18 -ast-print "$expectedResult" > "$curPath/ast_result" 2> /dev/null
-                    clang-check-18 -ast-print $file2 > "$curPath/ast_expected" 2> /dev/null
+                    clang-check-18 -ast-print "$expectedResult" -- -std=c++17 -I"$testsPath" > "$curPath/ast_result" 2> /dev/null
+                    clang-check-18 -ast-print "$file2" -- -std=c++17 -I"$testsPath" > "$curPath/ast_expected" 2> /dev/null
                     diff "$curPath/ast_expected" "$curPath/ast_result" > "$folderResultPath"/astdiff
                     if [ $? -ne 0 ]; then
                         differenceInAST=true

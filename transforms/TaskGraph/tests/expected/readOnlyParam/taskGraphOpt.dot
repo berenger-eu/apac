@@ -14,14 +14,18 @@ label = "subGraph4_0";
 }
 }
     1 [label="mid = start + (end - start) / 2;"];
-    2 [label="left = sum_reduce(data, start, mid);"];
-    3 [label="right = sum_reduce(data, mid, end);"];
+    2 [label="left = sum_reduce(data, start, mid);
+phase: whole"];
+    3 [label="right = sum_reduce(data, mid, end);
+phase: whole"];
 }
 subgraph cluster_f1 {
     invisibleNodeScope_7 [style=invis];
     5 [label="data = new int [100];"];
-    6 [label="r1 = sum_reduce(data, 0, 50);"];
-    7 [label="r2 = sum_reduce(data, 50, 100);"];
+    6 [label="r1 = sum_reduce(data, 0, 50);
+phase: whole"];
+    7 [label="r2 = sum_reduce(data, 50, 100);
+phase: whole"];
     8 [label="total = r1 + r2;"];
 }
     1 -> 2[label="  midR"];

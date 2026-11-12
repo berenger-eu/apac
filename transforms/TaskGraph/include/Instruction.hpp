@@ -4,6 +4,7 @@
 #include "clang/AST/Decl.h"
 #include "clang/AST/Stmt.h"
 #include <sstream>
+#include <set>
 #include <unordered_set>
 #include <vector>
 
@@ -23,6 +24,14 @@ struct AliasesDependencyEqual {
   }
 };
 
+enum class ArrayAccessMode { Whole, Element, Partition };
+struct ArrayPhaseAccess {
+  ArrayAccessMode mode;
+  std::string representative;
+  std::string precision;
+  bool write;
+};
+
 struct Instruction {
   clang::Stmt *instruction;
   std::string instructionString; // Instruction string
@@ -32,6 +41,16 @@ struct Instruction {
   // Mostly used when an instruction requires a taskwait (delete,
   // complexInstructions)
   bool noFusion = false;
+  // Execute in the encountering thread after waiting for earlier tasks.
+  bool synchronous = false;
+  // A validated call loop is generated as one barrier-delimited region.
+  std::string loopTaskReplacement;
+  std::string arrayPhaseToken;
+  std::vector<ArrayPhaseAccess> arrayAccesses;
+  std::set<std::string> arrayAddressInputs;
+  std::set<std::string> arrayCaptures;
+  bool arrayAddressNeedsWait = false;
+  bool arrayPhaseFallback = false;
 
   unsigned int scopedInstructionsNumber; // Also takes in account number of
                                          // instructions in ComplexInstructions

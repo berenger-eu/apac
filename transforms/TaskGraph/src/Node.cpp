@@ -79,7 +79,10 @@ void Node::computeInOutDep() {
 }
 void Node::computeInDep() {
   for (const auto &dep : dependencies) {
-    bool isIn = false;
+    // Phased memory effects are emitted independently of graph edges. Keep
+    // scalar/pointer reads explicit too, including reads before the first write
+    // (WAR), so sizes and uncaptured globals cannot change during the task.
+    bool isIn = !instructionPtr.front()->arrayAccesses.empty() && dep.second.isRead;
     auto itPrev = prev.begin(), endPrev = prev.end();
     while (itPrev != endPrev && !isIn) {
       if ((*itPrev)->dependencies.count(dep.first) > 0) {

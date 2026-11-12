@@ -2,7 +2,22 @@
 
 void ParamWriteAnalyzer::analyzeTranslationUnit(ASTContext &Ctx) {
   ctx_ = &Ctx;
+  writtenParams_.clear();
+  functions_.clear();
   TraverseDecl(Ctx.getTranslationUnitDecl());
+  // Start optimistically, then monotonically propagate writes through calls.
+  // This handles forward declarations and mutually recursive functions without
+  // depending on the order of definitions in the source file.
+  bool changed;
+  do {
+    changed = false;
+    for (const auto *function : functions_) {
+      auto &written = writtenParams_[function->getCanonicalDecl()];
+      auto before = written.size();
+      analyzeFunction(function);
+      changed |= written.size() != before;
+    }
+  } while (changed);
 }
 
 bool ParamWriteAnalyzer::VisitFunctionDecl(FunctionDecl *f) {
@@ -13,13 +28,14 @@ bool ParamWriteAnalyzer::VisitFunctionDecl(FunctionDecl *f) {
       if (isInHeaders(sm, f->getLocation()))
         return true;
     }
-    analyzeFunction(f);
+    functions_.push_back(f);
+    writtenParams_[f->getCanonicalDecl()];
   }
   return true;
 }
 
 bool ParamWriteAnalyzer::isParamReadOnly(const FunctionDecl *f, unsigned paramIdx) const {
-  if (!f)
+  if (!f || paramIdx >= f->getNumParams())
     return false;
   const FunctionDecl *canonical = f->getCanonicalDecl();
   auto it = writtenParams_.find(canonical);
@@ -73,37 +89,65 @@ bool ParamWriteAnalyzer::containsWriteTo(const Stmt *s, const ParmVarDecl *param
     }
   }
 
-  // Check function calls: if param is passed to another function 
-  // as a non-const pointer/reference we conservatively assume write
-  // Skip self-recursive calls : the recursive call doesn't introduce new writes
-  if (const auto *ce = dyn_cast<CallExpr>(s)) {
-    if (const FunctionDecl *callee = ce->getDirectCallee()) {
-      if (callee->getCanonicalDecl() != parentFunc->getCanonicalDecl()) {
-        // Skip calls to APAC internal helpers (_apac_header.hpp)
-        // and already analyzed read-only calls
-        bool skipCallee = false;
-        if (ctx_) {
-          SourceManager &sm = ctx_->getSourceManager();
-          if (sm.getFilename(callee->getLocation()).contains("_apac_header.hpp"))
-            skipCallee = true;
-        }
-        if (!skipCallee) {
-          for (unsigned i = 0; i < callee->getNumParams() && i < ce->getNumArgs(); i++) {
-            const ParmVarDecl *calleeParam = callee->getParamDecl(i);
-            QualType calleeParamType = calleeParam->getType();
-            if (calleeParamType.isNull())
-              continue;
-            if (!isFullConstType(calleeParamType) &&
-                (isReferenceQualType(calleeParamType) ||
-                 isPointerQualType(calleeParamType))) {
-              if (isParamReadOnly(callee, i))
-                continue;
-              if (refersToParam(ce->getArg(i), param))
-                return true;
-            }
-          }
-        }
+  // An alias or an escaping address may be written outside the direct uses
+  // understood here. Keep such parameters mutable until alias tracking exists.
+  if (const auto *ds = dyn_cast<DeclStmt>(s)) {
+    for (const auto *decl : ds->decls()) {
+      if (const auto *var = dyn_cast<VarDecl>(decl)) {
+        auto type = var->getType();
+        if ((type->isPointerType() || type->isReferenceType() ||
+             type->isRecordType()) &&
+            refersToParam(var->getInit(), param))
+          return true;
       }
+    }
+  }
+  if (const auto *bo = dyn_cast<BinaryOperator>(s)) {
+    if (bo->isAssignmentOp() &&
+        (bo->getRHS()->getType()->isPointerType() ||
+         bo->getRHS()->getType()->isRecordType()) &&
+        refersToParam(bo->getRHS(), param))
+      return true;
+  }
+  if (const auto *ret = dyn_cast<ReturnStmt>(s)) {
+    if ((parentFunc->getReturnType()->isPointerType() ||
+         parentFunc->getReturnType()->isReferenceType()) &&
+        refersToParam(ret->getRetValue(), param))
+      return true;
+  }
+
+  if (const auto *deleted = dyn_cast<CXXDeleteExpr>(s)) {
+    if (refersToParam(deleted->getArgument(), param))
+      return true;
+  }
+  if (const auto *op = dyn_cast<CXXOperatorCallExpr>(s)) {
+    if (const auto *method =
+            dyn_cast_or_null<CXXMethodDecl>(op->getDirectCallee())) {
+      if (!method->isConst() && op->getNumArgs() &&
+          refersToParam(op->getArg(0), param))
+        return true;
+    }
+  }
+
+  if (const auto *ce = dyn_cast<CallExpr>(s)) {
+    const auto *callee = ce->getDirectCallee();
+    if (const auto *member = dyn_cast<CXXMemberCallExpr>(ce)) {
+      const auto *method = member->getMethodDecl();
+      if ((!method || !method->isConst()) &&
+          refersToParam(member->getImplicitObjectArgument(), param))
+        return true;
+    }
+    for (unsigned i = 0; i < ce->getNumArgs(); ++i) {
+      if (!refersToParam(ce->getArg(i), param))
+        continue;
+      // Function pointers and variadic arguments have no analyzable contract.
+      if (!callee || i >= callee->getNumParams())
+        return true;
+      auto type = callee->getParamDecl(i)->getType();
+      if (!isFullConstType(type) &&
+          (isReferenceQualType(type) || isPointerQualType(type)) &&
+          !isParamReadOnly(callee, i))
+        return true;
     }
   }
 
@@ -126,22 +170,11 @@ bool ParamWriteAnalyzer::refersToParam(const Expr *e, const ParmVarDecl *param) 
     return dre->getDecl()->getCanonicalDecl() == param->getCanonicalDecl();
   }
 
-  // Dereference of the parameter: *param, **param, etc.
-  if (const auto *uo = dyn_cast<UnaryOperator>(e)) {
-    if (uo->getOpcode() == UO_Deref) {
-      return refersToParam(uo->getSubExpr(), param);
+  for (const auto *child : e->children()) {
+    if (const auto *expr = dyn_cast_or_null<Expr>(child)) {
+      if (refersToParam(expr, param))
+        return true;
     }
   }
-
-  // Array subs: param[i], param[i][j], etc.
-  if (const auto *ase = dyn_cast<ArraySubscriptExpr>(e)) {
-    return refersToParam(ase->getBase(), param);
-  }
-
-  // Member access: param->member, (*param).member
-  if (const auto *me = dyn_cast<MemberExpr>(e)) {
-    return refersToParam(me->getBase(), param);
-  }
-
   return false;
 }

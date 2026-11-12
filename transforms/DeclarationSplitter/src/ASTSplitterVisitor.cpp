@@ -64,7 +64,11 @@ bool ASTSplitterVisitor::VisitDeclStmt(DeclStmt *declSt) {
 void ASTSplitterVisitor::stringVarDecl(VarDecl *v,
                                        std::stringstream &SSprintDecl,
                                        std::stringstream &SSprintInit) {
-  if (!isValidSeparation(v)) {
+  // A constexpr initializer is required for constant evaluation and cannot be
+  // moved into a later assignment (including constexpr references).
+  // Arrays cannot be assigned after declaration, including aggregate/empty
+  // initializers. Preserve their declarator and initialization together.
+  if (v->isConstexpr() || v->getType()->isArrayType() || !isValidSeparation(v)) {
     SSprintDecl << getCompleteVarDeclStr(v);
   } else if (isReferenceQualType(v->getType())) {
     const QualType &qType =

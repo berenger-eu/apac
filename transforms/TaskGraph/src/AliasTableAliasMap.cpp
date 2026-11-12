@@ -13,7 +13,7 @@ aliasesTableValues *AliasTableMapStruct::at(const NamedDecl *key,
   aliasesTableValues *result = nullptr;
   // If no entry for variable, return nullptr
   if (map.count(key) == 0)
-    llvm::errs() << "No entry for variable\n";
+    return nullptr;
   // If no indexes, return the value
   if (indexes.empty()) {
     result = &map.at(key);

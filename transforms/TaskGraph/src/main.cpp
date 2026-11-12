@@ -16,10 +16,16 @@ int main(int argc, const char **argv) {
   llvm::cl::opt<std::string> APACMainFilter("main");
   llvm::cl::opt<std::string> APACIgnoreFilter("ignore");
   llvm::cl::opt<std::string> APACFunctionFilter("functions");
+  llvm::cl::opt<bool> APACStaticCost("static-cost", llvm::cl::desc("Generate the optional static work model"));
 
   llvm::Expected<clang::tooling::CommonOptionsParser> option =
       CommonOptionsParser::create(argc, argv, ToolingSampleCategory,
                                   llvm::cl::OneOrMore);
+
+  if (!option) {
+    llvm::errs() << llvm::toString(option.takeError()) << "\n";
+    return 1;
+  }
 
   auto files = option->getSourcePathList();
   for (auto file : files) {
@@ -33,5 +39,5 @@ int main(int argc, const char **argv) {
 
   return TaskGraphHandler::run(option, files, APACMainFilter.getValue(),
                                APACFunctionFilter.getValue(),
-                               APACIgnoreFilter.getValue());
+                               APACIgnoreFilter.getValue(), {}, APACStaticCost.getValue());
 }

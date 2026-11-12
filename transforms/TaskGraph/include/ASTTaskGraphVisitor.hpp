@@ -4,6 +4,8 @@
 
 #include "AliasTable.hpp"
 #include "Instruction.hpp"
+#include "ArrayPhases.hpp"
+#include <map>
 #include "InstructionsOrderManager.hpp"
 #include "ParamWriteAnalyzer.hpp"
 #include "common.hpp"
@@ -24,9 +26,13 @@ public:
       : APACRecursiveASTVisitor(R, mainRef, functionsRef, functionsToIgnoreRef),
         orderManager(orderManager), currentOrderManager(&orderManager),
         aliasTable(R), ignoreStmtPragma(false), paramAnalyzer_(nullptr){};
+  void setStaticCostModel(const StaticCostModel *model) { costModel_ = model; }
   void setParamWriteAnalyzer(const ParamWriteAnalyzer *analyzer) {
     paramAnalyzer_ = analyzer;
   }
+  // Variable initializers outside function statements (including TLS globals)
+  // are initialization code, not places where OpenMP tasks can be emitted.
+  inline bool TraverseVarDecl(VarDecl *) { return true; }
   // Traverse methods lets us stop visiting nodes that we don't need
   inline bool TraverseDeclStmt(DeclStmt *d) {
     if (!elementsConditions(d))
@@ -44,6 +50,14 @@ public:
   }
 
   bool TraverseFunctionDecl(FunctionDecl *f);
+  bool dataTraverseStmtPre(Stmt *s) {
+    if (sequentialTail_ && !isa<CompoundStmt>(s) && !isa<DeclStmt>(s) &&
+        !isa<ReturnStmt>(s)) {
+      traverseSynchronous(s);
+      return false;
+    }
+    return true;
+  }
   // Calls respective handle method
 
   inline bool TraverseCXXMemberCallExpr(CXXMemberCallExpr *c) {
@@ -62,6 +76,8 @@ public:
     return traverseSimpleElements(bop);
   }
   inline bool TraverseCXXDeleteExpr(CXXDeleteExpr *d) {
+    if (sequentialTail_)
+      return traverseSynchronous(d);
     if (isInHeaders(TheRewriter.getSourceMgr(), d->getBeginLoc()))
       return true;
     if (!ignoreStmtPragma)
@@ -87,11 +103,22 @@ public:
     return traverseSimpleElements(c);
   }
 
+  // An explicit taskwait also starts a new partition layout/epoch.
+  bool TraverseOMPTaskwaitDirective(OMPTaskwaitDirective *s) {
+    return traverseSynchronous(s);
+  }
   bool TraverseForStmt(ForStmt *f);
+  bool TraverseSwitchStmt(SwitchStmt *s) { return traverseSynchronous(s); }
+  bool TraverseWhileStmt(WhileStmt *s) { return traverseSynchronous(s); }
+  bool TraverseDoStmt(DoStmt *s) { return traverseSynchronous(s); }
+  bool TraverseCXXForRangeStmt(CXXForRangeStmt *s) {
+    return traverseSynchronous(s);
+  }
   bool TraverseIfStmt(IfStmt *i);
   const auto &getTaskGraphs() { return functionsInstructionsVector; }
   std::vector<std::vector<Instruction>> functionsInstructionsVector;
 
+  const auto &getArrayPhaseTokens() const { return arrayPhaseTokens_; }
   const AliasTable &getAliasTable() const { return aliasTable; }
   inline void dumpInstructions() const {
     for (const auto &function : functionsInstructionsVector)
@@ -100,6 +127,13 @@ public:
   }
 
 private:
+  // An alias-sensitive loop invalidates the pre-loop alias table. Keep its
+  // tail sequential; after a proven alias-preserving loop, task creation resumes.
+  std::string arrayPhaseToken_;
+  std::map<FunctionDecl *, std::string> arrayPhaseTokens_;
+  bool sequentialTail_ = false;
+  bool traverseSynchronous(Stmt *s);
+  bool preservesAliases(const Stmt *statement) const;
   // Add all read dependencies of an expression to the instruction
   void addDependenciesRead(Instruction &instr, const Expr *e);
 
@@ -122,12 +156,15 @@ private:
     }
   }
   inline bool traverseSimpleElements(Stmt *s) {
+    if (sequentialTail_)
+      return traverseSynchronous(s);
     if (isInHeaders(TheRewriter.getSourceMgr(), s->getBeginLoc()))
       return true;
     if (!ignoreStmtPragma)
       currentOrderManager->addInstructionToManager(s);
     Instruction instr(s, getStmtAsString(s, TheRewriter.getLangOpts()));
     handleStmt(*s, instr);
+    analyzeArrayPhases(instr, aliasTable, paramAnalyzer_, arrayPhaseToken_);
     functionsInstructionsVector.back().push_back(instr);
     return true;
   }
@@ -158,6 +195,7 @@ private:
   AliasTable aliasTable;
   bool ignoreStmtPragma;
   const ParamWriteAnalyzer *paramAnalyzer_;
+  const StaticCostModel *costModel_ = nullptr;
 };
 inline bool isEmptyInstruction(const Instruction &instr) {
   return instr.dependencies.size() == 0;

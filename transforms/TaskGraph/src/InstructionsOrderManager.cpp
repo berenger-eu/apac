@@ -28,6 +28,8 @@ void StmtOrder::moveInstruction(const Stmt *key1, const Stmt *key2) {
   if (instructionGroups.count(groupNumberOld) == 0 ||
       instructionGroups.count(groupNumberNew) == 0)
     return;
+  if (groupNumberOld == groupNumberNew)
+    return;
   auto &instructionGroup = instructionGroups.at(groupNumberOld);
   auto &instructionGroupNew = instructionGroups.at(groupNumberNew);
   // Insert all the instructions from the old group to the new group

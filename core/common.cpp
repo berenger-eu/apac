@@ -1,3 +1,5 @@
+#include "clang/Tooling/Tooling.h"
+#include "clang/Tooling/ArgumentsAdjusters.h"
 #include "common.hpp"
 
 std::string getCompleteVarDeclStr(VarDecl *v) {
@@ -48,12 +50,16 @@ std::string getVarDeclDeclDefStr(VarDecl *v) {
   return SSresult.str();
 }
 std::string getVarDeclDeclStr(VarDecl *v) {
-  std::stringstream SSresult;
-  // type varName
-  SSresult << v->getType().getAsString() << " " << v->getNameAsString()
-           << ";\n";
-  return SSresult.str();
+  std::string result;
+  llvm::raw_string_ostream output(result);
+  PrintingPolicy policy(v->getASTContext().getLangOpts());
+  // The variable name belongs inside complex declarators: void (*f)(int),
+  // int (*row)[4], etc. Appending it to the printed type produces invalid C++.
+  v->getType().print(output, policy, v->getNameAsString());
+  output << ";\n";
+  return output.str();
 }
+
 std::string getStmtAsString(const Stmt *statement, const LangOptions &langOpt,
                             bool noSemi) {
   if (!statement)
@@ -276,93 +282,37 @@ const ArraySubscriptExpr *getSingleArraySubscriptExprInsideExpr(const Expr *e) {
   return returnValue;
 }
 bool isFullConstType(const QualType &qType) {
-  const Type *typeTemp;
-  bool workDone = false;
-  bool returnValue = true;
-  QualType qTypeTemp = qType;
-  // We remove the reference if there is one, since it's supposed to be const
-  if (isReferenceQualType(qType)) {
-    qTypeTemp = qType.getNonReferenceType();
+  QualType type = qType.getNonReferenceType();
+  // Const records can expose mutable state (including reference_wrapper's
+  // referent). Let the parameter analysis decide their effects conservatively.
+  while (!type.isNull()) {
+    if (type->isRecordType() || !type.isConstQualified())
+      return false;
+    type = type->getPointeeType();
   }
-  // We check all types until we reach the last one, we stop if we find a
-  // non-const type
-  do {
-    typeTemp = qTypeTemp.getTypePtrOrNull();
-    if (qTypeTemp.isConstQualified()) {
-      qTypeTemp = qTypeTemp->getPointeeType();
-    } else {
-      workDone = true;
-      returnValue = false;
-    }
-  } while (typeTemp && !workDone);
-  return returnValue;
+  // A const scalar terminates the chain: never query qualifiers on a null type.
+  return true;
 }
-int getPtrDepth(QualType qt, const ASTContext &aContext) {
-  int returnValue = 0;
-  if (isReferenceQualType(qt)) {
-    qt = getNonReferenceQualType(qt);
-  }
-  QualType previousType = qt;
-  do {
-    previousType = qt;
-    qt = qt.getSingleStepDesugaredType(aContext);
-    if (qt.getTypePtrOrNull() != nullptr) {
-      returnValue++;
-      qt = qt->getPointeeType();
-    } else if (qt->isArrayType() || qt->isConstantArrayType()) {
-      qt = aContext.getAsArrayType(qt)->getElementType();
-    }
-  } while ((qt.getTypePtrOrNull() != nullptr) && (qt != previousType));
 
-  return returnValue;
+int getPtrDepth(QualType qt, const ASTContext &aContext) {
+  int depth = 0;
+  if (isReferenceQualType(qt)) qt = getNonReferenceQualType(qt);
+  while (!qt.isNull()) {
+    qt = qt.getCanonicalType();
+    if (qt->isPointerType()) {
+      ++depth;
+      qt = qt->getPointeeType();
+    } else if (const auto *array = aContext.getAsArrayType(qt)) {
+      // Array-to-pointer decay preserves the level of indirection. Counting
+      // arrays as scalars used to assert on p = array and array arguments.
+      ++depth;
+      qt = array->getElementType();
+    } else break;
+  }
+  return depth;
 }
 int getPtrDepthAccess(QualType qt1, QualType qt2, const ASTContext &aContext) {
-  int returnValue = 0;
-  int depth1 = 0;
-  depth1 = getPtrDepth(qt1, aContext);
-  int depth2 = 0;
-  depth2 = getPtrDepth(qt2, aContext);
-  int depResult = 0;
-  depResult = depth1 - depth2;
-  //  If both types are the same, then we return 0 since they have the same
-  //  depth
-  qt2 = qt2.getSingleStepDesugaredType(aContext);
-  qt1 = qt1.getSingleStepDesugaredType(aContext);
-  if (isReferenceQualType(qt2))
-    qt2 = getNonReferenceQualType(qt2);
-  if (qt1 != qt2) {
-    // If a pointer to type qt1 is equal to qt2, then qt2 is a pointer to type
-    // qt1
-    if (getPointerToQType(qt1, aContext) == qt2) {
-      returnValue = -1;
-    }
-    // Else, we compare type pointed by qt1 until we find the same type as qt2
-    // The number of iteration is the depth of the pointer access
-    else {
-      int depth = 0;
-      while (qt1 != qt2 && qt1.getTypePtrOrNull() && qt2.getTypePtrOrNull() &&
-             depth < 10) {
-        if (isPointerQualType(qt1)) {
-          returnValue++;
-          qt1 = qt1->getPointeeType();
-        } else if (isReferenceQualType(qt1)) {
-          qt1 = getNonReferenceQualType(qt1);
-        } else if (qt1->isArrayType() || qt1->isConstantArrayType()) {
-          qt1 = aContext.getAsArrayType(qt1)->getElementType();
-        }
-        qt1 = qt1.getSingleStepDesugaredType(aContext);
-        qt2 = qt2.getSingleStepDesugaredType(aContext);
-        depth++;
-      }
-      if (depth == 10) {
-        returnValue = 0;
-      }
-    }
-  }
-  llvm::errs() << "Depth: " << returnValue << "\n"
-               << "Depth result: " << depResult << "\n";
-  assert(returnValue == depResult);
-  return returnValue;
+  return getPtrDepth(qt1, aContext) - getPtrDepth(qt2, aContext);
 }
 
 int getPtrDepthAccess(const clang::VarDecl &v, const clang::Expr &e) {
@@ -422,4 +372,8 @@ std::vector<int> getArraySubscriptsIndexesValues(const clang::Expr *e) {
     }
   }
   return vectArraySubscriptExpr;
+}
+void enableOpenMPParsing(clang::tooling::ClangTool &tool) {
+  tool.appendArgumentsAdjuster(clang::tooling::getInsertArgumentAdjuster(
+      "-fopenmp", clang::tooling::ArgumentInsertPosition::END));
 }

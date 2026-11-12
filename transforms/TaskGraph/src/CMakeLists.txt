@@ -16,7 +16,7 @@ set (COMMON_LIB ${CMAKE_CURRENT_SOURCE_DIR}/../../../core)
 set(INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../include ${COMMON_LIB})
 
 # Sources for your library (replace with actual source files)
-set(SOURCES AliasTableIndexMap.cpp AliasTableAliasMap.cpp AliasArg.cpp AliasTable.cpp Node.cpp Graph.cpp ASTTaskGraphVisitor.cpp InstructionsOrderManager.cpp codeModification.cpp OutputHandler.cpp ParamWriteAnalyzer.cpp taskGraph.cpp)
+set(SOURCES StaticCost.cpp CallLoops.cpp ArrayPhases.cpp AliasTableIndexMap.cpp AliasTableAliasMap.cpp AliasArg.cpp AliasTable.cpp Node.cpp Graph.cpp ASTTaskGraphVisitor.cpp InstructionsOrderManager.cpp codeModification.cpp OutputHandler.cpp ParamWriteAnalyzer.cpp taskGraph.cpp)
 
 # Lib Creation
 add_library(${CURRENT_LIBRARY_NAME} ${SOURCES})  
@@ -119,3 +119,9 @@ target_link_libraries(${CURRENT_EXECUTABLE_NAME} ${llvm_libs})
 set_property(TARGET ${CURRENT_EXECUTABLE_NAME} APPEND PROPERTY COMPILE_FLAGS "${compile_flags} -Wno-strict-aliasing")
 
 install(TARGETS ${CURRENT_EXECUTABLE_NAME} DESTINATION bin)
+
+# Semantic regression checks for parameter analysis and dependency bookkeeping.
+add_executable(paramWriteAnalyzerRegression ../tests/param_write_analyzer.cpp)
+# Repeat Clang's static dependencies in the same order as the tool executable.
+get_target_property(task_graph_test_libraries taskGraph LINK_LIBRARIES)
+target_link_libraries(paramWriteAnalyzerRegression PRIVATE ${task_graph_test_libraries})

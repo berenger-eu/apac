@@ -14,7 +14,7 @@ set (COMMON_LIB ${CMAKE_CURRENT_SOURCE_DIR}/../../../core)
 set(INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../include ${COMMON_LIB})
 
 # Sources for your library (replace with actual source files)
-set(SOURCES helperFunctions.cpp createUnstackString.cpp ASTUnstackVisitor.cpp unstack.cpp )
+set(SOURCES ASTUnstackVisitor.cpp unstack.cpp)
 # Lib Creation
 add_library(${CURRENT_LIBRARY_NAME} ${SOURCES})  
 

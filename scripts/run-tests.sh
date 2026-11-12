@@ -1,4 +1,10 @@
 #!/bin/bash
+# Always use this checkout's tools and resolve paths from the repository root.
+repoRoot="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$repoRoot" || exit 1
+buildDir="${APAC_BUILD_DIR:-$repoRoot/build}"
+export PATH="$buildDir:$PATH"
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
@@ -23,6 +29,18 @@ for folder in $transformationsPath/*; do
         ((countTotal++))
     fi
 done
+((countTotal++))
+if python3 "$repoRoot/scripts/regression.py" --build-dir "$buildDir"; then
+    ((countPassed++))
+fi
+
+for regression in unstack-expression-regression.py taskgraph-regression.py taskwait-regression.py static-cost-regression.py depth-regression.py call-loop-regression.py array-phase-regression.py validation-regression.py benchmark-regression.py snapshot-runner-regression.py; do
+    ((countTotal++))
+    if python3 "$repoRoot/scripts/$regression"; then
+        ((countPassed++))
+    fi
+done
+
 echo -e "${BLUE}${BOLD}Test suite passed : $countPassed/$countTotal ${NC}"
 if [ $countPassed != $countTotal ]; then
     exit 1

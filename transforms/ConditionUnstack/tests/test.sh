@@ -9,7 +9,7 @@ difference=false
 countPassed=0
 countTotal=0
 countKnownFailed=0
-knownFailures=("nestedCondDecl")
+knownFailures=()
 
 curPath="$(realpath $(dirname "$0"))"
 conditionUnstack=$(command -v conditionUnstack 2>/dev/null || echo "$curPath/../../../build/conditionUnstack")

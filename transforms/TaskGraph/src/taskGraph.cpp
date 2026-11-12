@@ -1,5 +1,6 @@
 #include "taskGraph.hpp"
 #include "ParamWriteAnalyzer.hpp"
+#include "StaticCost.hpp"
 
 static llvm::cl::OptionCategory ToolingSampleCategory("Tooling Sample");
 
@@ -7,6 +8,7 @@ using namespace clang;
 using namespace clang::driver;
 using namespace clang::tooling;
 namespace taskGraph {
+bool staticCostEnabled = false;
 std::string mainName;
 std::vector<std::string> functions, functionsToIgnore;
 std::queue<std::string> filesOutputExt;
@@ -35,6 +37,9 @@ public:
     paramAnalyzer.analyzeTranslationUnit(Ctx);
     VisitorTaskGraph.setParamWriteAnalyzer(&paramAnalyzer);
 
+    std::unique_ptr<StaticCostModel> costs;
+    if (staticCostEnabled) costs.reset(new StaticCostModel(Ctx));
+    VisitorTaskGraph.setStaticCostModel(costs.get());
     VisitorTaskGraph.TraverseAST(Ctx);
     for (auto instr : VisitorTaskGraph.functionsInstructionsVector)
       for (auto instrI : instr)
@@ -56,7 +61,8 @@ public:
     }
     outputHandler.GenerateDotGraph(graphs, "taskGraphOpt.dot");
     outputHandler.modifyFile(orderManager);
-    modifyCode(TheRewriter, codeBeginLoc, functions, returnStmts);
+    modifyCode(TheRewriter, codeBeginLoc, functions, returnStmts,
+               VisitorTaskGraph.getArrayPhaseTokens(), costs.get());
   }
 
 private:
@@ -94,12 +100,14 @@ bool TaskGraphHandler::run(
     std::vector<std::string> &filesInput, const std::string &mainFilterValue,
     const std::string &functionsFilterValue,
     const std::string &functionsIgnoreValue,
-    const std::vector<std::string> &filesOutput) {
+    const std::vector<std::string> &filesOutput, bool staticCost) {
+  staticCostEnabled = staticCost;
   callParse(mainFilterValue, functionsFilterValue, functionsIgnoreValue,
             mainName, functionsToIgnore, functions);
   for (auto file : filesOutput) {
     filesOutputExt.push(file);
   }
   clang::tooling::ClangTool tool(options->getCompilations(), filesInput);
+  enableOpenMPParsing(tool);
   return tool.run(newFrontendActionFactory<MyFrontendAction>().get());
 }

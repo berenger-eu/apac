@@ -67,9 +67,15 @@ int main(int argc, const char **argv) {
       CommonOptionsParser::create(argc, argv, ToolingSampleCategory,
                                   llvm::cl::OneOrMore);
 
+  if (!option) {
+    llvm::errs() << llvm::toString(option.takeError()) << "\n";
+    return 1;
+  }
+
   auto files = option->getSourcePathList();
 
   clang::tooling::ClangTool tool(option->getCompilations(), files);
+  enableOpenMPParsing(tool);
   // ClangTool::run accepts a FrontendActionFactory, which is then used to
   // create new objects implementing the FrontendAction interface. Here we use
   // the helper newFrontendActionFactory to create a default factory that will
